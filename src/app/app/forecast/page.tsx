@@ -174,7 +174,7 @@ export default async function ForecastScreen() {
             <div className="t">Income by holding · forward 12M</div>
             <span className="tag">Top {byTicker.length}</span>
           </div>
-          <div style={{ maxHeight: 320, overflow: 'auto' }}>
+          <div>
             <table className="pt">
               <thead>
                 <tr>

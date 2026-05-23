@@ -37,6 +37,26 @@ export interface RawEod {
   close: number;
 }
 
+/** Weekly closes — used to build portfolio value/return time series. */
+export interface RawWeekly {
+  date: string;   // YYYY-MM-DD — week's last trading day
+  close: number;
+}
+
+export async function fetchWeeklyHistory(ticker: string, weeks: number): Promise<RawWeekly[]> {
+  const key = process.env.TWELVE_DATA_KEY;
+  if (!key) throw new Error('TWELVE_DATA_KEY missing');
+  const url =
+    `${BASE}/time_series?symbol=${encodeURIComponent(ticker)}` +
+    `&interval=1week&outputsize=${weeks}&order=asc&apikey=${key}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`twelvedata weekly ${res.status}`);
+  const j = await res.json();
+  if (j.status === 'error') throw new Error(j.message ?? 'twelvedata error');
+  const rows = (j.values ?? []) as { datetime: string; close: string }[];
+  return rows.map((r) => ({ date: r.datetime, close: Number(r.close) }));
+}
+
 export async function fetchEodOnDate(ticker: string, date: string): Promise<RawEod | null> {
   const key = process.env.TWELVE_DATA_KEY;
   if (!key) throw new Error('TWELVE_DATA_KEY missing');

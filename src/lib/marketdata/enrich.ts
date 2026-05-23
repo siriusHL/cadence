@@ -7,7 +7,7 @@ import {
   fetchProfile, fetchDividendHistory, frequencyToPerYear, inferPayoutFreq,
   type RawProfile,
 } from '@/lib/marketdata/fmp';
-import { fetchQuote } from '@/lib/marketdata/twelvedata';
+import { fetchQuote, fetchWeeklyHistory } from '@/lib/marketdata/twelvedata';
 import { singleflight } from '@/lib/cache';
 
 interface InstrumentRow {
@@ -205,6 +205,51 @@ async function enrichProfile(ticker: string): Promise<RawProfile | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Backfill weekly closes into instrument_history for performance/charts.
+ * Cheap to cache, dramatically cuts API usage on repeat loads.
+ */
+export async function enrichWeeklyHistory(tickers: string[], weeks = 104): Promise<void> {
+  if (tickers.length === 0) return;
+  const admin = supabaseAdmin();
+
+  // For each ticker, only call upstream if our cache lacks the most recent weeks.
+  // Cheap query: count rows in instrument_history for the last `weeks` weeks.
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - weeks * 7);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const { data: counts } = await admin
+    .from('instrument_history')
+    .select('ticker, date')
+    .in('ticker', tickers)
+    .gte('date', cutoffStr);
+
+  const countsByT = new Map<string, number>();
+  for (const r of counts ?? []) {
+    countsByT.set(r.ticker, (countsByT.get(r.ticker) ?? 0) + 1);
+  }
+
+  await Promise.all(
+    tickers.map(async (t) => {
+      // Skip if we already have most of the weekly grid for this ticker.
+      const expected = weeks * 0.85; // allow for holidays / non-trading weeks
+      if ((countsByT.get(t) ?? 0) >= expected) return;
+
+      try {
+        const rows = await singleflight(`weekly:${t}`, () => fetchWeeklyHistory(t, weeks));
+        if (rows.length === 0) return;
+        await admin.from('instrument_history').upsert(
+          rows.map((r) => ({ ticker: t, date: r.date, close: r.close })),
+          { onConflict: 'ticker,date' },
+        );
+      } catch {
+        /* leave gaps; chart handles missing data */
+      }
+    }),
+  );
 }
 
 async function enrichQuote(ticker: string): Promise<void> {

@@ -79,6 +79,14 @@ export interface Contributor {
   quantity: number;
 }
 
+export interface PerformancePoint {
+  /** YYYY-MM-DD — week-end (Friday close typically) */
+  date: string;
+  value: number;
+  cost: number;
+  returnPct: number;              // (value - cost) / cost × 100
+}
+
 export interface YearEvent {
   ticker: string;
   name: string | null;
@@ -684,6 +692,104 @@ export async function getYearEvents(
     }
   }
   out.sort((a, b) => a.exDate.localeCompare(b.exDate));
+  return out;
+}
+
+/**
+ * Cumulative portfolio performance series, weekly.
+ * For each week-end, value = Σ (qty held × close for that week),
+ *                  cost  = Σ (buy qty × buy price + fees) up to that date.
+ *
+ * Only includes weeks at-or-after the user's first transaction. Tickers with
+ * gaps in `instrument_history` use their nearest-prior known close (carry).
+ */
+export async function getPerformanceSeries(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  weeks = 104,
+): Promise<PerformancePoint[]> {
+  // 1) Trades — drive qty-at-date and cost basis accumulation.
+  const { data: trades } = await supabase
+    .from('transactions')
+    .select('ticker, kind, occurred_on, quantity, price_local, fee_local, fx_to_base')
+    .eq('portfolio_id', portfolioId)
+    .in('kind', ['buy', 'sell'])
+    .order('occurred_on', { ascending: true });
+  if (!trades || trades.length === 0) return [];
+
+  const firstDate = new Date(trades[0].occurred_on);
+  const tickers = Array.from(new Set(trades.map((t) => t.ticker)));
+
+  // 2) Weekly closes for all held tickers — pulled in bulk.
+  const start = new Date();
+  start.setDate(start.getDate() - weeks * 7);
+  const startStr = start.toISOString().slice(0, 10);
+
+  const { data: rows } = await supabase
+    .from('instrument_history')
+    .select('ticker, date, close')
+    .in('ticker', tickers)
+    .gte('date', startStr)
+    .order('date', { ascending: true });
+
+  // Index by ticker → array of {date, close}, sorted asc
+  const byTicker = new Map<string, { date: string; close: number }[]>();
+  for (const r of rows ?? []) {
+    if (!byTicker.has(r.ticker)) byTicker.set(r.ticker, []);
+    byTicker.get(r.ticker)!.push({ date: r.date, close: Number(r.close) });
+  }
+
+  // 3) Build the union of all week-end dates we have data for.
+  const weekDates = Array.from(
+    new Set((rows ?? []).map((r) => r.date)),
+  ).sort();
+
+  const out: PerformancePoint[] = [];
+  for (const weekStr of weekDates) {
+    const weekDate = new Date(weekStr);
+    if (weekDate < firstDate) continue;  // skip pre-portfolio weeks
+
+    let value = 0;
+    let cost = 0;
+    let validTickers = 0;
+
+    for (const ticker of tickers) {
+      // Quantity held on this date
+      let qty = 0;
+      let tickerCost = 0;
+      for (const t of trades) {
+        if (t.ticker !== ticker) continue;
+        const td = new Date(t.occurred_on);
+        if (td > weekDate) break;
+        if (t.kind === 'buy') {
+          qty += Number(t.quantity);
+          tickerCost += Number(t.quantity) * Number(t.price_local) + Number(t.fee_local);
+        } else if (t.kind === 'sell') {
+          qty -= Number(t.quantity);
+          // Average-cost basis reduction
+          const sellRatio = Number(t.quantity) / (qty + Number(t.quantity)) || 0;
+          tickerCost -= tickerCost * sellRatio;
+        }
+      }
+      if (qty <= 0) continue;
+
+      // Find the close on/before this week
+      const closes = byTicker.get(ticker) ?? [];
+      let close: number | null = null;
+      for (const c of closes) {
+        if (c.date > weekStr) break;
+        close = c.close;
+      }
+      if (close == null) continue;
+      value += qty * close;
+      cost += tickerCost;
+      validTickers++;
+    }
+
+    if (validTickers === 0 || cost === 0) continue;
+    const returnPct = ((value - cost) / cost) * 100;
+    out.push({ date: weekStr, value, cost, returnPct });
+  }
   return out;
 }
 
