@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cadence — Dividend Portfolio Tracker · Print</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="tokens.css" />
+  <link rel="stylesheet" href="free-tokens.css" />
+
+  <style>
+    html, body { margin: 0; padding: 0; background: #efece5; font-family: "Inter", system-ui, sans-serif; }
+
+    .page-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 28px;
+      padding: 28px 0;
+    }
+
+    .page {
+      width: 1280px; height: 820px;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+      border-radius: 4px;
+    }
+
+    .page-label {
+      position: absolute; bottom: -22px; left: 4px;
+      font-size: 12px; color: rgba(60, 50, 40, 0.7);
+      font-weight: 500;
+    }
+
+    .page-num {
+      position: absolute; bottom: -22px; right: 4px;
+      font-size: 11px; color: rgba(60, 50, 40, 0.45);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section-break {
+      width: 1280px;
+      padding: 8px 4px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: rgba(60, 50, 40, 0.65);
+    }
+    .section-break .pillrow {
+      display: inline-block; padding: 4px 12px;
+      background: #1d1d1f; color: #fff;
+      border-radius: 999px; margin-right: 10px;
+      letter-spacing: 0.08em; font-size: 10px;
+    }
+
+    @page {
+      size: 1280px 820px;
+      margin: 0;
+    }
+
+    @media print {
+      html, body { background: #fff; }
+      .page-wrap { padding: 0; gap: 0; }
+      .page {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 1280px !important; height: 820px !important;
+        page-break-after: always;
+        break-after: page;
+        margin: 0 !important;
+      }
+      .page:last-child { page-break-after: auto; break-after: auto; }
+      .page-label, .page-num, .section-break { display: none !important; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="primitives.jsx"></script>
+  <script type="text/babel" src="free-screens.jsx"></script>
+  <script type="text/babel" src="pro-dashboard.jsx"></script>
+  <script type="text/babel" src="pro-holdings.jsx"></script>
+  <script type="text/babel" src="pro-income.jsx"></script>
+  <script type="text/babel" src="pro-analysis.jsx"></script>
+
+  <script type="text/babel">
+    const PAGES = [
+      // Free tier
+      { section: "Free tier", label: "01 · Home — Your money",         Screen: FreeHomeScreen },
+      { label: "02 · Coming up — Next payment",                        Screen: FreeNextScreen },
+      { label: "03 · Your stocks",                                     Screen: FreeStocksScreen },
+      { label: "04 · Your year — Income story",                        Screen: FreeYearScreen },
+      // Pro tier
+      { section: "Pro tier", label: "05 · Pro · Dashboard",            Screen: ProDashboard },
+      { label: "06 · Pro · Holdings — full table",                     Screen: ProHoldings },
+      { label: "07 · Pro · Stock detail — Realty Income (O)",          Screen: ProStock },
+      { label: "08 · Pro · Calendar — year heatmap",                   Screen: ProCalendar },
+      { label: "09 · Pro · 12-month income forecast",                  Screen: ProForecast },
+      { label: "10 · Pro · DRIP simulator",                            Screen: ProDrip },
+      { label: "11 · Pro · Performance vs benchmarks",                 Screen: ProPerformance },
+      { label: "12 · Pro · Diversification",                           Screen: ProDiversification },
+      { label: "13 · Pro · Withholding & tax",                         Screen: ProTax },
+    ];
+
+    function PrintApp() {
+      const out = [];
+      PAGES.forEach((p, i) => {
+        if (p.section) {
+          out.push(
+            <div key={"s" + i} className="section-break">
+              <span className="pillrow">{p.section}</span>
+              {p.section === "Free tier" ? "Beginner-friendly · 4 essential screens" : "9 dense screens · same Apple aesthetic"}
+            </div>
+          );
+        }
+        out.push(
+          <div key={i} className="page">
+            <p.Screen />
+            <div className="page-label">{p.label}</div>
+            <div className="page-num">{String(i + 1).padStart(2, "0")} / {String(PAGES.length).padStart(2, "0")}</div>
+          </div>
+        );
+      });
+      return <div className="page-wrap">{out}</div>;
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<PrintApp />);
+
+    // Auto-print once everything is ready
+    (async () => {
+      try { await document.fonts.ready; } catch {}
+      // Give React + charts time to mount + layout
+      await new Promise((r) => setTimeout(r, 1000));
+      window.print();
+    })();
+  </script>
+</body>
+</html>
