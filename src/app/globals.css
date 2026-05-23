@@ -1,0 +1,315 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #fbfaf7;
+  --color-ink: #1d1d1f;
+  --color-ink-soft: #6e6e73;
+  --color-ink-dim: #86868b;
+  --color-line: rgba(0, 0, 0, 0.06);
+  --color-line-strong: rgba(0, 0, 0, 0.12);
+  --color-accent: oklch(0.48 0.08 175);
+  --color-accent-soft: oklch(0.55 0.10 175);
+  --color-up: oklch(0.48 0.08 165);
+  --color-down: oklch(0.50 0.16 25);
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01", "tnum";
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* ─────────────────────────────────────────────────────────
+   .cdn-free — Apple-inspired beginner experience
+   ───────────────────────────────────────────────────────── */
+.cdn-free {
+  background: #fbfaf7;
+  color: #1d1d1f;
+  height: 100%; width: 100%;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.cdn-free .fnav {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px; padding: 0 32px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+.cdn-free .fnav .brand {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.cdn-free .fnav .brand .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: oklch(0.55 0.10 175);
+}
+/* Pill-style tab nav (NavTabs component) */
+.cdn-free .fnav .cdn-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 999px;
+}
+.cdn-free .fnav .cdn-tab {
+  position: relative;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: #6e6e73;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 160ms ease, background 160ms ease;
+}
+.cdn-free .fnav .cdn-tab:hover {
+  color: #1d1d1f;
+  background: rgba(0, 0, 0, 0.05);
+}
+.cdn-free .fnav .cdn-tab.is-active {
+  background: #fff;
+  color: #1d1d1f;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04);
+}
+.cdn-free .fnav .right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: #6e6e73; }
+.cdn-free .fnav .right .plan {
+  padding: 4px 10px; border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 999px; font-weight: 500; font-size: 11px;
+  color: #1d1d1f;
+}
+.cdn-free .fnav .right .plan.pro,
+.cdn-free .fnav .right .plan.elite { background: #1d1d1f; color: #fff; border-color: #1d1d1f; }
+.cdn-free .fnav .right .avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, oklch(0.85 0.06 175), oklch(0.70 0.08 195));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; font-weight: 600;
+}
+
+.cdn-free .scroll {
+  flex: 1; min-height: 0; overflow: auto;
+  padding: 0 32px 24px;
+  animation: cdn-fade-in 180ms ease-out both;
+}
+
+.cdn-free .hero { text-align: center; padding: 32px 0 24px; }
+.cdn-free .hero .eyebrow { font-size: 12px; color: #6e6e73; margin-bottom: 12px; font-weight: 500; }
+.cdn-free .hero .big {
+  font-size: 72px; font-weight: 600; letter-spacing: -0.04em;
+  line-height: 1; color: #1d1d1f;
+  font-variant-numeric: tabular-nums;
+}
+.cdn-free .hero .big .cur { font-size: 44px; font-weight: 400; color: #86868b; vertical-align: top; margin-right: 4px; line-height: 1.4; }
+.cdn-free .hero .sub {
+  margin-top: 16px; font-size: 18px; color: #6e6e73;
+  letter-spacing: -0.02em;
+  max-width: 720px; margin-left: auto; margin-right: auto;
+  line-height: 1.36;
+}
+.cdn-free .hero .sub b { color: #1d1d1f; font-weight: 500; }
+
+.cdn-free .card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 18px rgba(0,0,0,.04);
+  padding: 20px 22px;
+}
+.cdn-free .card .label { font-size: 12px; color: #86868b; font-weight: 500; }
+.cdn-free .card .v {
+  font-size: 32px; font-weight: 600; letter-spacing: -0.025em;
+  margin-top: 6px; line-height: 1.05; font-variant-numeric: tabular-nums;
+}
+.cdn-free .card .v .cur { font-size: 20px; color: #86868b; font-weight: 400; vertical-align: top; margin-right: 2px; line-height: 1.5; }
+.cdn-free .card .v.sm { font-size: 22px; }
+.cdn-free .card .delta { margin-top: 4px; font-size: 12px; color: #6e6e73; }
+.cdn-free .card .delta .up { color: oklch(0.48 0.08 165); }
+.cdn-free .card .delta .down { color: oklch(0.50 0.16 25); }
+
+.cdn-free .sect-h {
+  font-size: 28px; font-weight: 600; letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+.cdn-free .sect-h .light { font-weight: 300; color: #86868b; }
+.cdn-free .sect-sub { font-size: 14px; color: #6e6e73; margin-bottom: 18px; }
+
+.cdn-free .upsell {
+  background: linear-gradient(135deg, oklch(0.20 0.02 175), oklch(0.30 0.05 200));
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex; align-items: center; gap: 18px;
+}
+.cdn-free .upsell .icon {
+  width: 38px; height: 38px; border-radius: 12px;
+  background: rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 18px;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+.cdn-free .upsell .body { flex: 1; }
+.cdn-free .upsell .h { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.cdn-free .upsell .p { font-size: 13px; color: rgba(255,255,255,0.7); }
+.cdn-free .upsell .cta {
+  padding: 9px 18px;
+  background: #fff; color: #1d1d1f;
+  border-radius: 999px; font-weight: 500; font-size: 13px;
+  border: 0; cursor: pointer;
+}
+
+.cdn-free .btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 36px; padding: 0 18px;
+  background: #1d1d1f; color: #fff;
+  border-radius: 999px;
+  font-size: 14px; font-weight: 500;
+  border: 0; cursor: pointer;
+}
+.cdn-free .btn.ghost { background: transparent; color: #1d1d1f; border: 1px solid rgba(0,0,0,0.08); }
+.cdn-free .btn:disabled { opacity: 0.5; cursor: default; }
+
+.cdn-free .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 10px;
+  font-size: 11px; font-weight: 500;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.05); color: #1d1d1f;
+}
+.cdn-free .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.cdn-free .pill.safe  { background: oklch(0.94 0.04 165); color: oklch(0.36 0.07 165); }
+.cdn-free .pill.next  { background: #1d1d1f; color: #fff; }
+
+.cdn-free .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.cdn-free .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.cdn-free .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+.cdn-free .divider { height: 1px; background: rgba(0,0,0,0.06); margin: 16px 0; }
+
+/* ─────────────────────────────────────────────────────────
+   Pro-tier (.cdn-pro) styles live in pro.css, imported from
+   src/app/layout.tsx. Splitting keeps this file small enough
+   that Turbopack HMR doesn't choke on big edits.
+   ───────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────
+   Interactive feedback — hover / active / focus everywhere
+   ───────────────────────────────────────────────────────── */
+
+
+/* Plan badge / Upgrade pill in nav */
+.cdn-free .fnav .right .plan {
+  transition: opacity 150ms ease, transform 80ms ease, background 150ms ease;
+}
+a.cdn-free .fnav .right .plan,
+.cdn-free .fnav .right a.plan {
+  cursor: pointer;
+}
+.cdn-free .fnav .right a.plan:hover { opacity: 0.85; }
+.cdn-free .fnav .right a.plan:active { transform: scale(0.97); }
+
+/* Brand link (logo) */
+.cdn-free .fnav .brand {
+  transition: opacity 150ms ease;
+  cursor: pointer;
+}
+.cdn-free .fnav .brand:hover { opacity: 0.7; }
+
+/* Avatar — gently react to hover */
+.cdn-free .fnav .right .avatar {
+  transition: transform 120ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+}
+.cdn-free .fnav .right .avatar:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+
+/* Primary button */
+.cdn-free .btn {
+  transition: opacity 150ms ease, transform 80ms ease, background 150ms ease;
+  cursor: pointer;
+}
+.cdn-free .btn:hover:not(:disabled) { opacity: 0.88; }
+.cdn-free .btn:active:not(:disabled) { transform: scale(0.97); }
+.cdn-free .btn.ghost:hover:not(:disabled) {
+  background: rgba(0,0,0,0.04);
+  opacity: 1;
+}
+
+/* Upsell card CTA pill */
+.cdn-free .upsell .cta {
+  transition: opacity 150ms ease, transform 80ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+  display: inline-block;
+}
+.cdn-free .upsell .cta:hover { opacity: 0.92; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+.cdn-free .upsell .cta:active { transform: scale(0.97); }
+
+/* Generic anchor under cdn-free — gentle color hint */
+.cdn-free a {
+  transition: opacity 150ms ease, color 150ms ease;
+}
+
+/* Cards subtly lift on hover when wrapped in a link (future-proofing) */
+.cdn-free a > .card,
+.cdn-free .card.hoverable {
+  transition: box-shadow 200ms ease, transform 180ms ease;
+  cursor: pointer;
+}
+.cdn-free a > .card:hover,
+.cdn-free .card.hoverable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 10px 24px rgba(0,0,0,.07);
+}
+
+/* Focus rings — keyboard accessibility (non-mouse) */
+.cdn-free a:focus-visible,
+.cdn-free button:focus-visible,
+.cdn-free .btn:focus-visible {
+  outline: 2px solid oklch(0.55 0.10 175 / 0.5);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Route-transition shimmer — used by loading.tsx
+   ───────────────────────────────────────────────────────── */
+
+@keyframes cdn-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes cdn-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Top progress bar — used by TopProgressBar in loading.tsx */
+@keyframes cdn-progress {
+  0%   { transform: scaleX(0);    transform-origin: 0 0; }
+  40%  { transform: scaleX(0.55); transform-origin: 0 0; }
+  80%  { transform: scaleX(0.85); transform-origin: 0 0; }
+  100% { transform: scaleX(0.92); transform-origin: 0 0; }
+}
+
+.cdn-progress-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg,
+    oklch(0.55 0.10 175) 0%,
+    oklch(0.65 0.12 165) 100%
+  );
+  box-shadow: 0 0 8px oklch(0.55 0.10 175 / 0.5);
+  animation: cdn-progress 2.5s cubic-bezier(0.1, 0.5, 0.2, 1) forwards;
+}
+
+.cdn-fade-in { animation: cdn-fade-in 180ms ease-out both; }
