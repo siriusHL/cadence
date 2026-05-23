@@ -67,6 +67,10 @@ export default async function HomeScreen() {
   // Real data path. Enrich first so dividend/quote caches are warm.
   await enrichInstruments(holdings.map((h) => h.ticker));
 
+  // Sort by current market value so the home strip surfaces the biggest
+  // positions first when we cap it.
+  holdings.sort((a, b) => (b.price ?? 0) * b.quantity - (a.price ?? 0) * a.quantity);
+
   const now = new Date();
   const year = now.getFullYear();
   const currentMonth = now.getMonth();
@@ -185,7 +189,7 @@ export default async function HomeScreen() {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {holdings.map((h) => {
+          {holdings.slice(0, 10).map((h) => {
             const monthly = ((h.fwdDivAnnualLocal ?? 0) * h.quantity) / 12;
             const value = (h.price ?? 0) * h.quantity;
             return (
@@ -208,6 +212,19 @@ export default async function HomeScreen() {
             );
           })}
         </div>
+        {holdings.length > 10 && (
+          <div style={{
+            marginTop: 10, paddingTop: 10,
+            borderTop: '1px solid rgba(0,0,0,0.05)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            fontSize: 12, color: '#86868b',
+          }}>
+            <span>Showing top 10 by value · {holdings.length - 10} more</span>
+            <Link href="/app/stocks" style={{ color: '#1d1d1f', textDecoration: 'none', fontWeight: 500 }}>
+              See all {holdings.length} →
+            </Link>
+          </div>
+        )}
       </div>
 
       {tier === 'free' && (
