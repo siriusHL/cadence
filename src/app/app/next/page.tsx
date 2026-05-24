@@ -4,10 +4,14 @@ import { getPrimaryPortfolio, getUpcomingDividends, getHoldingsView } from '@/li
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
+import { type Tier } from '@/lib/tiers';
 
 export default async function NextScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: sub } = await supabase
+    .from('subscriptions').select('tier').eq('user_id', user!.id).single();
+  const tier = (sub?.tier ?? 'free') as Tier;
   const portfolio = await getPrimaryPortfolio(supabase, user!.id);
 
   if (!portfolio) {
@@ -125,16 +129,18 @@ export default async function NextScreen() {
         ))}
       </div>
 
-      <div style={{ marginTop: 14 }}>
-        <div className="upsell">
-          <div className="icon">✦</div>
-          <div className="body">
-            <div className="h">See your full payment calendar</div>
-            <div className="p">Premium shows every payment for the next 12 months — and reminds you 3 days before each one.</div>
+      {tier === 'free' && (
+        <div style={{ marginTop: 14 }}>
+          <div className="upsell">
+            <div className="icon">✦</div>
+            <div className="body">
+              <div className="h">See your full payment calendar</div>
+              <div className="p">Premium shows every payment for the next 12 months — and reminds you 3 days before each one.</div>
+            </div>
+            <Link href="/upgrade" className="cta" style={{ textDecoration: 'none' }}>Upgrade</Link>
           </div>
-          <Link href="/upgrade" className="cta" style={{ textDecoration: 'none' }}>Upgrade</Link>
         </div>
-      </div>
+      )}
     </>
   );
 }

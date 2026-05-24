@@ -5,6 +5,7 @@ import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { StockCardMenu } from '@/components/StockCardMenu';
+import { type Tier } from '@/lib/tiers';
 
 function safetyForYield(yieldPct: number | null): { label: string; cls: string } {
   if (yieldPct == null) return { label: 'New', cls: '' };
@@ -104,6 +105,9 @@ function StockCard({ h }: { h: HoldingView }) {
 export default async function StocksScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: sub } = await supabase
+    .from('subscriptions').select('tier').eq('user_id', user!.id).single();
+  const tier = (sub?.tier ?? 'free') as Tier;
   const portfolio = await getPrimaryPortfolio(supabase, user!.id);
 
   if (!portfolio) {
@@ -175,16 +179,18 @@ export default async function StocksScreen() {
         {holdings.map((h) => <StockCard key={h.ticker} h={h} />)}
       </div>
 
-      <div style={{ marginTop: 22 }}>
-        <div className="upsell">
-          <div className="icon">✦</div>
-          <div className="body">
-            <div className="h">Unlock deeper research</div>
-            <div className="p">Premium shows safety scores, dividend history, payout ratios, and analyst views for every stock you own — and any you&apos;re considering.</div>
+      {tier === 'free' && (
+        <div style={{ marginTop: 22 }}>
+          <div className="upsell">
+            <div className="icon">✦</div>
+            <div className="body">
+              <div className="h">Unlock deeper research</div>
+              <div className="p">Premium shows safety scores, dividend history, payout ratios, and analyst views for every stock you own — and any you&apos;re considering.</div>
+            </div>
+            <Link href="/upgrade" className="cta" style={{ textDecoration: 'none' }}>Try Premium</Link>
           </div>
-          <Link href="/upgrade" className="cta" style={{ textDecoration: 'none' }}>Try Premium</Link>
         </div>
-      </div>
+      )}
     </>
   );
 }

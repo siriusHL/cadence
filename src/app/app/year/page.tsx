@@ -4,12 +4,16 @@ import { getPrimaryPortfolio, getYearOverview, getHoldingsView } from '@/lib/por
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { YearChart } from '@/components/YearChart';
+import { type Tier } from '@/lib/tiers';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default async function YearScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: sub } = await supabase
+    .from('subscriptions').select('tier').eq('user_id', user!.id).single();
+  const tier = (sub?.tier ?? 'free') as Tier;
   const portfolio = await getPrimaryPortfolio(supabase, user!.id);
 
   if (!portfolio) {
@@ -126,16 +130,18 @@ export default async function YearScreen() {
         </div>
       </div>
 
-      <div style={{ marginTop: 14 }}>
-        <div className="upsell">
-          <div className="icon">✦</div>
-          <div className="body">
-            <div className="h">See 5, 10, 25 years ahead</div>
-            <div className="p">Premium projects how your dividend income compounds with reinvestment, contributions, and historical growth. Plan your path to financial freedom.</div>
+      {tier === 'free' && (
+        <div style={{ marginTop: 14 }}>
+          <div className="upsell">
+            <div className="icon">✦</div>
+            <div className="body">
+              <div className="h">See 5, 10, 25 years ahead</div>
+              <div className="p">Premium projects how your dividend income compounds with reinvestment, contributions, and historical growth. Plan your path to financial freedom.</div>
+            </div>
+            <Link href="/upgrade" className="cta" style={{ textDecoration: 'none' }}>Upgrade</Link>
           </div>
-          <Link href="/upgrade" className="cta" style={{ textDecoration: 'none' }}>Upgrade</Link>
         </div>
-      </div>
+      )}
     </>
   );
 }
