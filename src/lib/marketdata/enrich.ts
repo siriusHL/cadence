@@ -201,34 +201,34 @@ async function enrichProfile(ticker: string): Promise<RawProfile | null> {
 
 /**
  * Backfill weekly closes into instrument_history for performance/charts.
- * Cheap to cache, dramatically cuts API usage on repeat loads.
+ *
+ * The gate is "is there a row within the last 14 days?". If yes the ticker
+ * is considered current — no refresh. If no, we fetch a fresh weekly window
+ * and upsert; `onConflict: ticker,date` means existing weeks are untouched
+ * and only the newly-published bars are written. Two weeks of slack covers
+ * both holiday-shortened weeks and the gap between "today" and "last
+ * Friday's close" without firing the API every visit.
  */
 export async function enrichWeeklyHistory(tickers: string[], weeks = 104): Promise<void> {
   if (tickers.length === 0) return;
   const admin = supabaseAdmin();
 
-  // For each ticker, only call upstream if our cache lacks the most recent weeks.
-  // Cheap query: count rows in instrument_history for the last `weeks` weeks.
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - weeks * 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const cutoff14d = new Date();
+  cutoff14d.setDate(cutoff14d.getDate() - 14);
+  const cutoff14dStr = cutoff14d.toISOString().slice(0, 10);
 
-  const { data: counts } = await admin
+  // Tickers with any row in the last 14 days are considered current.
+  const { data: freshRows } = await admin
     .from('instrument_history')
-    .select('ticker, date')
+    .select('ticker')
     .in('ticker', tickers)
-    .gte('date', cutoffStr);
+    .gte('date', cutoff14dStr);
 
-  const countsByT = new Map<string, number>();
-  for (const r of counts ?? []) {
-    countsByT.set(r.ticker, (countsByT.get(r.ticker) ?? 0) + 1);
-  }
+  const isFresh = new Set((freshRows ?? []).map((r) => r.ticker as string));
 
   await Promise.all(
     tickers.map(async (t) => {
-      // Skip if we already have most of the weekly grid for this ticker.
-      const expected = weeks * 0.85; // allow for holidays / non-trading weeks
-      if ((countsByT.get(t) ?? 0) >= expected) return;
+      if (isFresh.has(t)) return;
 
       try {
         const rows = await singleflight(`weekly:${t}`, () => dispatchWeeklyHistory(t, weeks));

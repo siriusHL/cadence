@@ -39,9 +39,27 @@ export function PerformanceChart({ series }: Props) {
     );
   }
   if (slice.length < 2) {
+    const latest = series[series.length - 1];
+    const latestStr = new Date(latest.date).toLocaleDateString('en', {
+      month: 'short', day: '2-digit', year: 'numeric',
+    });
     return (
-      <div style={{ padding: 32, textAlign: 'center', color: '#86868b', fontSize: 13 }}>
-        Not enough data for this range yet.
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16 }}>
+          <div className="seg">
+            {(Object.keys(RANGE_WEEKS) as RangeKey[]).map((r) => (
+              <button key={r} type="button" onClick={() => setRange(r)} className={range === r ? 'on' : ''}>
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div style={{ padding: 32, textAlign: 'center', color: '#86868b', fontSize: 13, lineHeight: 1.5 }}>
+          No data in this range.
+          <div style={{ marginTop: 4, fontSize: 12, color: '#86868b' }}>
+            Most recent weekly snapshot is from {latestStr}.
+          </div>
+        </div>
       </div>
     );
   }
