@@ -24,25 +24,21 @@ interface QuoteRow { ticker: string; as_of: string }
 interface FundRow  { ticker: string; updated_at: string }
 interface DivRow   { ticker: string }
 
-const PROFILE_TTL_DAYS = 7;
-const DIVIDENDS_TTL_DAYS = 7;
-const QUOTE_TTL_MIN    = 60;          // 1h for Free auto-enrich
-
-function olderThan(iso: string | null | undefined, ms: number): boolean {
-  if (!iso) return true;
-  return Date.now() - new Date(iso).getTime() > ms;
-}
-
 /**
- * Ensure the given tickers have fresh profile + dividend + price data.
- * No-op for tickers whose cache rows are recent enough. Errors per ticker
- * are swallowed — partial enrichment is better than blocking the page.
+ * Backfill missing market data for the given tickers.
+ *
+ * Page loads call this on every render; it must be cheap. The policy is
+ * strict: a ticker that already has a row in each cache table is a no-op,
+ * regardless of how old the row is. Refresh of stale-but-present data is
+ * the cron job's job (/api/jobs/refresh-instruments), not page loads.
+ *
+ * Only the first-sight case (or a partially-populated row from a prior
+ * failure) triggers an upstream call.
  */
 export async function enrichInstruments(tickers: string[]): Promise<void> {
   if (tickers.length === 0) return;
   const admin = supabaseAdmin();
 
-  // Latest dividend row per ticker (used to decide whether dividend cache is stale).
   const [instRes, quoteRes, fundRes, divRes] = await Promise.all([
     admin.from('instruments').select('ticker, name, currency, sector, payout_freq, updated_at').in('ticker', tickers),
     admin.from('instrument_quotes').select('ticker, as_of').in('ticker', tickers),
@@ -55,23 +51,17 @@ export async function enrichInstruments(tickers: string[]): Promise<void> {
   const fundByT  = new Map((fundRes.data  as FundRow[]       ?? []).map((r) => [r.ticker, r]));
   const divsByT  = new Set((divRes.data   as DivRow[]        ?? []).map((r) => r.ticker));
 
-  const profileMs   = PROFILE_TTL_DAYS * 86_400_000;
-  const dividendsMs = DIVIDENDS_TTL_DAYS * 86_400_000;
-  const quoteMs     = QUOTE_TTL_MIN * 60_000;
-
   await Promise.all(
     tickers.map(async (t) => {
       const inst  = instByT.get(t);
       const quote = quoteByT.get(t);
       const fund  = fundByT.get(t);
 
-      const needsProfile =
-        !inst || !inst.name || olderThan(inst.updated_at, profileMs) ||
-        !fund || olderThan(fund.updated_at, profileMs);
-      const needsDividends =
-        !divsByT.has(t) ||
-        !inst || !inst.payout_freq || olderThan(inst.updated_at, dividendsMs);
-      const needsQuote = !quote || olderThan(quote.as_of, quoteMs);
+      // "Missing" means either no row, or a row that's incomplete from a prior
+      // partial enrichment (no name / no payout_freq). Age is irrelevant here.
+      const needsProfile   = !inst || !inst.name || !fund;
+      const needsDividends = !divsByT.has(t) || !inst?.payout_freq;
+      const needsQuote     = !quote;
 
       // Each upstream call is coalesced so concurrent users hitting the same
       // ticker only fire one network request.
