@@ -1,5 +1,7 @@
-// Twelve Data adapter — quotes, time series, FX.
+// Twelve Data adapter — quotes, time series, FX, symbol search.
 // Free tier: 800 calls/day, 8 calls/min. Use sparingly behind the cache cascade.
+
+import type { SearchHit } from './search';
 
 const BASE = 'https://api.twelvedata.com';
 
@@ -55,6 +57,34 @@ export async function fetchWeeklyHistory(ticker: string, weeks: number): Promise
   if (j.status === 'error') throw new Error(j.message ?? 'twelvedata error');
   const rows = (j.values ?? []) as { datetime: string; close: string }[];
   return rows.map((r) => ({ date: r.datetime, close: Number(r.close) }));
+}
+
+interface TwelveDataSearchRow {
+  symbol: string;
+  instrument_name: string;
+  exchange?: string;
+  country?: string;
+  currency?: string;
+  instrument_type?: string;
+}
+
+export async function searchSymbols(query: string, limit: number): Promise<SearchHit[]> {
+  const key = process.env.TWELVE_DATA_KEY;
+  if (!key) throw new Error('TWELVE_DATA_KEY missing');
+  const url = `${BASE}/symbol_search?symbol=${encodeURIComponent(query)}&outputsize=${limit}&apikey=${key}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`twelvedata search ${res.status}`);
+  const j = (await res.json()) as { data?: TwelveDataSearchRow[]; status?: string; message?: string };
+  if (j.status === 'error') throw new Error(j.message ?? 'twelvedata error');
+  return (j.data ?? []).slice(0, limit).map((r) => ({
+    ticker:   r.symbol,
+    name:     r.instrument_name,
+    exchange: r.exchange ?? null,
+    country:  r.country ?? null,
+    currency: r.currency ?? null,
+    type:     r.instrument_type ?? null,
+    logoUrl:  `https://financialmodelingprep.com/image-stock/${encodeURIComponent(r.symbol)}.png`,
+  }));
 }
 
 export async function fetchEodOnDate(ticker: string, date: string): Promise<RawEod | null> {

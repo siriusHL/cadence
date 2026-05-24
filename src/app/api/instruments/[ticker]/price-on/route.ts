@@ -2,7 +2,7 @@ import { withAuth, json } from '@/lib/auth';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { singleflight } from '@/lib/cache';
-import { fetchEodOnDate } from '@/lib/marketdata/twelvedata';
+import { dispatchEodOnDate } from '@/lib/marketdata/dispatch';
 
 /**
  * GET /api/instruments/:ticker/price-on?date=YYYY-MM-DD
@@ -56,7 +56,7 @@ export const GET = withAuth<{ ticker: string }>({}, async ({ params, req }) => {
 
   // 3) Miss → upstream. Coalesce concurrent callers for the same (ticker, date).
   try {
-    const fresh = await singleflight(`eod:${ticker}:${date}`, () => fetchEodOnDate(ticker, date));
+    const fresh = await singleflight(`eod:${ticker}:${date}`, () => dispatchEodOnDate(ticker, date));
     if (!fresh) return json({ error: 'no_data_for_date' }, 404);
     await supabaseAdmin().from('instrument_history').upsert({
       ticker:   fresh.ticker,

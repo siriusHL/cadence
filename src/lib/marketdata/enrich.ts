@@ -3,11 +3,13 @@
 // Refreshes only what's stale; runs writes via the service-role admin client.
 
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { frequencyToPerYear, inferPayoutFreq, type RawProfile } from '@/lib/marketdata/fmp';
 import {
-  fetchProfile, fetchDividendHistory, frequencyToPerYear, inferPayoutFreq,
-  type RawProfile,
-} from '@/lib/marketdata/fmp';
-import { fetchQuote, fetchWeeklyHistory } from '@/lib/marketdata/twelvedata';
+  dispatchQuote,
+  dispatchProfile,
+  dispatchDividendHistory,
+  dispatchWeeklyHistory,
+} from '@/lib/marketdata/dispatch';
 import { singleflight } from '@/lib/cache';
 
 interface InstrumentRow {
@@ -87,7 +89,7 @@ async function enrichDividends(ticker: string): Promise<void> {
 
   // Path A: real history from FMP /stable/dividends
   try {
-    const rows = await fetchDividendHistory(ticker);
+    const rows = await dispatchDividendHistory(ticker);
     if (rows.length > 0) {
       await admin.from('instrument_dividends').upsert(
         rows.map((r) => ({
@@ -114,7 +116,7 @@ async function enrichDividends(ticker: string): Promise<void> {
   // We know lastDividend (annual) — derive per-payment amount + cadence and
   // generate a believable ex-date schedule (24mo history + 12mo forward).
   try {
-    const profile = await fetchProfile(ticker);
+    const profile = await dispatchProfile(ticker);
     if (!profile || profile.fwdDivAnnualLocal <= 0) return;
     const perYear = inferPayoutFreq(profile);
     const intervalMonths = Math.round(12 / perYear);
@@ -167,7 +169,7 @@ async function enrichDividends(ticker: string): Promise<void> {
 
 async function enrichProfile(ticker: string): Promise<RawProfile | null> {
   try {
-    const p = await fetchProfile(ticker);
+    const p = await dispatchProfile(ticker);
     if (!p) return null;
     const admin = supabaseAdmin();
     await admin.from('instruments').upsert({
@@ -239,7 +241,7 @@ export async function enrichWeeklyHistory(tickers: string[], weeks = 104): Promi
       if ((countsByT.get(t) ?? 0) >= expected) return;
 
       try {
-        const rows = await singleflight(`weekly:${t}`, () => fetchWeeklyHistory(t, weeks));
+        const rows = await singleflight(`weekly:${t}`, () => dispatchWeeklyHistory(t, weeks));
         if (rows.length === 0) return;
         await admin.from('instrument_history').upsert(
           rows.map((r) => ({ ticker: t, date: r.date, close: r.close })),
@@ -254,7 +256,7 @@ export async function enrichWeeklyHistory(tickers: string[], weeks = 104): Promi
 
 async function enrichQuote(ticker: string): Promise<void> {
   try {
-    const q = await fetchQuote(ticker);
+    const q = await dispatchQuote(ticker);
     const admin = supabaseAdmin();
     await admin.from('instrument_quotes').upsert({
       ticker:     q.ticker,

@@ -3,7 +3,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { TIERS } from '@/lib/tiers';
 import { singleflight, isFresh } from '@/lib/cache';
-import { fetchQuote } from '@/lib/marketdata/twelvedata';
+import { dispatchQuote } from '@/lib/marketdata/dispatch';
 
 export const GET = withAuth<{ ticker: string }>({}, async ({ tier, params }) => {
   const ticker = params.ticker.toUpperCase();
@@ -23,7 +23,7 @@ export const GET = withAuth<{ ticker: string }>({}, async ({ tier, params }) => 
 
   // 2. Upstream — coalesce concurrent callers
   try {
-    const fresh = await singleflight(`q:${ticker}`, () => fetchQuote(ticker));
+    const fresh = await singleflight(`q:${ticker}`, () => dispatchQuote(ticker));
 
     // Persist via service role so the cache survives across users / tiers
     await supabaseAdmin().from('instruments').upsert({ ticker }, { onConflict: 'ticker' });
