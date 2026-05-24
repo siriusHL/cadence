@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useConfirm, useToast } from './DialogProvider';
 
 interface Props {
   ticker: string;
@@ -10,6 +11,8 @@ interface Props {
 
 export function StockCardMenu({ ticker, name }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -25,16 +28,19 @@ export function StockCardMenu({ ticker, name }: Props) {
 
   async function onDelete() {
     setOpen(false);
-    const confirmed = window.confirm(
-      `Remove ${name ?? ticker}?\n\nThis deletes ${ticker} and all its transactions from your portfolio. This can't be undone.`,
-    );
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: `Remove ${name ?? ticker}?`,
+      body: `This deletes ${ticker} and all its transactions from your portfolio. This can't be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/holdings/${encodeURIComponent(ticker)}`, { method: 'DELETE' });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        window.alert(`Could not delete: ${j.error ?? res.statusText}`);
+        toast(`Could not delete: ${j.error ?? res.statusText}`, 'error');
         return;
       }
       router.refresh();

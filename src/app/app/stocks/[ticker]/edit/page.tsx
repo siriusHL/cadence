@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TickerLogo } from '@/components/TickerLogo';
+import { useConfirm, useToast } from '@/components/DialogProvider';
 
 interface Transaction {
   id: string;
@@ -31,6 +32,8 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
   const { ticker: tickerRaw } = use(params);
   const ticker = tickerRaw.toUpperCase();
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
 
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +67,8 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
   }
 
   async function saveEdit(id: string) {
-    if (!editDraft.qty || Number(editDraft.qty) <= 0) { window.alert('Shares must be positive.'); return; }
-    if (!editDraft.price) { window.alert('Price is required.'); return; }
+    if (!editDraft.qty || Number(editDraft.qty) <= 0) { toast('Shares must be positive.', 'error'); return; }
+    if (!editDraft.price) { toast('Price is required.', 'error'); return; }
     setBusy(true);
     try {
       const res = await fetch(`/api/transactions/${id}`, {
@@ -80,7 +83,7 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        window.alert(`Could not save: ${j.error ?? res.statusText}`);
+        toast(`Could not save: ${j.error ?? res.statusText}`, 'error');
         return;
       }
       setEditingId(null);
@@ -104,13 +107,19 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
   useEffect(() => { load(); }, [ticker]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   async function deleteLot(id: string) {
-    if (!window.confirm('Remove this lot? Other lots in this holding stay.')) return;
+    const ok = await confirm({
+      title: 'Remove this lot?',
+      body: 'Other lots in this holding stay.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        window.alert(`Could not delete: ${j.error ?? res.statusText}`);
+        toast(`Could not delete: ${j.error ?? res.statusText}`, 'error');
         return;
       }
       await load();
@@ -120,16 +129,19 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
   }
 
   async function deleteHolding() {
-    const confirmed = window.confirm(
-      `Remove ${ticker} entirely?\n\nThis deletes the holding and all of its transactions. This can't be undone.`,
-    );
-    if (!confirmed) return;
+    const ok = await confirm({
+      title: `Remove ${ticker} entirely?`,
+      body: `This deletes the holding and all of its transactions. This can't be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/holdings/${encodeURIComponent(ticker)}`, { method: 'DELETE' });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        window.alert(`Could not delete: ${j.error ?? res.statusText}`);
+        toast(`Could not delete: ${j.error ?? res.statusText}`, 'error');
         return;
       }
       router.push('/app/stocks');
@@ -141,7 +153,7 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
 
   async function addLot() {
     if (!draftQty || !draftPrice) {
-      window.alert('Shares and price are required.');
+      toast('Shares and price are required.', 'error');
       return;
     }
     setBusy(true);
@@ -162,7 +174,7 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        window.alert(`Could not add: ${j.error ?? res.statusText}`);
+        toast(`Could not add: ${j.error ?? res.statusText}`, 'error');
         return;
       }
       setDraftQty(''); setDraftPrice(''); setDraftDate(today()); setDraftFee('0');

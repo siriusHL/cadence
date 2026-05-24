@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
 import { NavTabs } from '@/components/NavTabs';
+import { DialogProvider } from '@/components/DialogProvider';
 
 interface NavTab { label: string; href: string; screen: Screen; }
 
@@ -48,25 +49,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const planLabel = tier === 'free' ? 'Plan · Free' : tier === 'premium' ? '✦ Premium' : '✦ Elite';
 
   return (
-    <div className="cdn-free flex flex-col min-h-screen">
-      <div className="fnav">
-        <Link href="/app/home" className="brand">
-          <span className="dot" /> Cadence
-        </Link>
-        <NavTabs tabs={tabs.map((t) => ({ label: t.label, href: t.href }))} />
-        <div className="right">
-          {tier === 'free' && (
-            <Link href="/upgrade" className="plan pro" style={{ textDecoration: 'none' }}>
-              Upgrade
-            </Link>
-          )}
-          <span className={'plan ' + (tier === 'premium' ? 'pro' : tier === 'elite' ? 'elite' : '')}>
-            {planLabel}
-          </span>
-          <span className="avatar">{initials}</span>
+    <DialogProvider>
+      <div className="cdn-free flex flex-col min-h-screen">
+        <div className="fnav">
+          <Link href="/app/home" className="brand">
+            <span className="dot" /> Cadence
+          </Link>
+          <NavTabs tabs={tabs.map((t) => ({ label: t.label, href: t.href }))} />
+          <div className="right">
+            {tier === 'free' && (
+              <Link href="/upgrade" className="plan pro" style={{ textDecoration: 'none' }}>
+                Upgrade
+              </Link>
+            )}
+            <span className={'plan ' + (tier === 'premium' ? 'pro' : tier === 'elite' ? 'elite' : '')}>
+              {planLabel}
+            </span>
+            <span className="avatar">{initials}</span>
+          </div>
         </div>
+        <div className="scroll">{children}</div>
       </div>
-      <div className="scroll">{children}</div>
-    </div>
+    </DialogProvider>
   );
 }
