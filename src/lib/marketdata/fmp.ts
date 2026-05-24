@@ -6,6 +6,37 @@
 
 const BASE_STABLE = 'https://financialmodelingprep.com/stable';
 
+// ─── Module-level circuit breaker ──────────────────────────────────────
+// FMP returns 200 OK with `{ "Error Message": "Limit Reach ..." }` once you
+// blow the daily quota. Without circuit-breaking we'd keep firing requests
+// (each consumes from the next-day budget too, because rate limiting is
+// rolling). Tripping the breaker pauses ALL FMP calls for `COOLDOWN_MS` so
+// the day's allowance can reset.
+const COOLDOWN_MS = 6 * 60 * 60 * 1000;  // 6 hours
+let breakerUntil = 0;
+
+function breakerOpen(): boolean { return Date.now() < breakerUntil; }
+function tripBreaker(): void { breakerUntil = Date.now() + COOLDOWN_MS; }
+
+/** True if a recent call hit the FMP daily quota. UI can surface a hint. */
+export function isFmpQuotaExhausted(): boolean { return breakerOpen(); }
+
+async function fmpFetchJson(url: string): Promise<unknown> {
+  if (breakerOpen()) throw new Error('fmp_circuit_breaker_open');
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`fmp ${res.status}`);
+  const j = await res.json();
+  // FMP sometimes returns 200 with an error envelope.
+  const msg = (j as { 'Error Message'?: string })['Error Message'];
+  if (typeof msg === 'string') {
+    if (msg.includes('Limit Reach') || msg.toLowerCase().includes('quota')) {
+      tripBreaker();
+    }
+    throw new Error(`fmp_error: ${msg.slice(0, 80)}`);
+  }
+  return j;
+}
+
 export interface RawDividend {
   ex_date: string;
   pay_date: string | null;
@@ -38,9 +69,7 @@ export async function fetchDividendHistory(ticker: string): Promise<RawDividend[
   const key = process.env.FMP_KEY;
   if (!key) throw new Error('FMP_KEY missing');
   const url = `${BASE_STABLE}/dividends?symbol=${encodeURIComponent(ticker)}&apikey=${key}`;
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`fmp dividends ${res.status}`);
-  const arr = (await res.json()) as FmpDividendRow[];
+  const arr = (await fmpFetchJson(url)) as FmpDividendRow[];
   if (!Array.isArray(arr)) return [];
   return arr
     .filter((d) => d.date != null && (d.dividend != null || d.adjDividend != null))
@@ -94,9 +123,7 @@ export async function fetchProfile(ticker: string): Promise<RawProfile | null> {
   const key = process.env.FMP_KEY;
   if (!key) throw new Error('FMP_KEY missing');
   const url = `${BASE_STABLE}/profile?symbol=${encodeURIComponent(ticker)}&apikey=${key}`;
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`fmp profile ${res.status}`);
-  const arr = (await res.json()) as FmpProfileRow[];
+  const arr = (await fmpFetchJson(url)) as FmpProfileRow[];
   const p = arr?.[0];
   if (!p) return null;
   const country = p.country ?? (p.exchange ? EXCHANGE_COUNTRY[p.exchange] ?? null : null);

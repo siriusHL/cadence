@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { withAuth, json } from '@/lib/auth';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 
 const Lot = z.object({
@@ -54,10 +55,12 @@ export const POST = withAuth({}, async ({ userId, req }) => {
     portfolio = created.data;
   }
 
-  // 2) Seed instrument row so foreign keys are valid downstream.
-  await supabase
-    .from('instruments')
-    .upsert({ ticker: input.ticker, currency: input.currency }, { onConflict: 'ticker' });
+  // 2) Seed instrument row via admin (instruments has RLS read-only).
+  //    Idempotent: if it already exists, leaves name/sector/etc. untouched.
+  await supabaseAdmin().from('instruments').upsert(
+    { ticker: input.ticker, currency: input.currency },
+    { onConflict: 'ticker', ignoreDuplicates: true },
+  );
 
   // 3) Insert holding row. RLS enforces the per-tier holdings cap here.
   //    Idempotent on (portfolio_id, ticker) — adding more lots to an existing
