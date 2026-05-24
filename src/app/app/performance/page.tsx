@@ -208,7 +208,7 @@ export default async function PerformanceScreen() {
             <div className="t">Top winners</div>
             <span className="tag">By € P/L</span>
           </div>
-          <div style={{ maxHeight: 260, overflow: 'auto' }}>
+          <div>
             <table className="pt">
               <thead>
                 <tr>
@@ -248,7 +248,7 @@ export default async function PerformanceScreen() {
             <div className="t">Detractors</div>
             <span className="tag">P/L &lt; 0</span>
           </div>
-          <div style={{ maxHeight: 260, overflow: 'auto' }}>
+          <div>
             {losers.length === 0 ? (
               <div style={{ padding: 20, textAlign: 'center', color: '#86868b', fontSize: 12 }}>
                 No losing positions. 🎉
