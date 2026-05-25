@@ -4,6 +4,11 @@ import {
 } from '@/lib/portfolio';
 import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich';
 import { enrichBenchmarkHistory, BENCHMARKS } from '@/lib/marketdata/benchmarks';
+import {
+  weeklyDeltas, lastNWeeks, volatility, sharpe, sortino,
+  beta as betaOf, alpha as alphaOf, correlation, trackingError,
+  infoRatio, maxDrawdown, winRateMonthly, RISK_FREE_PCT,
+} from '@/lib/marketdata/risk';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { PerformanceChart } from '@/components/PerformanceChart';
@@ -150,6 +155,36 @@ export default async function PerformanceScreen() {
     }
   }
 
+  // ─── Risk & ratios (rolling 1y where applicable) ──────────────────────
+  const portWeekly       = weeklyDeltas(series);
+  const portWeekly1y     = lastNWeeks(portWeekly, 52);
+  // Primary benchmark drives Beta / Alpha / Correlation / Tracking error.
+  const primaryBench     = benchmarkLines[0];
+  const benchWeekly      = primaryBench ? weeklyDeltas(primaryBench.series) : [];
+  // Align lengths — risk metrics need equal-length series for both sides.
+  const nMatch           = Math.min(portWeekly.length, benchWeekly.length);
+  const portMatched      = portWeekly.slice(-nMatch);
+  const benchMatched     = benchWeekly.slice(-nMatch);
+  const portMatched1y    = lastNWeeks(portMatched, 52);
+  const benchMatched1y   = lastNWeeks(benchMatched, 52);
+
+  const volPct           = volatility(portWeekly1y);
+  const sharpeRatio      = sharpe(portWeekly1y);
+  const sortinoRatio     = sortino(portWeekly1y);
+  const calmar           = maxDD < 0 ? ((portWeekly1y.length ? portWeekly1y.reduce((s, x) => s + x, 0) * (52 / portWeekly1y.length) : 0) / Math.abs(maxDD)) : 0;
+  const portBeta         = primaryBench ? betaOf(portMatched1y, benchMatched1y) : 0;
+  const portAlpha        = primaryBench ? alphaOf(portMatched1y, benchMatched1y) : 0;
+  const portCorrelation  = primaryBench ? correlation(portMatched1y, benchMatched1y) : 0;
+  const portTrackingErr  = primaryBench ? trackingError(portMatched1y, benchMatched1y) : 0;
+  const portInfoRatio    = primaryBench ? infoRatio(portMatched1y, benchMatched1y) : 0;
+  const mdd              = maxDrawdown(series);
+  const winRate          = winRateMonthly(series);
+
+  // For the right-meta line we want "Max DD … recovered MMM 'YY".
+  const mddRecoveredLabel = mdd.recoveredDate
+    ? new Date(mdd.recoveredDate).toLocaleDateString('en', { month: 'short', year: '2-digit' })
+    : null;
+
   // "Days held" — span of the series
   const daysHeld = series.length >= 2
     ? Math.round(
@@ -194,38 +229,98 @@ export default async function PerformanceScreen() {
           </div>
         </div>
         <div className="right-meta">
-          <span className="live">Weekly closes · enriched just now</span>
-          <span>{held.length} positions tracked</span>
-          {series.length > 0 && <span>{series.length} weekly snapshots</span>}
+          {sharpeRatio !== 0 && (
+            <span>Sharpe {sharpeRatio.toFixed(2)} · Sortino {sortinoRatio.toFixed(2)}</span>
+          )}
+          {mdd.ddPct < 0 && (
+            <span>
+              Max DD {mdd.ddPct.toFixed(1)}%
+              {mddRecoveredLabel && <> · recovered {mddRecoveredLabel}</>}
+            </span>
+          )}
+          <span className="live">{held.length} positions · {series.length} weekly snapshots</span>
         </div>
       </div>
 
-      <div className="hero-stats">
-        <div className="tile">
-          <div className="l">Total return</div>
-          <div className={'v ' + (totalReturnPct >= 0 ? 'up' : 'down')}>
-            {fmtPct(totalReturnPct, 1)}
-          </div>
-          <div className="d">since first buy</div>
-        </div>
+      <div className="hero-stats" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
         <div className="tile">
           <div className="l">YTD</div>
-          <div className={'v ' + (ytdReturn >= 0 ? 'up' : 'down')}>
-            {fmtPct(ytdReturn, 1)}
+          <div className={'v sm ' + (ytdReturn >= 0 ? 'up' : 'down')}>
+            {fmtPct(ytdReturn, 2)}
           </div>
-          <div className="d">{new Date().getFullYear()}</div>
+          <div className="d">
+            {primaryBench && (
+              <>
+                {(() => {
+                  const yp = periods.find((p) => p.label === 'YTD');
+                  const b = yp?.benchmarks[0];
+                  const alphaY = yp && b ? yp.portfolio - b.delta : 0;
+                  return (
+                    <span className={alphaY >= 0 ? 'up' : 'down'}>
+                      {alphaY >= 0 ? '+' : ''}{alphaY.toFixed(2)}pp vs {primaryBench.name}
+                    </span>
+                  );
+                })()}
+              </>
+            )}
+            {!primaryBench && <>{new Date().getFullYear()}</>}
+          </div>
+        </div>
+        <div className="tile">
+          <div className="l">1 year</div>
+          <div className={'v sm ' + (() => {
+            const oneY = periods.find((p) => p.label === '1Y')?.portfolio ?? 0;
+            return oneY >= 0 ? 'up' : 'down';
+          })()}>
+            {fmtPct(periods.find((p) => p.label === '1Y')?.portfolio ?? 0, 2)}
+          </div>
+          <div className="d">
+            {(() => {
+              const oneY = periods.find((p) => p.label === '1Y');
+              const b = oneY?.benchmarks[0];
+              if (!oneY || !b) return <>trailing 52w</>;
+              const alphaY = oneY.portfolio - b.delta;
+              return (
+                <span className={alphaY >= 0 ? 'up' : 'down'}>
+                  {alphaY >= 0 ? '+' : ''}{alphaY.toFixed(2)}pp vs {primaryBench!.name}
+                </span>
+              );
+            })()}
+          </div>
+        </div>
+        <div className="tile">
+          <div className="l">Sharpe (1y)</div>
+          <div className="v sm">{sharpeRatio.toFixed(2)}</div>
+          <div className="d">rf {RISK_FREE_PCT.toFixed(1)}%</div>
         </div>
         <div className="tile">
           <div className="l">Max drawdown</div>
-          <div className="v down">{maxDD.toFixed(1)}<span style={{ fontSize: 14, fontWeight: 400 }}>%</span></div>
-          <div className="d">peak-to-trough</div>
+          <div className="v sm down">{mdd.ddPct.toFixed(1)}%</div>
+          <div className="d">
+            {mdd.recoveredDate ? (
+              <>recovered {mddRecoveredLabel}</>
+            ) : mdd.troughDate ? (
+              <>peak → trough</>
+            ) : (
+              <>none yet</>
+            )}
+          </div>
         </div>
         <div className="tile">
-          <div className="l">P/L · absolute</div>
-          <div className={'v ' + (totalReturnAbs >= 0 ? 'up' : 'down')}>
-            <span className="cur">€</span>{fmt(Math.abs(totalReturnAbs))}
+          <div className="l">Beta (1y)</div>
+          <div className="v sm">{primaryBench ? portBeta.toFixed(2) : '—'}</div>
+          <div className="d">
+            {primaryBench ? (
+              portBeta < 0.9 ? 'defensive tilt'
+              : portBeta < 1.1 ? `~ ${primaryBench.name}`
+              : 'amplified'
+            ) : 'no benchmark'}
           </div>
-          <div className="d">value − cost basis</div>
+        </div>
+        <div className="tile">
+          <div className="l">Win rate</div>
+          <div className="v sm">{winRate.ratePct.toFixed(0)}%</div>
+          <div className="d">{winRate.winMonths} / {winRate.totalMonths} months</div>
         </div>
       </div>
 
@@ -328,52 +423,105 @@ export default async function PerformanceScreen() {
           </div>
         </div>
 
-        {/* Losers */}
+        {/* Risk & ratios (rolling 1y) */}
         <div className="pcard flush" style={{ overflow: 'hidden' }}>
+          <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
+            <div className="t">Risk &amp; ratios</div>
+            <span className="tag">rolling 1y</span>
+          </div>
+          <div>
+            <table className="pt">
+              <tbody>
+                <RiskRow label="Volatility (σ)" value={`${volPct.toFixed(1)}%`} note="annualised" />
+                <RiskRow label="Sharpe" value={sharpeRatio.toFixed(2)}
+                  note={`rf ${RISK_FREE_PCT.toFixed(1)}%`}
+                  good={sharpeRatio >= 1} bad={sharpeRatio < 0} />
+                <RiskRow label="Sortino" value={sortinoRatio.toFixed(2)}
+                  note="downside σ only"
+                  good={sortinoRatio >= 1} bad={sortinoRatio < 0} />
+                <RiskRow label="Calmar" value={calmar.toFixed(2)} note="rtn / max DD"
+                  good={calmar >= 0.5} />
+                {primaryBench && (
+                  <>
+                    <RiskRow label={`Beta vs ${primaryBench.name}`} value={portBeta.toFixed(2)}
+                      note={portBeta < 0.9 ? 'defensive' : portBeta < 1.1 ? 'market-like' : 'amplified'} />
+                    <RiskRow label="Alpha (Jensen)" value={`${portAlpha >= 0 ? '+' : ''}${portAlpha.toFixed(2)}%`}
+                      note="annualised"
+                      good={portAlpha > 0} bad={portAlpha < 0} />
+                    <RiskRow label={`Correl. vs ${primaryBench.name}`} value={portCorrelation.toFixed(2)}
+                      note={Math.abs(portCorrelation) < 0.4 ? 'weak' : Math.abs(portCorrelation) < 0.7 ? 'moderate' : 'strong'} />
+                    <RiskRow label="Tracking error" value={`${portTrackingErr.toFixed(1)}%`}
+                      note="active risk" />
+                    <RiskRow label="Info ratio" value={portInfoRatio.toFixed(2)}
+                      note={portInfoRatio > 0.5 ? 'skill > noise' : 'within noise'}
+                      good={portInfoRatio > 0.5} bad={portInfoRatio < 0} />
+                  </>
+                )}
+                <RiskRow label="Max drawdown" value={`${mdd.ddPct.toFixed(1)}%`}
+                  note={mdd.recoveredWeeks ? `recovered in ${mdd.recoveredWeeks}w` : mdd.troughDate ? 'not recovered' : '—'}
+                  bad={mdd.ddPct < -10} />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Losers — kept below the risk panel so detractor detail is still accessible */}
+      {losers.length > 0 && (
+        <div className="pcard flush" style={{ overflow: 'hidden', marginTop: 14 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
             <div className="t">Detractors</div>
             <span className="tag">P/L &lt; 0</span>
           </div>
           <div>
-            {losers.length === 0 ? (
-              <div style={{ padding: 20, textAlign: 'center', color: '#86868b', fontSize: 12 }}>
-                No losing positions. 🎉
-              </div>
-            ) : (
-              <table className="pt">
-                <thead>
-                  <tr>
-                    <th>Ticker</th>
-                    <th className="r">P/L €</th>
-                    <th className="r">Return</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {losers.map((w) => (
-                    <tr key={w.ticker}>
-                      <td className="ticker">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <TickerLogo ticker={w.ticker} size={24} />
-                          <div>
-                            {w.ticker}
-                            <span className="name">{w.name ?? ''}</span>
-                          </div>
+            <table className="pt">
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th className="r">P/L €</th>
+                  <th className="r">Return</th>
+                </tr>
+              </thead>
+              <tbody>
+                {losers.map((w) => (
+                  <tr key={w.ticker}>
+                    <td className="ticker">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <TickerLogo ticker={w.ticker} size={24} />
+                        <div>
+                          {w.ticker}
+                          <span className="name">{w.name ?? ''}</span>
                         </div>
-                      </td>
-                      <td className="r b down">
-                        −€{fmt(Math.abs(w.pl))}
-                      </td>
-                      <td className="r down">
-                        {fmtPct(w.plPct, 1)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                      </div>
+                    </td>
+                    <td className="r b down">−€{fmt(Math.abs(w.pl))}</td>
+                    <td className="r down">{fmtPct(w.plPct, 1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+function RiskRow({
+  label, value, note, good, bad,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  good?: boolean;
+  bad?: boolean;
+}) {
+  const color = good ? 'oklch(0.36 0.08 165)' : bad ? 'oklch(0.50 0.16 25)' : '#1d1d1f';
+  return (
+    <tr>
+      <td style={{ color: '#86868b', fontSize: 12 }}>{label}</td>
+      <td className="r num" style={{ color, fontWeight: 600 }}>{value}</td>
+      <td style={{ color: '#86868b', fontSize: 11, paddingLeft: 8 }}>{note}</td>
+    </tr>
   );
 }
