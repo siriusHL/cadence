@@ -1,10 +1,18 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { type PerformancePoint } from '@/lib/portfolio';
+import { type PerformancePoint, type BenchmarkPoint } from '@/lib/portfolio';
+
+export interface BenchmarkLine {
+  id: string;
+  name: string;
+  color: string;
+  series: BenchmarkPoint[];
+}
 
 interface Props {
   series: PerformancePoint[];
+  benchmarks?: BenchmarkLine[];
 }
 
 type RangeKey = '3M' | '6M' | 'YTD' | '1Y' | '2Y' | 'All';
@@ -13,11 +21,25 @@ const RANGE_WEEKS: Record<RangeKey, number | 'ytd' | 'all'> = {
   '3M':  13, '6M': 26, 'YTD': 'ytd', '1Y': 52, '2Y': 104, 'All': 'all',
 };
 
+const PORTFOLIO_COLOR_UP   = 'oklch(0.55 0.10 175)';
+const PORTFOLIO_COLOR_DOWN = 'oklch(0.50 0.16 25)';
+
 function fmtPct(n: number): string {
   return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 }
 
-export function PerformanceChart({ series }: Props) {
+/** Look up a benchmark return at the given date, falling back to the
+ *  nearest-prior point. Returns null if no point exists at or before the date. */
+function benchmarkValueAt(series: BenchmarkPoint[], date: string): number | null {
+  let last: number | null = null;
+  for (const p of series) {
+    if (p.date > date) break;
+    last = p.returnPct;
+  }
+  return last;
+}
+
+export function PerformanceChart({ series, benchmarks = [] }: Props) {
   const [range, setRange] = useState<RangeKey>('1Y');
 
   const slice = useMemo(() => {
@@ -64,21 +86,46 @@ export function PerformanceChart({ series }: Props) {
     );
   }
 
-  // Rebase: show return % relative to the first point of the slice (window return).
-  const base = slice[0].returnPct;
-  const rebased = slice.map((p) => p.returnPct - base);
-  const last = rebased[rebased.length - 1];
+  // ── Rebase portfolio relative to slice start ─────────────────────────
+  const portBase = slice[0].returnPct;
+  const portRebased = slice.map((p) => p.returnPct - portBase);
+  const portLast = portRebased[portRebased.length - 1];
+  const portColor = portLast >= 0 ? PORTFOLIO_COLOR_UP : PORTFOLIO_COLOR_DOWN;
 
-  const min = Math.min(...rebased);
-  const max = Math.max(...rebased);
-  // Pad the axis so the line isn't pinned to the edges
+  // ── Build benchmark lines aligned to the portfolio's slice dates ─────
+  // For each portfolio date we look up the benchmark value at that date
+  // (or nearest-prior). The base is the value at the first slice date.
+  const benchmarkRebased = benchmarks
+    .map((b) => {
+      if (b.series.length < 2) return null;
+      const sliceStartDate = slice[0].date;
+      const benchBase = benchmarkValueAt(b.series, sliceStartDate);
+      if (benchBase == null) return null;
+      const values: (number | null)[] = slice.map((p) => {
+        const v = benchmarkValueAt(b.series, p.date);
+        return v == null ? null : v - benchBase;
+      });
+      // Need at least 2 non-null points to draw something.
+      const validCount = values.filter((v) => v != null).length;
+      if (validCount < 2) return null;
+      const last = [...values].reverse().find((v) => v != null) ?? 0;
+      return { ...b, values, last };
+    })
+    .filter((b): b is BenchmarkLine & { values: (number | null)[]; last: number } => b != null);
+
+  // ── Y-axis range across portfolio + benchmarks ───────────────────────
+  const allValues = [
+    ...portRebased,
+    ...benchmarkRebased.flatMap((b) => b.values.filter((v): v is number => v != null)),
+  ];
+  const min = Math.min(...allValues);
+  const max = Math.max(...allValues);
   const padPct = Math.max(2, (max - min) * 0.15);
   const yMin = Math.floor((min - padPct) / 5) * 5;
   const yMax = Math.ceil((max + padPct) / 5) * 5;
   const yRange = yMax - yMin || 1;
 
   const yTicks = [yMax, (yMax + yMin) / 2, yMin].filter((v) => v >= yMin && v <= yMax);
-  // Include 0 if it's in range
   if (yMin < 0 && yMax > 0) yTicks.push(0);
 
   const yAxisWidth = 50;
@@ -87,14 +134,23 @@ export function PerformanceChart({ series }: Props) {
   const xs = (i: number) => (i / (slice.length - 1)) * 100;
   const ys = (v: number) => ((yMax - v) / yRange) * 100;
 
-  // SVG line path in 0–100 viewBox
-  const linePath = rebased
+  const portLinePath = portRebased
     .map((v, i) => `${i === 0 ? 'M' : 'L'} ${xs(i).toFixed(3)} ${ys(v).toFixed(3)}`)
     .join(' ');
-  // Area underneath line
-  const areaPath =
-    `${linePath} L ${xs(rebased.length - 1).toFixed(3)} 100 L 0 100 Z`;
-  const lineColor = last >= 0 ? 'oklch(0.55 0.10 175)' : 'oklch(0.50 0.16 25)';
+  const portAreaPath =
+    `${portLinePath} L ${xs(portRebased.length - 1).toFixed(3)} 100 L 0 100 Z`;
+
+  // Build benchmark paths, splitting at nulls (carries gaps).
+  function buildPath(values: (number | null)[]): string {
+    let path = '';
+    let started = false;
+    values.forEach((v, i) => {
+      if (v == null) { started = false; return; }
+      path += `${started ? ' L' : 'M'} ${xs(i).toFixed(3)} ${ys(v).toFixed(3)}`;
+      started = true;
+    });
+    return path;
+  }
 
   const firstDate = new Date(slice[0].date);
   const lastDate = new Date(slice[slice.length - 1].date);
@@ -104,8 +160,8 @@ export function PerformanceChart({ series }: Props) {
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
-          <span style={{ fontSize: 28, fontWeight: 600, color: lineColor, letterSpacing: '-0.02em' }} className="num">
-            {fmtPct(last)}
+          <span style={{ fontSize: 28, fontWeight: 600, color: portColor, letterSpacing: '-0.02em' }} className="num">
+            {fmtPct(portLast)}
           </span>
           <span style={{ fontSize: 12, color: '#86868b' }}>
             {firstDate.toLocaleDateString('en', { month: 'short', day: '2-digit', year: '2-digit' })} → {lastDate.toLocaleDateString('en', { month: 'short', day: '2-digit', year: '2-digit' })}
@@ -119,6 +175,16 @@ export function PerformanceChart({ series }: Props) {
           ))}
         </div>
       </div>
+
+      {/* Legend */}
+      {benchmarkRebased.length > 0 && (
+        <div style={{ display: 'flex', gap: 16, fontSize: 11.5, color: '#6e6e73' }}>
+          <LegendChip color={portColor} label="Your portfolio" value={fmtPct(portLast)} />
+          {benchmarkRebased.map((b) => (
+            <LegendChip key={b.id} color={b.color} label={b.name} value={fmtPct(b.last)} />
+          ))}
+        </div>
+      )}
 
       {/* Chart */}
       <div style={{ position: 'relative', height: chartHeight + 24, display: 'flex' }}>
@@ -156,7 +222,7 @@ export function PerformanceChart({ series }: Props) {
             })}
           </div>
 
-          {/* SVG line + area */}
+          {/* SVG lines + area */}
           <svg
             style={{ position: 'absolute', inset: '0 0 24px 0', width: '100%', height: chartHeight }}
             viewBox="0 0 100 100"
@@ -165,15 +231,33 @@ export function PerformanceChart({ series }: Props) {
           >
             <defs>
               <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor={lineColor} stopOpacity="0.18" />
-                <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+                <stop offset="0%"   stopColor={portColor} stopOpacity="0.18" />
+                <stop offset="100%" stopColor={portColor} stopOpacity="0" />
               </linearGradient>
             </defs>
-            <path d={areaPath} fill="url(#perfGrad)" />
+
+            {/* Benchmarks behind portfolio so the user line stays on top */}
+            {benchmarkRebased.map((b) => (
+              <path
+                key={b.id}
+                d={buildPath(b.values)}
+                fill="none"
+                stroke={b.color}
+                strokeWidth="1.4"
+                strokeDasharray="4 3"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+                style={{ strokeWidth: 1.4 }}
+                opacity="0.85"
+              />
+            ))}
+
+            <path d={portAreaPath} fill="url(#perfGrad)" />
             <path
-              d={linePath}
+              d={portLinePath}
               fill="none"
-              stroke={lineColor}
+              stroke={portColor}
               strokeWidth="0.35"
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -182,17 +266,11 @@ export function PerformanceChart({ series }: Props) {
             />
           </svg>
 
-          {/* Endpoint dot */}
-          <div style={{
-            position: 'absolute',
-            left: '100%', top: `${ys(last)}%`,
-            transform: 'translate(-50%, -50%)',
-            width: 9, height: 9,
-            borderRadius: '50%',
-            background: '#fff',
-            border: `2px solid ${lineColor}`,
-            pointerEvents: 'none',
-          }} />
+          {/* Endpoint dots — portfolio + benchmark terminals */}
+          <Dot top={ys(portLast)} color={portColor} primary />
+          {benchmarkRebased.map((b) => (
+            <Dot key={b.id} top={ys(b.last)} color={b.color} />
+          ))}
 
           {/* X-axis labels */}
           <div style={{
@@ -206,5 +284,35 @@ export function PerformanceChart({ series }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+function LegendChip({ color, label, value }: { color: string; label: string; value: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span style={{
+        display: 'inline-block', width: 14, height: 2,
+        background: color, verticalAlign: 'middle', borderRadius: 1,
+      }} />
+      <span style={{ color: '#1d1d1f', fontWeight: 500 }}>{label}</span>
+      <span className="num" style={{ color }}>{value}</span>
+    </span>
+  );
+}
+
+function Dot({ top, color, primary }: { top: number; color: string; primary?: boolean }) {
+  const size = primary ? 9 : 7;
+  return (
+    <div style={{
+      position: 'absolute',
+      left: '100%', top: `${top}%`,
+      transform: 'translate(-50%, -50%)',
+      width: size, height: size,
+      borderRadius: '50%',
+      background: primary ? '#fff' : color,
+      border: primary ? `2px solid ${color}` : `1.5px solid #fff`,
+      pointerEvents: 'none',
+      zIndex: primary ? 2 : 1,
+    }} />
   );
 }
