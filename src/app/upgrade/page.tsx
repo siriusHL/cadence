@@ -153,7 +153,7 @@ function Spinner() {
 export default function UpgradePage() {
   return (
     <main className="min-h-screen flex flex-col items-center px-6 py-16">
-      <Link href="/app/home" className="flex items-center gap-2.5 text-sm font-semibold tracking-[0.06em] uppercase mb-10 hover:opacity-70 transition-opacity">
+      <Link href="/app" className="flex items-center gap-2.5 text-sm font-semibold tracking-[0.06em] uppercase mb-10 hover:opacity-70 transition-opacity">
         <span className="w-2 h-2 rounded-full bg-accent-soft" /> Cadence
       </Link>
       <h1 className="text-4xl font-semibold tracking-[-0.025em] mb-2">Upgrade</h1>

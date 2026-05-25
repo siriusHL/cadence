@@ -42,7 +42,7 @@ export const POST = withAuth({}, async ({ userId, req }) => {
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/app/home?upgraded=1`,
+    success_url: `${origin}/app?upgraded=1`,
     cancel_url: `${origin}/upgrade`,
     metadata: { user_id: userId, tier: parsed.data.tier },
   });
