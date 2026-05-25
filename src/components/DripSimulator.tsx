@@ -111,12 +111,35 @@ export function DripSimulator({ baseValue, baseIncome, baseCost }: Props) {
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
             {[
-              { c: 'rgba(0,0,0,0.3)',    l: 'No DRIP' },
+              { c: 'rgba(0,0,0,0.3)',      l: 'No DRIP', dashed: true },
               { c: 'oklch(0.40 0.06 235)', l: 'DRIP on' },
-              { c: 'var(--accent-soft)', l: `DRIP + €${fmt(contrib)}/mo` },
+              { c: 'var(--accent-soft)',   l: `DRIP + €${fmt(contrib)}/mo` },
             ].map((g, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
-                <span style={{ width: 16, height: 2, background: g.c, borderRadius: 1 }} /> {g.l}
+                {g.dashed ? (
+                  // Match the chart line's strokeDasharray="4 4" so the legend
+                  // reads as the same visual element as what's plotted.
+                  <svg
+                    width={16}
+                    height={4}
+                    viewBox="0 0 16 4"
+                    style={{ display: 'block', flexShrink: 0 }}
+                    aria-hidden
+                  >
+                    <line
+                      x1={0}
+                      y1={2}
+                      x2={16}
+                      y2={2}
+                      stroke={g.c}
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                    />
+                  </svg>
+                ) : (
+                  <span style={{ width: 16, height: 2, background: g.c, borderRadius: 1 }} />
+                )}
+                {g.l}
               </span>
             ))}
           </div>
