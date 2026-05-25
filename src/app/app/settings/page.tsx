@@ -13,6 +13,7 @@ const ALL_SCREENS: ScreenOption[] = [
   { value: 'holdings',        label: 'Holdings' },
   { value: 'calendar',        label: 'Calendar' },
   { value: 'forecast',        label: 'Forecast' },
+  { value: 'drip',            label: 'DRIP' },
   { value: 'performance',     label: 'Performance' },
   { value: 'diversification', label: 'Diversification' },
   { value: 'tax',             label: 'Tax' },
