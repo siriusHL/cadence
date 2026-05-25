@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CsvImportClient } from './CsvImportClient';
 
 interface Props {
@@ -12,17 +13,76 @@ interface Props {
 
 export function ImportCsvButton({ variant = 'ghost', label = 'Import CSV' }: Props) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     window.addEventListener('keydown', onKey);
+    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      document.body.style.overflow = previous;
     };
   }, [open]);
+
+  // Render the overlay via a portal to <body>. Without this, the .pro-hero's
+  // transform-based animation creates a containing block that traps our
+  // position: fixed overlay inside the hero card.
+  const overlay = open ? (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="csv-import-title"
+      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        padding: '5vh 24px 24px',
+        background: 'rgba(20, 20, 22, 0.32)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
+        animation: 'cdn-fade-in 140ms ease-out',
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        style={{
+          width: '100%', maxWidth: 980,
+          background: 'var(--bg)',
+          borderRadius: 16,
+          padding: '24px 26px 26px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.20), 0 4px 14px rgba(0,0,0,0.08)',
+          animation: 'cdn-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1.05)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div>
+            <div id="csv-import-title" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              Import from broker
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, maxWidth: 640 }}>
+              Drop a transactions CSV from DEGIRO, Interactive Brokers, or Trade Republic.
+              We&apos;ll show every row before anything is saved — duplicates are skipped automatically.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close"
+            style={closeButton}
+          >
+            ×
+          </button>
+        </div>
+
+        <CsvImportClient onDone={() => setOpen(false)} />
+      </div>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -33,58 +93,7 @@ export function ImportCsvButton({ variant = 'ghost', label = 'Import CSV' }: Pro
       >
         ↓ {label}
       </button>
-
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="csv-import-title"
-          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 100,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            padding: '5vh 24px 24px',
-            background: 'rgba(20, 20, 22, 0.32)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            animation: 'cdn-fade-in 140ms ease-out',
-            overflowY: 'auto',
-          }}
-        >
-          <div
-            style={{
-              width: '100%', maxWidth: 980,
-              background: 'var(--bg)',
-              borderRadius: 16,
-              padding: '24px 26px 26px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.20), 0 4px 14px rgba(0,0,0,0.08)',
-              animation: 'cdn-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1.05)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div>
-                <div id="csv-import-title" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-                  Import from broker
-                </div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, maxWidth: 640 }}>
-                  Drop a transactions CSV from DEGIRO, Interactive Brokers, or Trade Republic.
-                  We&apos;ll show every row before anything is saved — duplicates are skipped automatically.
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close"
-                style={closeButton}
-              >
-                ×
-              </button>
-            </div>
-
-            <CsvImportClient onDone={() => setOpen(false)} />
-          </div>
-        </div>
-      )}
+      {mounted && overlay ? createPortal(overlay, document.body) : null}
     </>
   );
 }
