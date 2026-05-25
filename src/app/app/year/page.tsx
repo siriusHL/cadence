@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { getPrimaryPortfolio, getYearOverview, getHoldingsView } from '@/lib/portfolio';
+import { getYearOverview, getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { YearChart } from '@/components/YearChart';
@@ -14,7 +15,7 @@ export default async function YearScreen() {
   const { data: sub } = await supabase
     .from('subscriptions').select('tier').eq('user_id', user!.id).single();
   const tier = (sub?.tier ?? 'free') as Tier;
-  const portfolio = await getPrimaryPortfolio(supabase, user!.id);
+  const portfolio = await getActivePortfolio(supabase, user!.id);
 
   if (!portfolio) {
     return (

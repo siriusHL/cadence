@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { getPrimaryPortfolio, getUpcomingDividends, getHoldingsView } from '@/lib/portfolio';
+import { getUpcomingDividends, getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
@@ -12,7 +13,7 @@ export default async function NextScreen() {
   const { data: sub } = await supabase
     .from('subscriptions').select('tier').eq('user_id', user!.id).single();
   const tier = (sub?.tier ?? 'free') as Tier;
-  const portfolio = await getPrimaryPortfolio(supabase, user!.id);
+  const portfolio = await getActivePortfolio(supabase, user!.id);
 
   if (!portfolio) {
     return (

@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { getPrimaryPortfolio, getHoldingsView, getPerformanceSeries } from '@/lib/portfolio';
+import { getHoldingsView, getPerformanceSeries } from '@/lib/portfolio';
 import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich';
 import { getTaxSummary, DEFAULT_RESIDENCE, type TaxResidence } from '@/lib/tax';
 import { getActiveAlerts, type AlertCard, type AlertSeverity } from '@/lib/alerts';
@@ -26,7 +27,7 @@ export default async function AlertsScreen() {
 
   const [{ data: profile }, portfolio] = await Promise.all([
     supabase.from('profiles').select('tax_country').eq('id', user!.id).maybeSingle(),
-    getPrimaryPortfolio(supabase, user!.id),
+    getActivePortfolio(supabase, user!.id),
   ]);
 
   if (!portfolio) {

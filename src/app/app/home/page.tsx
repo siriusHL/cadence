@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import {
-  getPrimaryPortfolio,
+  
   getHoldingsView,
   getYearOverview,
   getUpcomingDividends,
@@ -34,7 +35,7 @@ export default async function HomeScreen() {
     .from('subscriptions').select('tier').eq('user_id', user!.id).single();
   const tier = (sub?.tier ?? 'free') as Tier;
 
-  const portfolio = await getPrimaryPortfolio(supabase, user!.id);
+  const portfolio = await getActivePortfolio(supabase, user!.id);
 
   // No portfolio yet → onboarding state
   if (!portfolio) {

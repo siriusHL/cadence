@@ -1,6 +1,7 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import {
-  getPrimaryPortfolio, getHoldingsView, getPerformanceSeries, getBenchmarkSeries,
+  getHoldingsView, getPerformanceSeries, getBenchmarkSeries,
 } from '@/lib/portfolio';
 import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich';
 import { enrichBenchmarkHistory, BENCHMARKS } from '@/lib/marketdata/benchmarks';
@@ -25,7 +26,7 @@ function fmtPct(n: number, digits = 2): string {
 export default async function PerformanceScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const portfolio = await getPrimaryPortfolio(supabase, user!.id);
+  const portfolio = await getActivePortfolio(supabase, user!.id);
 
   if (!portfolio) {
     return (

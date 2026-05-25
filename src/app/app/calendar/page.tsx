@@ -1,6 +1,7 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import {
-  getPrimaryPortfolio, getHoldingsView, getYearEvents,
+  getHoldingsView, getYearEvents,
 } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
@@ -19,7 +20,7 @@ function fmt(n: number, digits = 0): string {
 export default async function CalendarScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const portfolio = await getPrimaryPortfolio(supabase, user!.id);
+  const portfolio = await getActivePortfolio(supabase, user!.id);
 
   if (!portfolio) {
     return (

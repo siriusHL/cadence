@@ -1,5 +1,6 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { getPrimaryPortfolio, getHoldingsView } from '@/lib/portfolio';
+import { getActivePortfolio } from '@/lib/activePortfolio';
+import { getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import {
   getTaxSummary, computeDomesticTax,
@@ -23,7 +24,7 @@ export default async function TaxScreen() {
 
   const [{ data: profile }, portfolio] = await Promise.all([
     supabase.from('profiles').select('tax_country, base_currency').eq('id', user!.id).maybeSingle(),
-    getPrimaryPortfolio(supabase, user!.id),
+    getActivePortfolio(supabase, user!.id),
   ]);
 
   if (!portfolio) {

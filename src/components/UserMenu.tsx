@@ -120,6 +120,7 @@ export function UserMenu({ email, initials, tier }: Props) {
           <div style={{ height: 1, background: 'rgba(0,0,0,0.06)', margin: '4px 0' }} />
 
           <MenuLink href="/app/profile" onSelect={() => setOpen(false)}>Profile</MenuLink>
+          <MenuLink href="/app/portfolios" onSelect={() => setOpen(false)}>Portfolios</MenuLink>
           <MenuButton onClick={onBilling} disabled={busy}>
             {tier === 'free' ? 'Upgrade plan' : 'Billing'}
           </MenuButton>
