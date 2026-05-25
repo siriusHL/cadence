@@ -35,9 +35,7 @@ export const POST = withAuth({}, async ({ userId, req }) => {
 
   const supabase = await getSupabaseServer();
 
-  // 1) Resolve the active portfolio (cookie-selected or oldest-owned). Shared
-  //    portfolios fall through this check — the holdings INSERT below will be
-  //    rejected by RLS for non-owners.
+  // 1) Resolve the active portfolio (cookie-selected or oldest-owned).
   let portfolio = await getActivePortfolio(supabase, userId);
 
   if (!portfolio) {

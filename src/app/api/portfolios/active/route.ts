@@ -11,7 +11,7 @@ export const POST = withAuth({}, async ({ req }) => {
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: 'invalid_body' }, 400);
 
-  // RLS confirms the caller can read this portfolio (owned OR shared).
+  // RLS confirms the caller owns this portfolio.
   const supabase = await getSupabaseServer();
   const { data } = await supabase
     .from('portfolios')

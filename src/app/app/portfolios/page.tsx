@@ -1,5 +1,5 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { listVisiblePortfolios, getActivePortfolio } from '@/lib/activePortfolio';
+import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 import { TIERS, type Tier } from '@/lib/tiers';
 import { PortfolioManager } from '@/components/PortfolioManager';
 
@@ -16,12 +16,11 @@ export default async function PortfoliosPage() {
   const tier = (sub?.tier ?? 'free') as Tier;
 
   const [portfolios, active] = await Promise.all([
-    listVisiblePortfolios(supabase),
+    listOwnedPortfolios(supabase, user!.id),
     getActivePortfolio(supabase, user!.id),
   ]);
 
   const cap = TIERS[tier].maxPortfolios;
-  const ownedCount = portfolios.filter((p) => p.owned).length;
 
   return (
     <div className="cdn-pro" style={{ maxWidth: 880, marginInline: 'auto' }}>
@@ -36,7 +35,7 @@ export default async function PortfoliosPage() {
         </div>
         <div className="right-meta">
           <span>
-            {ownedCount} / {Number.isFinite(cap) ? cap : '∞'} owned
+            {portfolios.length} / {Number.isFinite(cap) ? cap : '∞'}
           </span>
           <span>
             {tier === 'free' ? 'Free plan' : tier === 'premium' ? '✦ Premium' : '✦ Elite'}

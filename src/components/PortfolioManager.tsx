@@ -9,7 +9,6 @@ interface PortfolioRow {
   id: string;
   name: string;
   created_at: string;
-  owned: boolean;
 }
 
 interface Props {
@@ -25,12 +24,10 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
   const confirm = useConfirm();
   const [pending, start] = useTransition();
   const [newName, setNewName] = useState('');
-  const [expandedShareId, setExpandedShareId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
 
-  const ownedCount = portfolios.filter((p) => p.owned).length;
-  const atCap = ownedCount >= cap;
+  const atCap = portfolios.length >= cap;
 
   function setActive(id: string) {
     if (id === activeId) return;
@@ -187,9 +184,6 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
                         {p.id === activeId && (
                           <span style={{ marginLeft: 8, fontSize: 11, color: '#0070f3' }}>active</span>
                         )}
-                        {!p.owned && (
-                          <span style={{ marginLeft: 8, fontSize: 11, color: '#6e6e73' }}>shared with you</span>
-                        )}
                       </div>
                       <div style={{ fontSize: 12, color: '#86868b' }}>
                         Created {new Date(p.created_at).toLocaleDateString('en', { month: 'short', day: '2-digit', year: 'numeric' })}
@@ -197,48 +191,33 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
                     </>
                   )}
                 </div>
-                {p.owned && (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {editingId === p.id ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => commitRename(p.id, p.name)}
-                          style={btnPrimary}
-                          disabled={pending || !editingName.trim()}
-                        >
-                          Save
-                        </button>
-                        <button type="button" onClick={cancelRename} style={btnGhost} disabled={pending}>
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        {tier === 'elite' && (
-                          <button
-                            type="button"
-                            onClick={() => setExpandedShareId(expandedShareId === p.id ? null : p.id)}
-                            style={btnGhost}
-                            disabled={pending}
-                          >
-                            Share
-                          </button>
-                        )}
-                        <button type="button" onClick={() => beginRename(p.id, p.name)} style={btnGhost} disabled={pending}>
-                          Rename
-                        </button>
-                        <button type="button" onClick={() => remove(p.id, p.name)} style={btnDanger} disabled={pending}>
-                          Delete
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {editingId === p.id ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => commitRename(p.id, p.name)}
+                        style={btnPrimary}
+                        disabled={pending || !editingName.trim()}
+                      >
+                        Save
+                      </button>
+                      <button type="button" onClick={cancelRename} style={btnGhost} disabled={pending}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => beginRename(p.id, p.name)} style={btnGhost} disabled={pending}>
+                        Rename
+                      </button>
+                      <button type="button" onClick={() => remove(p.id, p.name)} style={btnDanger} disabled={pending}>
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              {expandedShareId === p.id && tier === 'elite' && p.owned && (
-                <ShareManager portfolioId={p.id} />
-              )}
             </div>
           ))}
           {portfolios.length === 0 && (
@@ -291,115 +270,6 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-interface ShareRow {
-  id: string;
-  shared_with_user_id: string;
-  email: string | null;
-  created_at: string;
-}
-
-function ShareManager({ portfolioId }: { portfolioId: string }) {
-  const toast = useToast();
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  const [shares, setShares] = useState<ShareRow[] | null>(null);
-  const [email, setEmail] = useState('');
-  const [loaded, setLoaded] = useState(false);
-
-  if (!loaded) {
-    setLoaded(true);
-    fetch(`/api/portfolios/${portfolioId}/shares`)
-      .then((r) => r.json())
-      .then((j) => setShares(j.data ?? []))
-      .catch(() => setShares([]));
-  }
-
-  function addShare(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    start(async () => {
-      const res = await fetch(`/api/portfolios/${portfolioId}/shares`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg =
-          j.error === 'user_not_found' ? 'No Cadence user with that email.'
-          : j.error === 'already_shared' ? 'Already shared with this user.'
-          : j.error === 'cannot_share_with_self' ? "You can't share with yourself."
-          : `Could not share: ${j.error ?? res.statusText}`;
-        toast(msg, 'error');
-        return;
-      }
-      toast('Shared.');
-      setShares((s) => [...(s ?? []), j.data]);
-      setEmail('');
-      router.refresh();
-    });
-  }
-
-  function removeShare(shareId: string) {
-    start(async () => {
-      const res = await fetch(`/api/portfolios/${portfolioId}/shares/${shareId}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) {
-        toast('Could not remove.', 'error');
-        return;
-      }
-      setShares((s) => (s ?? []).filter((sh) => sh.id !== shareId));
-      router.refresh();
-    });
-  }
-
-  return (
-    <div style={{ background: '#fafafa', padding: 16, borderTop: '1px solid #ececec' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#6e6e73', marginBottom: 8 }}>
-        SHARED WITH (read-only)
-      </div>
-      {shares === null && <div style={{ fontSize: 13, color: '#86868b' }}>Loading…</div>}
-      {shares !== null && shares.length === 0 && (
-        <div style={{ fontSize: 13, color: '#86868b', marginBottom: 12 }}>
-          No-one yet. Add a recipient below.
-        </div>
-      )}
-      {shares !== null && shares.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
-          {shares.map((s) => (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <span style={{ flex: 1, color: '#1d1d1f' }}>{s.email ?? s.shared_with_user_id}</span>
-              <button type="button" onClick={() => removeShare(s.id)} disabled={pending} style={btnGhost}>
-                Remove
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      <form onSubmit={addShare} style={{ display: 'flex', gap: 8 }}>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="user@example.com"
-          disabled={pending}
-          style={{
-            flex: 1,
-            padding: '6px 10px',
-            border: '1px solid #d2d2d7',
-            borderRadius: 6,
-            fontSize: 13,
-          }}
-        />
-        <button type="submit" disabled={pending || !email.trim()} style={btnPrimary}>
-          Share
-        </button>
-      </form>
     </div>
   );
 }

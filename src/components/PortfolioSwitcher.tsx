@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useToast } from './DialogProvider';
 
-interface Item { id: string; name: string; owned: boolean; }
+interface Item { id: string; name: string; }
 
 interface Props {
   items: Item[];
@@ -111,9 +111,6 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {it.name}
               </span>
-              {!it.owned && (
-                <span style={{ fontSize: 10, color: '#86868b' }}>shared</span>
-              )}
               {it.id === activeId && (
                 <span style={{ fontSize: 11, color: '#0070f3' }}>●</span>
               )}

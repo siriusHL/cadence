@@ -6,7 +6,7 @@ import { NavTabs } from '@/components/NavTabs';
 import { DialogProvider } from '@/components/DialogProvider';
 import { UserMenu } from '@/components/UserMenu';
 import { PortfolioSwitcher } from '@/components/PortfolioSwitcher';
-import { listVisiblePortfolios, getActivePortfolio } from '@/lib/activePortfolio';
+import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 
 interface NavTab { label: string; href: string; screen: Screen; }
 
@@ -48,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   );
 
   const [portfolios, active] = await Promise.all([
-    listVisiblePortfolios(supabase),
+    listOwnedPortfolios(supabase, user.id),
     getActivePortfolio(supabase, user.id),
   ]);
 
@@ -67,7 +67,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="right">
             {portfolios.length > 0 && (
               <PortfolioSwitcher
-                items={portfolios.map((p) => ({ id: p.id, name: p.name, owned: p.owned }))}
+                items={portfolios.map((p) => ({ id: p.id, name: p.name }))}
                 activeId={active?.id ?? null}
               />
             )}

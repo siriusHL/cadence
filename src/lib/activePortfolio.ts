@@ -8,11 +8,9 @@ export const ACTIVE_PORTFOLIO_COOKIE = 'active_portfolio_id';
  * Resolves which portfolio the user is viewing.
  *
  * Order of precedence:
- *   1. `active_portfolio_id` cookie — only honored if the user still has read
- *      access (owned or shared); RLS does the filtering.
+ *   1. `active_portfolio_id` cookie — only honored if RLS still grants read
+ *      access to that portfolio.
  *   2. Oldest owned portfolio (legacy `getPrimaryPortfolio` behavior).
- *
- * Returns null when the user has neither.
  */
 export async function getActivePortfolio(
   supabase: SupabaseClient,
@@ -33,22 +31,15 @@ export async function getActivePortfolio(
   return getPrimaryPortfolio(supabase, userId);
 }
 
-/** All portfolios visible to the user — owned plus shared. */
-export async function listVisiblePortfolios(
+/** All portfolios the user owns. */
+export async function listOwnedPortfolios(
   supabase: SupabaseClient,
-): Promise<Array<Portfolio & { owned: boolean; ownerEmail?: string | null }>> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
+  userId: string,
+): Promise<Portfolio[]> {
   const { data } = await supabase
     .from('portfolios')
-    .select('id, name, created_at, user_id')
+    .select('id, name, created_at')
+    .eq('user_id', userId)
     .order('created_at', { ascending: true });
-
-  return (data ?? []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    created_at: p.created_at,
-    owned: p.user_id === user.id,
-  }));
+  return data ?? [];
 }
