@@ -14,7 +14,12 @@ const BROKERS: { id: BrokerId; label: string }[] = [
   { id: 'trade-republic', label: BROKER_LABEL['trade-republic'] },
 ];
 
-export function CsvImportClient() {
+interface Props {
+  /** Called after a successful commit so a parent modal can close itself. */
+  onDone?: () => void;
+}
+
+export function CsvImportClient({ onDone }: Props = {}) {
   const router = useRouter();
   const toast = useToast();
   const [pending, start] = useTransition();
@@ -117,6 +122,7 @@ export function CsvImportClient() {
       toast(`Imported ${j.inserted} transaction${j.inserted === 1 ? '' : 's'}${dup}.`);
       reset();
       router.refresh();
+      onDone?.();
     });
   }
 

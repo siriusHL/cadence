@@ -18,7 +18,6 @@ export type Screen =
   | 'home' | 'next' | 'stocks' | 'year'
   | 'add'                                       // action — available to all tiers, RLS-capped
   | 'profile' | 'settings' | 'portfolios'       // account pages — accessible to every tier
-  | 'import'                                    // CSV broker import (Premium+)
   | 'dashboard' | 'holdings' | 'stock'
   | 'calendar' | 'forecast' | 'drip'
   | 'performance' | 'diversification'
@@ -64,7 +63,7 @@ export const TIERS: Record<Tier, TierConfig> = {
      // year) for the data-dense pro versions (dashboard / holdings / calendar /
      // forecast / drip / performance / diversification).
     screens: [
-      'add', 'profile', 'settings', 'portfolios', 'import',
+      'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
       'calendar', 'forecast', 'drip',
       'performance', 'diversification',
@@ -85,7 +84,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     fxFreshnessMin: 15,
     // Same exclusions as Premium — the free-tier screens stay free-only.
     screens: [
-      'add', 'profile', 'settings', 'portfolios', 'import',
+      'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
       'calendar', 'forecast', 'drip',
       'performance', 'diversification',
