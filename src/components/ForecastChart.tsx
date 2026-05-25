@@ -19,7 +19,6 @@ function fmt(n: number, digits = 0): string {
   return n.toLocaleString('en-IE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-/** Round up to a nice number for the axis. */
 function niceCeil(v: number): number {
   if (v <= 0) return 1;
   const exp = Math.pow(10, Math.floor(Math.log10(v)));
@@ -32,6 +31,7 @@ type RangeKey = '6M' | '12M' | '24M';
 
 export function ForecastChart({ months }: Props) {
   const [range, setRange] = useState<RangeKey>('12M');
+  const [hover, setHover] = useState<number | null>(null);
 
   const slice = useMemo(() => {
     const n = range === '6M' ? 6 : range === '12M' ? 12 : 24;
@@ -53,13 +53,12 @@ export function ForecastChart({ months }: Props) {
   }, [cums]);
 
   const yTicks = [0, barMax / 2, barMax];
-
   const yAxisWidth = 44;
   const rightAxisWidth = 56;
   const chartHeight = 200;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} className="cdn-chart-wrap">
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
@@ -72,7 +71,7 @@ export function ForecastChart({ months }: Props) {
         </div>
         <div className="seg">
           {(['6M', '12M', '24M'] as RangeKey[]).map((r) => (
-            <button key={r} type="button" onClick={() => setRange(r)} className={range === r ? 'on' : ''}>
+            <button key={r} type="button" onClick={() => { setRange(r); setHover(null); }} className={range === r ? 'on' : ''}>
               {r}
             </button>
           ))}
@@ -81,7 +80,7 @@ export function ForecastChart({ months }: Props) {
 
       {/* Chart */}
       <div style={{ position: 'relative', height: chartHeight + 26, display: 'flex' }}>
-        {/* Left y-axis (bars scale) */}
+        {/* Left y-axis */}
         <div style={{ width: yAxisWidth, height: chartHeight, position: 'relative', flexShrink: 0 }}>
           {yTicks.map((v, i) => {
             const pct = (yTicks[yTicks.length - 1] - v) / (yTicks[yTicks.length - 1] || 1);
@@ -120,31 +119,74 @@ export function ForecastChart({ months }: Props) {
             })}
           </div>
 
-          {/* Bars */}
-          <div style={{ position: 'absolute', inset: '0 0 26px 0', display: 'flex', alignItems: 'flex-end', gap: 4 }}>
+          {/* Bars — keyed on range to re-trigger entry animation on range change */}
+          <div
+            key={range}
+            style={{ position: 'absolute', inset: '0 0 26px 0', display: 'flex', alignItems: 'flex-end', gap: 4 }}
+          >
             {slice.map((m, i) => {
               const h = (m.total / barMax) * 100;
+              const isHovered = hover === i;
+              const isDimmed = hover !== null && !isHovered;
+
               return (
-                <div key={`${m.year}-${m.month}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
-                  {m.total > 0 && (
+                /* Outer: staggered entry animation */
+                <div
+                  key={`${m.year}-${m.month}`}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    height: '100%',
+                    animation: `cdn-bar-enter 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * 22}ms both`,
+                  }}
+                >
+                  {/* Inner: dimming */}
+                  <div
+                    onMouseEnter={() => setHover(i)}
+                    onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))}
+                    style={{
+                      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                      height: '100%',
+                      opacity: isDimmed ? 0.36 : 1,
+                      transition: 'opacity 220ms ease',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {m.total > 0 && (
+                      <div className="num" style={{
+                        textAlign: 'center', fontSize: 10.5, marginBottom: 4,
+                        color: isHovered ? '#1d1d1f' : 'rgba(29,29,31,0.65)',
+                        fontWeight: isHovered ? 600 : 500,
+                        transition: 'color 200ms ease, font-weight 200ms ease',
+                      }}>
+                        €{Math.round(m.total)}
+                      </div>
+                    )}
+                    {/* Bar segment with scale + glow */}
                     <div style={{
-                      textAlign: 'center', fontSize: 10.5, color: '#1d1d1f',
-                      fontWeight: 500, marginBottom: 4,
+                      transform: isHovered ? 'scaleX(1.1)' : 'scaleX(1)',
+                      transition: 'transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+                      transformOrigin: 'bottom center',
                     }}>
-                      €{Math.round(m.total)}
+                      <div style={{
+                        height: `${h}%`,
+                        background: isHovered ? 'oklch(0.47 0.13 175)' : 'oklch(0.55 0.10 175)',
+                        borderRadius: '4px 4px 0 0',
+                        transition: 'background 220ms ease, box-shadow 220ms ease',
+                        boxShadow: isHovered
+                          ? '0 -6px 18px oklch(0.55 0.10 175 / 0.44), 0 0 0 1px oklch(0.55 0.10 175 / 0.16)'
+                          : 'none',
+                      }} />
                     </div>
-                  )}
-                  <div style={{
-                    height: `${h}%`,
-                    background: 'oklch(0.55 0.10 175)',
-                    borderRadius: '4px 4px 0 0',
-                  }} />
+                  </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Cumulative line (SVG overlay) */}
+          {/* Cumulative line */}
           <svg
             style={{ position: 'absolute', inset: '0 0 26px 0', pointerEvents: 'none', width: '100%', height: chartHeight }}
             preserveAspectRatio="none"
@@ -153,28 +195,25 @@ export function ForecastChart({ months }: Props) {
             {(() => {
               if (cums.length === 0) return null;
               const points = cums.map((v, i) => ({
-                x: (i + 0.5),
+                x: i + 0.5,
                 y: chartHeight - (v / cumMax) * chartHeight,
               }));
               const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(3)} ${p.y.toFixed(2)}`).join(' ');
               return (
-                <>
-                  <path
-                    d={path}
-                    fill="none"
-                    stroke="oklch(0.40 0.06 235)"
-                    strokeWidth="0.04"
-                    vectorEffect="non-scaling-stroke"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ strokeWidth: 2 }}
-                  />
-                </>
+                <path
+                  d={path}
+                  fill="none"
+                  stroke="oklch(0.40 0.06 235)"
+                  vectorEffect="non-scaling-stroke"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ strokeWidth: 2 }}
+                />
               );
             })()}
           </svg>
 
-          {/* Cumulative endpoints as dots */}
+          {/* Cumulative endpoint dots */}
           <div style={{ position: 'absolute', inset: '0 0 26px 0', pointerEvents: 'none' }}>
             {cums.map((v, i) => {
               const leftPct = ((i + 0.5) / slice.length) * 100;
@@ -183,24 +222,20 @@ export function ForecastChart({ months }: Props) {
               return (
                 <div key={i} style={{
                   position: 'absolute',
-                  left: `${leftPct}%`,
-                  top: `${topPct}%`,
+                  left: `${leftPct}%`, top: `${topPct}%`,
                   transform: 'translate(-50%, -50%)',
-                  width: isLast ? 8 : 5,
-                  height: isLast ? 8 : 5,
+                  width: isLast ? 8 : 5, height: isLast ? 8 : 5,
                   borderRadius: '50%',
                   background: '#fff',
                   border: '1.8px solid oklch(0.40 0.06 235)',
+                  transition: 'width 200ms ease, height 200ms ease',
                 }} />
               );
             })}
           </div>
 
           {/* Month labels */}
-          <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0,
-            display: 'flex', gap: 4, height: 22,
-          }}>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, display: 'flex', gap: 4, height: 22 }}>
             {slice.map((m, i) => {
               const stride = slice.length <= 12 ? 1 : slice.length <= 18 ? 2 : 3;
               const show = i % stride === 0 || i === slice.length - 1;
@@ -215,25 +250,68 @@ export function ForecastChart({ months }: Props) {
               );
             })}
           </div>
+
+          {/* Hover tooltip */}
+          {hover != null && (
+            <ForecastTooltip month={slice[hover]} hoverIdx={hover} totalBars={slice.length} cumValue={cums[hover]} />
+          )}
         </div>
 
-        {/* Right axis — cumulative scale + final label */}
+        {/* Right axis — cumulative scale */}
         <div style={{ width: rightAxisWidth, height: chartHeight, position: 'relative', flexShrink: 0 }}>
           <div style={{ position: 'absolute', left: 8, top: 0, fontSize: 10, color: 'oklch(0.40 0.06 235)', fontWeight: 500 }}>
             Cum.
           </div>
           {cums.length > 0 && (
             <div className="num" style={{
-              position: 'absolute',
-              left: 8,
+              position: 'absolute', left: 8,
               top: `${(1 - cums[cums.length - 1] / cumMax) * 100}%`,
               transform: 'translateY(-50%)',
-              fontSize: 11.5, fontWeight: 600,
-              color: 'oklch(0.40 0.06 235)',
+              fontSize: 11.5, fontWeight: 600, color: 'oklch(0.40 0.06 235)',
             }}>
               €{fmt(cums[cums.length - 1])}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ForecastTooltip({ month, hoverIdx, totalBars, cumValue }: {
+  month: ForecastMonth; hoverIdx: number; totalBars: number; cumValue: number;
+}) {
+  const leftPct = (hoverIdx + 0.5) * (100 / totalBars);
+  const flipLeft = leftPct > 68;
+  return (
+    <div
+      className="cdn-tip"
+      style={{
+        left: flipLeft ? undefined : `calc(${leftPct}% + 8px)`,
+        right: flipLeft ? `calc(${100 - leftPct}% + 8px)` : undefined,
+        top: 8,
+        minWidth: 180,
+      }}
+    >
+      <div className="cdn-tip-header">
+        <span style={{ fontWeight: 600, fontSize: 13 }}>
+          {MONTH_NAMES[month.month]} {month.year}
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="cdn-tip-row">
+          <span style={{ color: 'rgba(255,255,255,0.72)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: 'oklch(0.55 0.10 175)', display: 'inline-block' }} />
+            Monthly
+          </span>
+          <span className="num" style={{ fontWeight: 600 }}>€{fmt(month.total, 2)}</span>
+        </div>
+        <div className="cdn-tip-row">
+          <span style={{ color: 'rgba(255,255,255,0.72)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 12, height: 2, background: 'oklch(0.40 0.06 235)', borderRadius: 1, display: 'inline-block' }} />
+            Cumulative
+          </span>
+          <span className="num" style={{ fontWeight: 600, color: 'oklch(0.75 0.06 235)' }}>€{fmt(cumValue, 2)}</span>
         </div>
       </div>
     </div>

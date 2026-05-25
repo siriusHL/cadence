@@ -173,44 +173,31 @@ function HoverPopover({
     typeof window !== 'undefined' && anchorX + GAP + TOOLTIP_MAX_W > window.innerWidth - 16;
   return (
     <div
+      className="cdn-tip"
       style={{
         position: 'fixed',
-        left: flipLeft ? anchorX - GAP - 17 /* cell width */ : anchorX + GAP,
+        left: flipLeft ? anchorX - GAP - 17 : anchorX + GAP,
         top: anchorY,
-        transform: flipLeft
-          ? 'translate(-100%, -50%)'   // anchor right-middle
-          : 'translate(0, -50%)',      // anchor left-middle
-        background: '#1d1d1f',
-        color: '#fff',
-        padding: '10px 14px',
-        borderRadius: 12,
-        minWidth: 220,
-        maxWidth: TOOLTIP_MAX_W,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-        fontSize: 12,
+        transform: flipLeft ? 'translate(-100%, -50%)' : 'translate(0, -50%)',
         zIndex: 1000,
-        pointerEvents: 'none',
       }}
     >
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.1)',
-      }}>
+      <div className="cdn-tip-header">
         <span style={{ fontWeight: 600, fontSize: 13 }}>
           {MONTH_NAMES[month]} {day}, {year}
         </span>
         <span className="num" style={{ fontWeight: 600 }}>€{fmt(cell.sum, 2)}</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {cell.events.slice(0, 8).map((e) => (
-          <div key={e.ticker + e.exDate} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-            <span style={{ color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div key={e.ticker + e.exDate} className="cdn-tip-row">
+            <span style={{ color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               <b style={{ color: '#fff' }}>{e.ticker}</b>
-              {e.name && <span style={{ color: 'rgba(255,255,255,0.55)' }}> · {e.name}</span>}
+              {e.name && <span style={{ color: 'rgba(255,255,255,0.46)' }}> · {e.name}</span>}
             </span>
             <span className="num" style={{
               flexShrink: 0,
-              color: e.isProjected ? 'rgba(255,255,255,0.65)' : '#fff',
+              color: e.isProjected ? 'rgba(255,255,255,0.58)' : '#fff',
             }}>
               €{fmt(e.grossLocal, 2)}
             </span>
