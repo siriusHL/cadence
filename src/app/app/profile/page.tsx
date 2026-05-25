@@ -24,7 +24,7 @@ export default async function ProfilePage() {
   }));
 
   return (
-    <div className="cdn-pro" style={{ maxWidth: 720 }}>
+    <div className="cdn-pro" style={{ maxWidth: 720, marginInline: 'auto' }}>
       <div className="pro-hero">
         <div>
           <div className="eyebrow">Account</div>
