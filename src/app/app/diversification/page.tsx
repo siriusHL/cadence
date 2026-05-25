@@ -2,7 +2,9 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { getPrimaryPortfolio, getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
-import { Donut } from '@/components/Donut';
+import { DonutCard } from '@/components/DonutCard';
+import { SectorDetailTable } from '@/components/SectorDetailTable';
+import { ConcentrationCheck } from '@/components/ConcentrationCheck';
 
 // STOXX-600-ish sector benchmark for the "vs benchmark" column.
 const SECTOR_BENCH: Record<string, number> = {
@@ -171,14 +173,12 @@ export default async function DiversificationScreen() {
     ? 'Well spread'
     : hhi < 2500 ? 'Moderately concentrated' : 'Highly concentrated';
 
-  const visibleSectors = bySector.slice(0, 6);
   const sectorsTail = bySector.slice(6);
   const sectorsTailPct = sectorsTail.reduce(
     (s, g) => s + (totalValue > 0 ? (g.value / totalValue) * 100 : 0),
     0,
   );
-  const visibleGeo = byCountry.slice(0, 6);
-  const geoTail = byCountry.length - visibleGeo.length;
+  const geoTail = Math.max(0, byCountry.length - 6);
 
   return (
     <div className="cdn-pro">
@@ -207,317 +207,66 @@ export default async function DiversificationScreen() {
 
       {/* Three donut cards */}
       <div className="row-3">
-        <div className="pcard">
-          <div className="pcard-h">
-            <div className="t">Sectors</div>
-            <span className="tag">GICS · by value</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <Donut
-              data={sectorDonut}
-              colors={SECTOR_COLORS}
-              size={130}
-              thickness={20}
-              centerValue={bySector.length}
-              centerLabel="buckets"
-            />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {visibleSectors.map((s, i) => {
-                const pct = totalValue > 0 ? (s.value / totalValue) * 100 : 0;
-                return (
-                  <LegendRow
-                    key={s.key}
-                    color={SECTOR_COLORS[i % SECTOR_COLORS.length]}
-                    label={s.key}
-                    value={`${pct.toFixed(1)}%`}
-                  />
-                );
-              })}
-              {sectorsTail.length > 0 && (
-                <div style={{ fontSize: 10.5, color: '#86868b', marginTop: 4 }}>
-                  + {sectorsTail.length} more · {sectorsTailPct.toFixed(1)}%
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="pcard">
-          <div className="pcard-h">
-            <div className="t">Geography</div>
-            <span className="tag">Domicile</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <Donut
-              data={geoDonut}
-              colors={GEO_COLORS}
-              size={130}
-              thickness={20}
-              centerValue={byCountry.length}
-              centerLabel="buckets"
-            />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {visibleGeo.map((g, i) => {
-                const pct = totalValue > 0 ? (g.value / totalValue) * 100 : 0;
-                return (
-                  <LegendRow
-                    key={g.key}
-                    color={GEO_COLORS[i % GEO_COLORS.length]}
-                    label={g.key}
-                    value={`${pct.toFixed(1)}%`}
-                  />
-                );
-              })}
-              {geoTail > 0 && (
-                <div style={{ fontSize: 10.5, color: '#86868b', marginTop: 4 }}>
-                  + {geoTail} more
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="pcard">
-          <div className="pcard-h">
-            <div className="t">Currencies</div>
-            <span className="tag">By forward income</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-            <Donut
-              data={ccyByIncome}
-              colors={CCY_COLORS}
-              size={130}
-              thickness={20}
-              centerValue={byCurrency.length}
-              centerLabel="buckets"
-            />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {ccyByIncome.map((c, i) => (
-                <LegendRow
-                  key={c.key}
-                  color={CCY_COLORS[i % CCY_COLORS.length]}
-                  label={c.key}
-                  value={`${c.value.toFixed(1)}%`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        <DonutCard
+          title="Sectors"
+          tag="GICS · by value"
+          data={sectorDonut}
+          colors={SECTOR_COLORS}
+          centerValue={bySector.length}
+          centerLabel="buckets"
+          legendCount={6}
+          tail={sectorsTail.length > 0 ? { count: sectorsTail.length, pct: sectorsTailPct } : null}
+          index={0}
+        />
+        <DonutCard
+          title="Geography"
+          tag="Domicile"
+          data={geoDonut}
+          colors={GEO_COLORS}
+          centerValue={byCountry.length}
+          centerLabel="buckets"
+          legendCount={6}
+          tail={geoTail > 0 ? { count: geoTail } : null}
+          index={1}
+        />
+        <DonutCard
+          title="Currencies"
+          tag="By forward income"
+          data={ccyByIncome}
+          colors={CCY_COLORS}
+          centerValue={byCurrency.length}
+          centerLabel="buckets"
+          legendCount={ccyByIncome.length}
+          index={2}
+        />
       </div>
 
       {/* Sector detail vs benchmark + Concentration check */}
       <div className="row-2" style={{ gridTemplateColumns: '1.5fr 1fr' }}>
-        <div className="pcard flush" style={{ overflow: 'hidden' }}>
-          <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
-            <div className="t">Sector detail · vs benchmark</div>
-            <span className="tag">+ / − pp</span>
-          </div>
-          <div style={{ maxHeight: 320, overflow: 'auto' }}>
-            <table className="pt">
-              <thead>
-                <tr>
-                  <th>Sector</th>
-                  <th className="r">% value</th>
-                  <th className="r">% income</th>
-                  <th className="r">Yield</th>
-                  <th style={{ width: 200 }}>vs STOXX 600</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bySector.map((s, i) => {
-                  const valuePct = totalValue > 0 ? (s.value / totalValue) * 100 : 0;
-                  const incomePct = totalIncome > 0 ? (s.income / totalIncome) * 100 : 0;
-                  const yieldPct = s.value > 0 ? (s.income / s.value) * 100 : 0;
-                  const bench = SECTOR_BENCH[s.key] ?? 5;
-                  const diff = valuePct - bench;
-                  return (
-                    <tr key={s.key}>
-                      <td className="ticker">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span
-                            style={{
-                              width: 10, height: 10, borderRadius: 3,
-                              background: SECTOR_COLORS[i % SECTOR_COLORS.length],
-                              flexShrink: 0,
-                            }}
-                          />
-                          {s.key}
-                        </div>
-                      </td>
-                      <td className="r b">{valuePct.toFixed(1)}%</td>
-                      <td className="r muted">{incomePct.toFixed(1)}%</td>
-                      <td className="r">{yieldPct.toFixed(2)}%</td>
-                      <td>
-                        <BenchBar diff={diff} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="pcard">
-          <div className="pcard-h">
-            <div className="t">Concentration check</div>
-            <span className="tag">thresholds</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Metric
-              label="HHI"
-              value={hhi.toFixed(0)}
-              pct={(hhi / 2500) * 100}
-              caption="2500 (high)"
-              color={concColor}
-              tip={
-                <>
-                  <b>Herfindahl-Hirschman Index.</b> Sum of each position&rsquo;s squared
-                  weight (in %). One stock holding everything scores <span className="mono">10,000</span>;
-                  {' '}100 equal positions score <span className="mono">100</span>. Below{' '}
-                  <span className="mono">1,500</span> is well-diversified, above{' '}
-                  <span className="mono">2,500</span> is concentrated. You: <b>{hhi.toFixed(0)}</b>.
-                </>
-              }
-            />
-            <Metric
-              label="Top 5 weight"
-              value={`${top5Pct.toFixed(1)}%`}
-              pct={top5Pct}
-              caption="Target < 40%"
-              color="#1d1d1f"
-            />
-            <Metric
-              label="Top 10 weight"
-              value={`${top10Pct.toFixed(1)}%`}
-              pct={top10Pct}
-              caption="Target < 60%"
-              color="#1d1d1f"
-            />
-            <Metric
-              label="Single largest"
-              value={`${largestPct.toFixed(1)}%`}
-              pct={largestPct * 5}
-              caption="Target < 10%"
-              color={
-                largestPct < 10 ? 'oklch(0.48 0.08 165)'
-                  : largestPct < 15 ? 'oklch(0.55 0.10 75)'
-                  : 'oklch(0.50 0.16 25)'
-              }
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LegendRow({ color, label, value }: { color: string; label: string; value: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5 }}>
-      <span style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
-      <span
-        style={{
-          flex: 1, color: '#1d1d1f',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}
-      >
-        {label}
-      </span>
-      <span
-        className="num"
-        style={{
-          fontWeight: 500, fontVariantNumeric: 'tabular-nums',
-          minWidth: 44, textAlign: 'right',
-        }}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function BenchBar({ diff }: { diff: number }) {
-  const magnitude = Math.min(50, Math.abs(diff) * 3);
-  const positive = diff >= 0;
-  const color = positive ? 'oklch(0.55 0.10 175)' : 'oklch(0.50 0.16 25)';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 140 }}>
-      <div
-        style={{
-          flex: 1, height: 12, background: 'rgba(0,0,0,0.04)', borderRadius: 6,
-          position: 'relative',
-        }}
-      >
-        <span
-          style={{
-            position: 'absolute', left: '50%', top: 0, bottom: 0,
-            width: 1, background: 'rgba(0,0,0,0.15)',
-          }}
+        <SectorDetailTable
+          sectors={bySector}
+          colors={SECTOR_COLORS}
+          totalValue={totalValue}
+          totalIncome={totalIncome}
+          benchmark={SECTOR_BENCH}
+          index={3}
         />
-        <span
-          style={{
-            position: 'absolute', top: 2, bottom: 2,
-            [positive ? 'left' : 'right']: '50%',
-            width: `${magnitude}%`,
-            background: color,
-            borderRadius: 4,
-          }}
+        <ConcentrationCheck
+          hhi={hhi}
+          concColor={concColor}
+          top5Pct={top5Pct}
+          top10Pct={top10Pct}
+          largestPct={largestPct}
+          largestColor={
+            largestPct < 10
+              ? 'oklch(0.48 0.08 165)'
+              : largestPct < 15
+                ? 'oklch(0.55 0.10 75)'
+                : 'oklch(0.50 0.16 25)'
+          }
+          index={4}
         />
       </div>
-      <span
-        className={'num ' + (positive ? 'up' : 'down')}
-        style={{
-          fontSize: 11, fontWeight: 500, minWidth: 46, textAlign: 'right',
-          color, fontVariantNumeric: 'tabular-nums',
-        }}
-      >
-        {positive ? '+' : ''}{diff.toFixed(1)}pp
-      </span>
-    </div>
-  );
-}
-
-function InfoTip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="info" tabIndex={0} role="button" aria-label="What does this mean?">
-      i
-      <span className="pop" role="tooltip">{children}</span>
-    </span>
-  );
-}
-
-function Metric({
-  label, value, pct, caption, color, tip,
-}: {
-  label: string;
-  value: string;
-  pct: number;
-  caption: string;
-  color: string;
-  tip?: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <span style={{ fontSize: 12, color: '#1d1d1f', fontWeight: 500 }}>
-          {label}
-          {tip && <InfoTip>{tip}</InfoTip>}
-        </span>
-        <span
-          className="num"
-          style={{
-            fontSize: 18, fontWeight: 600, color,
-            letterSpacing: '-0.015em', fontVariantNumeric: 'tabular-nums',
-          }}
-        >
-          {value}
-        </span>
-      </div>
-      <div className="pbar" style={{ marginTop: 6 }}>
-        <i style={{ width: `${Math.min(100, pct)}%`, background: color }} />
-      </div>
-      <div style={{ fontSize: 10.5, color: '#86868b', marginTop: 3 }}>{caption}</div>
     </div>
   );
 }

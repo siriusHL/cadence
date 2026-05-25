@@ -275,3 +275,590 @@
 }
 .cdn-pro .seg button:hover { color: #1d1d1f; }
 .cdn-pro .seg button.on { background: #fff; color: #1d1d1f; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+/* ─────────────────────────────────────────────────────────
+   Diversification — entrance + interaction polish
+   ───────────────────────────────────────────────────────── */
+
+/* Hero entrance — fades up once on first paint. */
+.cdn-pro .pro-hero {
+  animation: cdn-fade-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .pro-hero h1 { animation: cdn-fade-up 0.8s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cdn-pro .pro-hero .sub { animation: cdn-fade-up 0.8s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cdn-pro .pro-hero .right-meta { animation: cdn-fade-up 0.8s 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Card entrance — set --i on the wrapper to stagger neighbours. */
+.cdn-pro .cdn-anim {
+  animation: cdn-fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 110ms + 120ms);
+}
+
+@keyframes cdn-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Hover lift — gentle drop shadow + 1px translateY on interactive cards. */
+.cdn-pro .pcard {
+  transition:
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.cdn-pro .pcard.interactive:hover {
+  box-shadow: 0 2px 5px rgba(0,0,0,.045), 0 10px 26px rgba(0,0,0,.06);
+  transform: translateY(-1px);
+}
+
+/* ─── Donut card ─── */
+.cdn-pro .donut-card .donut-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.cdn-pro .donut-card .donut-svg-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.cdn-pro .donut-card .donut-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Mask sweep — reveals the entire donut clockwise from 12 o'clock. */
+.cdn-pro .donut-card .donut-reveal {
+  animation-name: cdn-donut-draw;
+  animation-timing-function: cubic-bezier(0.32, 0, 0.16, 1);
+  animation-fill-mode: both;
+}
+@keyframes cdn-donut-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* Slice visuals — entry is handled by the mask sweep above; here we only
+   define resting + hover state so slices are crisp + interactive. */
+.cdn-pro .donut-card .slice {
+  transform-box: view-box;
+  transform-origin: 65px 65px;
+  transition:
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+}
+.cdn-pro .donut-card .slice.is-hovered {
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.18));
+  transform: scale(1.045);
+}
+.cdn-pro .donut-card .slice.is-dim {
+  opacity: 0.22;
+  filter: saturate(0.6);
+}
+
+/* Centre label fades in after the donut sweep finishes, then cross-fades on hover. */
+.cdn-pro .donut-card .donut-center {
+  pointer-events: none;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: cdn-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--center-delay, 800ms);
+  transform-box: view-box;
+  transform-origin: 65px 65px;
+}
+.cdn-pro .donut-card .donut-center text {
+  transition: font-size 220ms ease, fill 220ms ease, letter-spacing 220ms ease;
+}
+.cdn-pro .donut-card .donut-center .cv {
+  font-size: 24px; font-weight: 600;
+  fill: #1d1d1f;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.cdn-pro .donut-card .donut-center.is-hovered .cv {
+  font-size: 20px;
+}
+.cdn-pro .donut-card .donut-center .cl {
+  font-size: 10.5px;
+  fill: #86868b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cdn-pro .donut-card .donut-center.is-hovered .cl {
+  fill: #1d1d1f;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Legend — staggered entry + hover-sync with slices. */
+.cdn-pro .donut-card .donut-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cdn-pro .donut-card .legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: 6px;
+  cursor: default;
+  animation: cdn-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    background 220ms ease,
+    opacity 220ms ease,
+    color 220ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .donut-card .legend-row .dot {
+  width: 8px; height: 8px; border-radius: 2px;
+  flex-shrink: 0;
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease;
+}
+.cdn-pro .donut-card .legend-row .label {
+  flex: 1;
+  color: #1d1d1f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+.cdn-pro .donut-card .legend-row .value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+  color: #1d1d1f;
+  transition: font-weight 200ms ease, color 200ms ease;
+}
+.cdn-pro .donut-card .legend-row.is-hovered {
+  background: rgba(0,0,0,0.04);
+  transform: translateX(1px);
+}
+.cdn-pro .donut-card .legend-row.is-hovered .dot {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+.cdn-pro .donut-card .legend-row.is-hovered .value { font-weight: 600; }
+.cdn-pro .donut-card .legend-row.is-dim { opacity: 0.42; }
+.cdn-pro .donut-card .legend-row.is-dim .label,
+.cdn-pro .donut-card .legend-row.is-dim .value { color: #86868b; }
+.cdn-pro .donut-card .legend-tail {
+  font-size: 10.5px;
+  color: #86868b;
+  margin-top: 4px;
+  padding-left: 6px;
+  animation: cdn-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: opacity 220ms ease;
+}
+.cdn-pro .donut-card .donut-row.is-dimming .legend-tail { opacity: 0.4; }
+
+/* ─── Sector detail table ─── */
+.cdn-pro .sector-detail-table tr.sector-row {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: opacity 220ms ease;
+}
+.cdn-pro .sector-detail-table tr.sector-row td {
+  transition: background 200ms ease, color 200ms ease;
+}
+/* Suppress the default global "tr:hover" rule so only React-driven hover wins. */
+.cdn-pro .sector-detail-table tr:hover td { background: transparent; }
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered td {
+  background: rgba(0,0,0,0.035);
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered td:first-child {
+  box-shadow: inset 2px 0 0 oklch(0.55 0.10 175);
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-dim { opacity: 0.5; }
+.cdn-pro .sector-detail-table tr.sector-row.is-dim td { color: #86868b; }
+.cdn-pro .sector-detail-table tr.sector-row.is-dim .row-dot { filter: saturate(0.4); }
+.cdn-pro .sector-detail-table tr.sector-row .row-dot {
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease,
+    filter 240ms ease;
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered .row-dot {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+}
+
+/* Bench bar — grows from centre, glows when its row is hovered. */
+.cdn-pro .bench-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+.cdn-pro .bench-track {
+  flex: 1;
+  position: relative;
+  height: 12px;
+  background: rgba(0,0,0,0.04);
+  border-radius: 6px;
+  overflow: visible;
+}
+.cdn-pro .bench-mid {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  background: rgba(0,0,0,0.15);
+}
+.cdn-pro .bench-fill {
+  position: absolute;
+  top: 2px; bottom: 2px;
+  border-radius: 4px;
+  transition: filter 240ms ease, box-shadow 240ms ease;
+}
+.cdn-pro .bench-fill.pos {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .bench-fill.neg {
+  transform-origin: right center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-bench-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered .bench-fill {
+  filter: brightness(1.06) saturate(1.15);
+  box-shadow: 0 1px 5px rgba(0,0,0,0.10);
+}
+.cdn-pro .bench-num {
+  font-size: 11px;
+  font-weight: 500;
+  min-width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered .bench-num {
+  transform: translateX(-1px) scale(1.04);
+}
+
+/* ─── Concentration metric bars ─── */
+.cdn-pro .concentration-card .metric-row {
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  transition: background 200ms ease;
+}
+.cdn-pro .concentration-card .metric-row:hover {
+  background: rgba(0,0,0,0.02);
+}
+.cdn-pro .concentration-card .metric-row .metric-value {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .concentration-card .metric-row:hover .metric-value {
+  transform: translateY(-1px);
+}
+.cdn-pro .concentration-card .pbar {
+  overflow: hidden;
+}
+.cdn-pro .concentration-card .pbar > i {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 200ms ease;
+}
+.cdn-pro .concentration-card .metric-row:hover .pbar > i {
+  filter: brightness(1.05) saturate(1.1);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Performance + Forecast — chart wipes, line draws, dot fades
+   ───────────────────────────────────────────────────────── */
+
+/* PerformanceChart — clipPath rect wipes left-to-right to reveal lines + area. */
+.cdn-pro .perf-clip-rect {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: cdn-clip-wipe 1.4s cubic-bezier(0.32, 0, 0.16, 1) both;
+}
+@keyframes cdn-clip-wipe {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Endpoint dots arrive once the line has reached its terminus. */
+.cdn-pro .perf-endpoints > div {
+  animation: cdn-dot-pop 0.45s 1.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-dot-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Range segment buttons — gentle press feedback. */
+.cdn-pro .seg button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ─── ForecastChart ─── */
+.cdn-pro .fc-bar {
+  transform-origin: bottom center;
+  animation: cdn-bar-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 220ms ease;
+  will-change: transform;
+}
+.cdn-pro .fc-value-label {
+  animation: cdn-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .fc-clip-rect {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: cdn-clip-wipe 1s 0.6s cubic-bezier(0.32, 0, 0.16, 1) both;
+}
+.cdn-pro .fc-dot {
+  animation: cdn-dot-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Performance + Forecast — table row stagger ─── */
+.cdn-pro .period-returns-card tbody tr,
+.cdn-pro .winners-card tbody tr,
+.cdn-pro .losers-card tbody tr,
+.cdn-pro .risk-card tbody tr,
+.cdn-pro .forecast-holdings-card tbody tr {
+  animation: cdn-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: background 220ms ease;
+}
+/* Up to 12 rows of stagger per table — beyond that we just reuse the last delay. */
+.cdn-pro .period-returns-card tbody tr:nth-child(1),
+.cdn-pro .winners-card tbody tr:nth-child(1),
+.cdn-pro .losers-card tbody tr:nth-child(1),
+.cdn-pro .risk-card tbody tr:nth-child(1) { animation-delay: 320ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(2),
+.cdn-pro .winners-card tbody tr:nth-child(2),
+.cdn-pro .losers-card tbody tr:nth-child(2),
+.cdn-pro .risk-card tbody tr:nth-child(2) { animation-delay: 370ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(3),
+.cdn-pro .winners-card tbody tr:nth-child(3),
+.cdn-pro .losers-card tbody tr:nth-child(3),
+.cdn-pro .risk-card tbody tr:nth-child(3) { animation-delay: 420ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(4),
+.cdn-pro .winners-card tbody tr:nth-child(4),
+.cdn-pro .losers-card tbody tr:nth-child(4),
+.cdn-pro .risk-card tbody tr:nth-child(4) { animation-delay: 470ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(5),
+.cdn-pro .winners-card tbody tr:nth-child(5),
+.cdn-pro .losers-card tbody tr:nth-child(5),
+.cdn-pro .risk-card tbody tr:nth-child(5) { animation-delay: 520ms; }
+.cdn-pro .winners-card tbody tr:nth-child(n+6),
+.cdn-pro .losers-card tbody tr:nth-child(n+6),
+.cdn-pro .risk-card tbody tr:nth-child(n+6) { animation-delay: 570ms; }
+.cdn-pro .risk-card tbody tr:nth-child(7) { animation-delay: 620ms; }
+.cdn-pro .risk-card tbody tr:nth-child(8) { animation-delay: 670ms; }
+.cdn-pro .risk-card tbody tr:nth-child(9) { animation-delay: 720ms; }
+.cdn-pro .risk-card tbody tr:nth-child(n+10) { animation-delay: 770ms; }
+
+/* Hover dim on the data tables — uses :has() for sibling fade. */
+.cdn-pro .period-returns-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .winners-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .losers-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .risk-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .forecast-holdings-table tbody:has(tr:hover) tr:not(:hover) {
+  opacity: 0.45;
+  transition: opacity 220ms ease;
+}
+.cdn-pro .period-returns-card tbody tr,
+.cdn-pro .winners-card tbody tr,
+.cdn-pro .losers-card tbody tr,
+.cdn-pro .risk-card tbody tr,
+.cdn-pro .forecast-holdings-table tbody tr {
+  transition: opacity 220ms ease, background 220ms ease;
+}
+
+/* Holding share bars (forecast table) grow like contributor bars. */
+.cdn-pro .holding-bar > i {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 200ms ease;
+}
+.cdn-pro .forecast-holdings-table tbody tr:hover .holding-bar > i {
+  filter: brightness(1.06) saturate(1.1);
+}
+
+/* Cashflow rows soft fade-in within their card. */
+.cdn-pro .cashflow-card > div > div {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .cashflow-card > div > div:nth-child(1) { animation-delay: 360ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(2) { animation-delay: 420ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(3) { animation-delay: 480ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(4) { animation-delay: 540ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(5) { animation-delay: 600ms; }
+
+/* Growth scenarios card — value pulses up on first paint. */
+.cdn-pro .growth-card .num {
+  animation: cdn-fade-up 0.7s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Reduced-motion: cancel all chart entrance animations + force clip to full. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .perf-clip-rect,
+  .cdn-pro .perf-endpoints > div,
+  .cdn-pro .fc-bar,
+  .cdn-pro .fc-value-label,
+  .cdn-pro .fc-clip-rect,
+  .cdn-pro .fc-dot,
+  .cdn-pro .period-returns-card tbody tr,
+  .cdn-pro .winners-card tbody tr,
+  .cdn-pro .losers-card tbody tr,
+  .cdn-pro .risk-card tbody tr,
+  .cdn-pro .forecast-holdings-card tbody tr,
+  .cdn-pro .holding-bar > i,
+  .cdn-pro .cashflow-card > div > div,
+  .cdn-pro .growth-card .num {
+    animation: none !important;
+  }
+  .cdn-pro .perf-clip-rect,
+  .cdn-pro .fc-clip-rect {
+    transform: scaleX(1) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Dashboard — entrance + interaction polish
+   ───────────────────────────────────────────────────────── */
+
+/* Hero stat tiles — cascade in inside the strip without the strip itself
+   doing anything extra (the parent .cdn-anim already fades up the row). */
+.cdn-pro .dash-stats .tile {
+  animation: cdn-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms + 200ms);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
+}
+.cdn-pro .dash-stats .tile:hover {
+  background: #fbfaf7;
+}
+.cdn-pro .dash-stats .tile .v {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .dash-stats .tile:hover .v { transform: translateY(-1px); }
+
+/* ─── Income rhythm chart ─── */
+.cdn-pro .irc-col { transition: opacity 220ms ease; }
+.cdn-pro .irc-col.is-dim { opacity: 0.4; }
+.cdn-pro .irc-col.is-hovered { opacity: 1; }
+
+.cdn-pro .irc-bar-stack {
+  transform-origin: bottom center;
+  animation: cdn-bar-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+.cdn-pro .irc-bar { transition: background 200ms ease; }
+
+/* Now line + label slide in once the bars are well underway. */
+.cdn-pro .irc-now-line,
+.cdn-pro .irc-now-label {
+  animation: cdn-fade-up 0.5s 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Range segmented control — buttons get a soft active flash. */
+.cdn-pro .seg button {
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms ease;
+}
+.cdn-pro .seg button.on {
+  transform: translateY(-0.5px);
+}
+
+/* ─── Top contributors ─── */
+.cdn-pro .contrib-row {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .contributors-card .contrib-row:hover {
+  transform: translateX(2px);
+}
+.cdn-pro .contrib-bar > i {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 200ms ease;
+}
+.cdn-pro .contrib-row:hover .contrib-bar > i {
+  filter: brightness(1.06) saturate(1.1);
+}
+
+/* ─── Coming up rows ─── */
+.cdn-pro .upcoming-row {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: background 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 6px;
+  margin: 0 -6px;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+.cdn-pro .upcoming-card .upcoming-row:hover {
+  background: rgba(0,0,0,0.025);
+  transform: translateX(1px);
+}
+
+/* ─── FIRE progress bar ─── */
+.cdn-pro .fire-fill {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1.1s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .fire-card:hover .fire-fill {
+  filter: brightness(1.05) saturate(1.08);
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .dash-stats .tile,
+  .cdn-pro .irc-bar-stack,
+  .cdn-pro .irc-now-line,
+  .cdn-pro .irc-now-label,
+  .cdn-pro .contrib-row,
+  .cdn-pro .contrib-bar > i,
+  .cdn-pro .upcoming-row,
+  .cdn-pro .fire-fill {
+    animation: none !important;
+  }
+  .cdn-pro .irc-col,
+  .cdn-pro .irc-bar,
+  .cdn-pro .dash-stats .tile {
+    transition-duration: 1ms !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .pro-hero,
+  .cdn-pro .pro-hero h1,
+  .cdn-pro .pro-hero .sub,
+  .cdn-pro .pro-hero .right-meta,
+  .cdn-pro .cdn-anim,
+  .cdn-pro .donut-card .legend-row,
+  .cdn-pro .donut-card .legend-tail,
+  .cdn-pro .donut-card .donut-center,
+  .cdn-pro .sector-detail-table tr.sector-row,
+  .cdn-pro .bench-fill.pos,
+  .cdn-pro .bench-fill.neg,
+  .cdn-pro .concentration-card .pbar > i {
+    animation: none !important;
+  }
+  /* Force the mask sweep to "done" so slices stay visible without motion. */
+  .cdn-pro .donut-card .donut-reveal {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .cdn-pro .pcard,
+  .cdn-pro .donut-card .slice,
+  .cdn-pro .donut-card .legend-row,
+  .cdn-pro .donut-card .donut-center text {
+    transition-duration: 1ms !important;
+  }
+}

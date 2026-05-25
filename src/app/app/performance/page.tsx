@@ -242,8 +242,8 @@ export default async function PerformanceScreen() {
         </div>
       </div>
 
-      <div className="hero-stats" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-        <div className="tile">
+      <div className="hero-stats dash-stats cdn-anim" style={{ gridTemplateColumns: 'repeat(6, 1fr)', ['--i' as never]: 0 }}>
+        <div className="tile" style={{ ['--i' as never]: 0 }}>
           <div className="l">YTD</div>
           <div className={'v sm ' + (ytdReturn >= 0 ? 'up' : 'down')}>
             {fmtPct(ytdReturn, 2)}
@@ -266,7 +266,7 @@ export default async function PerformanceScreen() {
             {!primaryBench && <>{new Date().getFullYear()}</>}
           </div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 1 }}>
           <div className="l">1 year</div>
           <div className={'v sm ' + (() => {
             const oneY = periods.find((p) => p.label === '1Y')?.portfolio ?? 0;
@@ -288,12 +288,12 @@ export default async function PerformanceScreen() {
             })()}
           </div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 2 }}>
           <div className="l">Sharpe (1y)</div>
           <div className="v sm">{sharpeRatio.toFixed(2)}</div>
           <div className="d">rf {RISK_FREE_PCT.toFixed(1)}%</div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 3 }}>
           <div className="l">Max drawdown</div>
           <div className="v sm down">{mdd.ddPct.toFixed(1)}%</div>
           <div className="d">
@@ -306,7 +306,7 @@ export default async function PerformanceScreen() {
             )}
           </div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 4 }}>
           <div className="l">Beta (1y)</div>
           <div className="v sm">{primaryBench ? portBeta.toFixed(2) : '—'}</div>
           <div className="d">
@@ -317,14 +317,14 @@ export default async function PerformanceScreen() {
             ) : 'no benchmark'}
           </div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 5 }}>
           <div className="l">Win rate</div>
           <div className="v sm">{winRate.ratePct.toFixed(0)}%</div>
           <div className="d">{winRate.winMonths} / {winRate.totalMonths} months</div>
         </div>
       </div>
 
-      <div className="pcard">
+      <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
         <div className="pcard-h">
           <div>
             <div className="t">Cumulative total return</div>
@@ -338,7 +338,7 @@ export default async function PerformanceScreen() {
 
       <div className="row-3" style={{ gridTemplateColumns: '0.9fr 1.1fr 1.1fr' }}>
         {/* Period returns */}
-        <div className="pcard flush" style={{ overflow: 'hidden' }}>
+        <div className="pcard flush cdn-anim interactive period-returns-card" style={{ overflow: 'hidden', ['--i' as never]: 2 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
             <div className="t">Period returns</div>
             {benchmarkLines.length > 0 && <span className="tag">vs benchmarks</span>}
@@ -384,7 +384,7 @@ export default async function PerformanceScreen() {
         </div>
 
         {/* Top winners */}
-        <div className="pcard flush" style={{ overflow: 'hidden' }}>
+        <div className="pcard flush cdn-anim interactive winners-card" style={{ overflow: 'hidden', ['--i' as never]: 3 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
             <div className="t">Top winners</div>
             <span className="tag">By € P/L</span>
@@ -424,7 +424,7 @@ export default async function PerformanceScreen() {
         </div>
 
         {/* Risk & ratios (rolling 1y) */}
-        <div className="pcard flush" style={{ overflow: 'hidden' }}>
+        <div className="pcard flush cdn-anim interactive risk-card" style={{ overflow: 'hidden', ['--i' as never]: 4 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
             <div className="t">Risk &amp; ratios</div>
             <span className="tag">rolling 1y</span>
@@ -468,7 +468,7 @@ export default async function PerformanceScreen() {
 
       {/* Losers — kept below the risk panel so detractor detail is still accessible */}
       {losers.length > 0 && (
-        <div className="pcard flush" style={{ overflow: 'hidden', marginTop: 14 }}>
+        <div className="pcard flush cdn-anim interactive losers-card" style={{ overflow: 'hidden', marginTop: 14, ['--i' as never]: 5 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
             <div className="t">Detractors</div>
             <span className="tag">P/L &lt; 0</span>

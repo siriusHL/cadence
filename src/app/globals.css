@@ -97,7 +97,11 @@ body {
 }
 
 .cdn-free .scroll {
-  flex: 1; min-height: 0; overflow: auto;
+  flex: 1; min-height: 0;
+  /* Lock the page to vertical scrolling — never let wide content open a
+     horizontal scrollbar. Children that need overflow can opt-in locally. */
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0 32px 24px;
   animation: cdn-fade-in 180ms ease-out both;
 }
@@ -192,7 +196,160 @@ body {
 .cdn-free .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .cdn-free .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 
+/* ─────────────────────────────────────────────────────────
+   Your Stocks — fluid card grid (vertical scroll only)
+   ─────────────────────────────────────────────────────────
+   auto-fill + minmax keeps cards a sensible width but lets
+   the grid reflow at any viewport — no horizontal scroll. */
+.cdn-free .stocks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  /* Grid items default to min-content for content sizing, which can push
+     wide text past the column — pin min-width: 0 on every child to make
+     them respect the column width and ellipsize instead. */
+  min-width: 0;
+}
+.cdn-free .stocks-grid > .card {
+  min-width: 0;
+  padding: 18px;
+  gap: 12px;
+  transition: box-shadow 200ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-free .stocks-grid > .card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 10px 24px rgba(0,0,0,.07);
+}
+/* Wide values ("/month" line, big numbers) shouldn't break out of the card. */
+.cdn-free .stocks-grid .stock-pay-line {
+  font-size: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cdn-free .stocks-grid .stock-pay-line .unit {
+  font-size: 12px;
+  color: #86868b;
+  font-weight: 400;
+}
+.cdn-free .stocks-grid .stock-name {
+  min-width: 0;
+  flex: 1;
+}
+.cdn-free .stocks-grid .stock-name .t {
+  font-size: 18px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cdn-free .stocks-grid .stock-name .n {
+  font-size: 11.5px; color: #86868b; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Bottom stat strip: keep cells from overflowing on narrow cards. */
+.cdn-free .stocks-grid .stock-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.05);
+  min-width: 0;
+}
+.cdn-free .stocks-grid .stock-stats > div { min-width: 0; }
+.cdn-free .stocks-grid .stock-stats .v {
+  font-size: 13px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cdn-free .stocks-grid .stock-stats .l {
+  font-size: 10.5px; color: #86868b;
+}
+
 .cdn-free .divider { height: 1px; background: rgba(0,0,0,0.06); margin: 16px 0; }
+
+/* ─────────────────────────────────────────────────────────
+   Your year — entrance + interaction polish
+   ───────────────────────────────────────────────────────── */
+
+/* Hero entrance — eyebrow first, then big number, then subtitle. */
+.cdn-free .hero .eyebrow { animation: cdn-rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cdn-free .hero .big {
+  animation: cdn-rise 0.85s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-free .hero .sub {
+  animation: cdn-rise 0.75s 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Chart card + stat cards — staggered fade-up via `--i`. */
+.cdn-free .yc-anim {
+  animation: cdn-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 100ms + 180ms);
+}
+
+/* Bar columns — dim siblings when one is hovered. */
+.cdn-free .yc-col { transition: opacity 220ms ease; }
+.cdn-free .yc-col.is-dim { opacity: 0.45; }
+.cdn-free .yc-col.is-hovered { opacity: 1; }
+
+/* Bar stack scales from the baseline. The inner segments keep their
+   proportions (since heights are relative to the stack), so the bar
+   grows up cleanly without the faded tip detaching from the solid
+   base mid-animation. */
+.cdn-free .yc-bar-stack {
+  transform-origin: bottom center;
+  animation: cdn-bar-grow 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+@keyframes cdn-bar-grow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+/* Bar colour transitions on hover (independent from grow). */
+.cdn-free .yc-bar {
+  transition: background 200ms ease;
+}
+
+/* Value label + month label fade in after the bar finishes growing. */
+.cdn-free .yc-value,
+.cdn-free .yc-label {
+  animation: cdn-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle lift on the chart card when hovering anywhere over it. */
+.cdn-free .card.year-card {
+  transition: box-shadow 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-free .card.year-card:hover {
+  box-shadow: 0 2px 5px rgba(0,0,0,.045), 0 12px 28px rgba(0,0,0,.06);
+}
+
+/* Tooltip glide-in. */
+.cdn-free .year-chart .yc-tooltip {
+  animation: cdn-tooltip-pop 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-tooltip-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes cdn-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Honour reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-free .hero .eyebrow,
+  .cdn-free .hero .big,
+  .cdn-free .hero .sub,
+  .cdn-free .yc-anim,
+  .cdn-free .yc-bar-stack,
+  .cdn-free .yc-value,
+  .cdn-free .yc-label,
+  .cdn-free .year-chart .yc-tooltip {
+    animation: none !important;
+  }
+  .cdn-free .yc-col,
+  .cdn-free .yc-bar,
+  .cdn-free .card.year-card {
+    transition-duration: 1ms !important;
+  }
+}
 
 /* ─────────────────────────────────────────────────────────
    Pro-tier (.cdn-pro) styles live in pro.css, imported from

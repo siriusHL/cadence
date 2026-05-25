@@ -112,23 +112,23 @@ export default async function DashboardScreen() {
       </div>
 
       {/* 4-tile stat strip (cash + safety from template omitted in v0) */}
-      <div className="hero-stats">
-        <div className="tile">
+      <div className="hero-stats dash-stats cdn-anim" style={{ ['--i' as never]: 0 }}>
+        <div className="tile" style={{ ['--i' as never]: 0 }}>
           <div className="l">Forward income</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}</div>
           <div className="d">over the next 12 months</div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 1 }}>
           <div className="l">Forward yield</div>
           <div className="v">{summary.forwardYieldPct.toFixed(2)}<span style={{ fontSize: 16, color: '#86868b', fontWeight: 400 }}>%</span></div>
           <div className="d">YoC <b style={{ color: '#1d1d1f' }}>{summary.yieldOnCostPct.toFixed(2)}%</b></div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 2 }}>
           <div className="l">YTD income</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.ytdReceived)}</div>
           <div className="d">received Jan {today.getFullYear()} → today</div>
         </div>
-        <div className="tile">
+        <div className="tile" style={{ ['--i' as never]: 3 }}>
           <div className="l">T12M income</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.t12mReceived)}</div>
           <div className="d">trailing 12 months</div>
@@ -136,7 +136,7 @@ export default async function DashboardScreen() {
       </div>
 
       {/* Income rhythm chart */}
-      <div className="pcard">
+      <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
         <div className="pcard-h">
           <div>
             <div className="t">Income rhythm</div>
@@ -151,24 +151,28 @@ export default async function DashboardScreen() {
       {/* 3-column row */}
       <div className="row-3" style={{ gridTemplateColumns: '1.2fr 1.1fr 1fr' }}>
         {/* Top contributors */}
-        <div className="pcard">
+        <div className="pcard cdn-anim interactive contributors-card" style={{ ['--i' as never]: 2 }}>
           <div className="pcard-h">
             <div className="t">Top income contributors</div>
             <span className="tag">Forward 12M</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {contributors.map((c) => {
+            {contributors.map((c, i) => {
               const widthPct = topContribMax > 0 ? (c.forwardAnnualLocal / topContribMax) * 100 : 0;
               return (
-                <div key={c.ticker} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  key={c.ticker}
+                  className="contrib-row"
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, animationDelay: `${360 + i * 70}ms` }}
+                >
                   <TickerLogo ticker={c.ticker} size={30} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {c.ticker}
                       {c.name && <span style={{ color: '#86868b', fontWeight: 400, fontSize: 11.5 }}> · {c.name}</span>}
                     </div>
-                    <div className="pbar" style={{ marginTop: 5 }}>
-                      <i style={{ width: `${widthPct}%` }} />
+                    <div className="pbar contrib-bar" style={{ marginTop: 5 }}>
+                      <i style={{ width: `${widthPct}%`, animationDelay: `${420 + i * 70}ms` }} />
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }} className="num">
@@ -184,7 +188,7 @@ export default async function DashboardScreen() {
         </div>
 
         {/* Coming up */}
-        <div className="pcard">
+        <div className="pcard cdn-anim interactive upcoming-card" style={{ ['--i' as never]: 3 }}>
           <div className="pcard-h">
             <div className="t">Coming up · next 5</div>
             <span className="tag">{next5.length === 0 ? '—' : `next ${next5[next5.length - 1]?.daysUntil ?? 0}d`}</span>
@@ -198,10 +202,15 @@ export default async function DashboardScreen() {
               {next5.map((e, i) => {
                 const d = new Date(e.exDate);
                 return (
-                  <div key={`${e.ticker}-${i}`} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0',
-                    borderBottom: i < next5.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
-                  }}>
+                  <div
+                    key={`${e.ticker}-${i}`}
+                    className="upcoming-row"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0',
+                      borderBottom: i < next5.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
+                      animationDelay: `${420 + i * 70}ms`,
+                    }}
+                  >
                     <div style={{ width: 44, textAlign: 'center' }}>
                       <div className="num" style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em' }}>
                         {String(d.getDate()).padStart(2, '0')}
@@ -232,7 +241,7 @@ export default async function DashboardScreen() {
         </div>
 
         {/* FIRE progress */}
-        <div className="pcard">
+        <div className="pcard cdn-anim interactive fire-card" style={{ ['--i' as never]: 4 }}>
           <div className="pcard-h">
             <div className="t">FIRE progress</div>
             <span className="tag">€{(fireTarget / 1000).toFixed(0)}k / yr target</span>
@@ -246,11 +255,17 @@ export default async function DashboardScreen() {
             {yearsToFire > 0 && <> · est. <b style={{ color: '#1d1d1f' }}>~{yearsToFire} years</b> at {(growth * 100).toFixed(0)}% growth</>}
           </div>
 
-          <div style={{
-            position: 'relative', height: 8, background: 'rgba(0,0,0,0.06)', borderRadius: 4,
-            overflow: 'hidden', marginTop: 16,
-          }}>
-            <div style={{ position: 'absolute', inset: 0, width: `${firePct}%`, background: 'oklch(0.55 0.10 175)', borderRadius: 4 }} />
+          <div
+            className="fire-track"
+            style={{
+              position: 'relative', height: 8, background: 'rgba(0,0,0,0.06)', borderRadius: 4,
+              overflow: 'hidden', marginTop: 16,
+            }}
+          >
+            <div
+              className="fire-fill"
+              style={{ position: 'absolute', inset: 0, width: `${firePct}%`, background: 'oklch(0.55 0.10 175)', borderRadius: 4 }}
+            />
             {[0.25, 0.5, 0.75].map((p, i) => (
               <div key={i} style={{ position: 'absolute', top: -2, bottom: -2, left: `${p * 100}%`, width: 1, background: '#fff' }} />
             ))}

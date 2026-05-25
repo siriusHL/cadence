@@ -81,7 +81,10 @@ export default async function YearScreen() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: '18px 22px' }}>
+      <div
+        className="card year-card yc-anim"
+        style={{ padding: '18px 22px', ['--i' as never]: 0 }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.015em' }}>Income by month</div>
@@ -98,7 +101,7 @@ export default async function YearScreen() {
       </div>
 
       <div className="grid-3" style={{ marginTop: 12 }}>
-        <div className="card">
+        <div className="card yc-anim" style={{ ['--i' as never]: 1 }}>
           <div className="label">Expected by year-end</div>
           <div className="v">
             <span className="cur">€</span>
@@ -110,7 +113,7 @@ export default async function YearScreen() {
               : `€${Math.round(expectedRemaining)} expected from your ${activeCount} holding${activeCount === 1 ? '' : 's'}`}
           </div>
         </div>
-        <div className="card">
+        <div className="card yc-anim" style={{ ['--i' as never]: 2 }}>
           <div className="label">Biggest paying month</div>
           <div className="v sm">
             {biggestMonth >= 0 ? MONTH_NAMES[biggestMonth] : '—'}
@@ -119,7 +122,7 @@ export default async function YearScreen() {
             {biggestValue > 0 ? `~€${Math.round(biggestValue)} expected` : 'No data yet'}
           </div>
         </div>
-        <div className="card">
+        <div className="card yc-anim" style={{ ['--i' as never]: 3 }}>
           <div className="label">A fun way to think about it</div>
           <div className="v sm">
             {fullYearEstimate / 365 >= 3 ? 'Coffee a day, on us' : 'A daily snack, on autopilot'}
@@ -131,7 +134,7 @@ export default async function YearScreen() {
       </div>
 
       {tier === 'free' && (
-        <div style={{ marginTop: 14 }}>
+        <div className="yc-anim" style={{ marginTop: 14, ['--i' as never]: 4 }}>
           <div className="upsell">
             <div className="icon">✦</div>
             <div className="body">
