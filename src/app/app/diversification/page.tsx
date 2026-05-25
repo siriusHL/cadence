@@ -1,5 +1,6 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { getPrimaryPortfolio, getHoldingsView } from '@/lib/portfolio';
+import { getActivePortfolio } from '@/lib/activePortfolio';
+import { getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { DonutCard } from '@/components/DonutCard';
@@ -55,7 +56,7 @@ const CCY_COLORS = [
 export default async function DiversificationScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const portfolio = await getPrimaryPortfolio(supabase, user!.id);
+  const portfolio = await getActivePortfolio(supabase, user!.id);
 
   if (!portfolio) {
     return (

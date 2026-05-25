@@ -5,6 +5,8 @@ import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
 import { NavTabs } from '@/components/NavTabs';
 import { DialogProvider } from '@/components/DialogProvider';
 import { UserMenu } from '@/components/UserMenu';
+import { PortfolioSwitcher } from '@/components/PortfolioSwitcher';
+import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 
 interface NavTab { label: string; href: string; screen: Screen; }
 
@@ -45,6 +47,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     canAccessScreen(tier, t.screen),
   );
 
+  const [portfolios, active] = await Promise.all([
+    listOwnedPortfolios(supabase, user.id),
+    getActivePortfolio(supabase, user.id),
+  ]);
+
   const initials =
     (user.email ?? '??').slice(0, 2).toUpperCase();
   const planLabel = tier === 'free' ? 'Plan · Free' : tier === 'premium' ? '✦ Premium' : '✦ Elite';
@@ -58,6 +65,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
           <NavTabs tabs={tabs.map((t) => ({ label: t.label, href: t.href }))} />
           <div className="right">
+            {portfolios.length > 0 && (
+              <PortfolioSwitcher
+                items={portfolios.map((p) => ({ id: p.id, name: p.name }))}
+                activeId={active?.id ?? null}
+              />
+            )}
             {tier === 'free' && (
               <Link href="/upgrade" className="plan pro" style={{ textDecoration: 'none' }}>
                 Upgrade

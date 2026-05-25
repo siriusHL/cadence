@@ -4,6 +4,7 @@ import { withAuth, json } from '@/lib/auth';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 
 const Lot = z.object({
   quantity:    z.coerce.number().positive(),
@@ -34,20 +35,14 @@ export const POST = withAuth({}, async ({ userId, req }) => {
 
   const supabase = await getSupabaseServer();
 
-  // 1) Find or create the user's primary portfolio.
-  let { data: portfolio } = await supabase
-    .from('portfolios')
-    .select('id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  // 1) Resolve the active portfolio (cookie-selected or oldest-owned).
+  let portfolio = await getActivePortfolio(supabase, userId);
 
   if (!portfolio) {
     const created = await supabase
       .from('portfolios')
       .insert({ user_id: userId, name: 'My portfolio' })
-      .select('id')
+      .select('id, name, created_at')
       .single();
     if (created.error) {
       return rlsOrError(created.error, 'portfolio_cap_reached');

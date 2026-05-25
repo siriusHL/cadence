@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache';
 import { withAuth, json } from '@/lib/auth';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 
 /**
  * GET /api/holdings/:ticker
@@ -10,14 +11,7 @@ export const GET = withAuth<{ ticker: string }>({}, async ({ userId, params }) =
   const ticker = params.ticker.toUpperCase();
   const supabase = await getSupabaseServer();
 
-  // Scope to user's primary portfolio (multi-portfolio support is a P1 task).
-  const { data: portfolio } = await supabase
-    .from('portfolios')
-    .select('id, name')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const portfolio = await getActivePortfolio(supabase, userId);
   if (!portfolio) return json({ error: 'no_portfolio' }, 404);
 
   const [holdingRes, txRes, instRes] = await Promise.all([
@@ -58,13 +52,7 @@ export const DELETE = withAuth<{ ticker: string }>({}, async ({ userId, params }
   const ticker = params.ticker.toUpperCase();
   const supabase = await getSupabaseServer();
 
-  const { data: portfolio } = await supabase
-    .from('portfolios')
-    .select('id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const portfolio = await getActivePortfolio(supabase, userId);
   if (!portfolio) return json({ error: 'no_portfolio' }, 404);
 
   // Delete transactions first so the cascade is explicit and visible — there

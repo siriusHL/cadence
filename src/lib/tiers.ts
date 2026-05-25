@@ -16,7 +16,7 @@ export type Feature =
 export type Screen =
   | 'home' | 'next' | 'stocks' | 'year'
   | 'add'                                       // action — available to all tiers, RLS-capped
-  | 'profile' | 'settings'                      // account pages — accessible to every tier
+  | 'profile' | 'settings' | 'portfolios'       // account pages — accessible to every tier
   | 'dashboard' | 'holdings' | 'stock'
   | 'calendar' | 'forecast' | 'drip'
   | 'performance' | 'diversification'
@@ -43,7 +43,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     dividendFreshnessHours: 168,
     fundamentalsFreshnessHours: 168,
     fxFreshnessMin: 60,
-    screens: ['home', 'next', 'stocks', 'year', 'add', 'profile', 'settings'],
+    screens: ['home', 'next', 'stocks', 'year', 'add', 'profile', 'settings', 'portfolios'],
     features: {
       multiCurrency: false, drip: false, calendar: false, forecast: false,
       performance: false, diversification: false, taxReport: false,
@@ -59,7 +59,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     fundamentalsFreshnessHours: 168,
     fxFreshnessMin: 15,
     screens: [
-      'home', 'next', 'stocks', 'year', 'add', 'profile', 'settings',
+      'home', 'next', 'stocks', 'year', 'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
       'calendar', 'forecast', 'drip',
       'performance', 'diversification',

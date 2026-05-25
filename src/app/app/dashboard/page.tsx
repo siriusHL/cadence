@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import {
-  getPrimaryPortfolio,
+  
   getHoldingsView,
   getPortfolioSummary,
   getIncomeRhythm,
@@ -22,7 +23,7 @@ function fmt(n: number, digits = 0): string {
 export default async function DashboardScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
-  const portfolio = await getPrimaryPortfolio(supabase, user!.id);
+  const portfolio = await getActivePortfolio(supabase, user!.id);
 
   if (!portfolio) {
     return (
