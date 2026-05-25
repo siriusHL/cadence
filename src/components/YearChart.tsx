@@ -20,7 +20,7 @@ export function YearChart({ months, currentMonth }: Props) {
   const maxBar = Math.max(...months.map((m) => Math.max(m.received, m.expected)), 1) * 1.2;
 
   return (
-    <div style={{ position: 'relative' }} className="cdn-chart-wrap">
+    <div style={{ position: 'relative' }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 180, padding: '0 8px' }}>
         {months.map((m, i) => {
           const received = m.received;
@@ -31,93 +31,61 @@ export function YearChart({ months, currentMonth }: Props) {
           const fadedPortion = Math.max(0, totalH - solidPortion);
           const isFutureMonth = i > currentMonth;
           const isHovered = hover === i;
-          const isDimmed = hover !== null && !isHovered;
 
           return (
-            /* Outer: staggered entry animation — no opacity/transform conflict with hover */
             <div
               key={i}
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))}
               style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                height: '100%',
-                animation: `cdn-bar-enter 420ms cubic-bezier(0.25, 0.46, 0.45, 0.94) ${i * 28}ms both`,
+                flex: 1, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: 8, height: '100%',
+                cursor: m.byTicker.length > 0 ? 'pointer' : 'default',
               }}
             >
-              {/* Inner: hover dimming — separate element to avoid animation conflict */}
-              <div
-                onMouseEnter={() => setHover(i)}
-                onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 8,
-                  height: '100%',
-                  width: '100%',
-                  cursor: m.byTicker.length > 0 ? 'pointer' : 'default',
-                  opacity: isDimmed ? 0.38 : 1,
-                  transition: 'opacity 220ms ease',
-                }}
-              >
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', width: '100%' }}>
-                  {received > 0 && (
-                    <div className="num" style={{
-                      fontSize: 12, fontWeight: 500, textAlign: 'center', marginBottom: 6,
-                      color: isHovered ? '#1d1d1f' : 'rgba(29,29,31,0.7)',
-                      transition: 'color 200ms ease',
-                    }}>
-                      €{Math.round(received)}
-                    </div>
-                  )}
-                  {received === 0 && expected > 0 && (
-                    <div className="num" style={{
-                      fontSize: 11, color: '#86868b', fontWeight: 400,
-                      textAlign: 'center', marginBottom: 6,
-                    }}>
-                      €{Math.round(expected)}
-                    </div>
-                  )}
-
-                  {/* Bar segments — scale + glow on hover */}
-                  <div style={{
-                    transform: isHovered ? 'scaleX(1.09)' : 'scaleX(1)',
-                    transition: 'transform 260ms cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    transformOrigin: 'bottom center',
+              <div style={{
+                flex: 1, display: 'flex', flexDirection: 'column',
+                justifyContent: 'flex-end', width: '100%',
+              }}>
+                {received > 0 && (
+                  <div className="num" style={{
+                    fontSize: 12, color: '#1d1d1f', fontWeight: 500,
+                    textAlign: 'center', marginBottom: 6,
                   }}>
-                    <div style={{
-                      height: `${fadedPortion}%`,
-                      background: isHovered
-                        ? 'oklch(0.55 0.10 175 / 0.44)'
-                        : 'oklch(0.55 0.10 175 / 0.22)',
-                      borderRadius: '6px 6px 0 0',
-                      transition: 'background 220ms ease, box-shadow 220ms ease',
-                      boxShadow: isHovered
-                        ? '0 -2px 10px oklch(0.55 0.10 175 / 0.30)'
-                        : 'none',
-                    }} />
-                    <div style={{
-                      height: `${solidPortion}%`,
-                      background: isHovered ? 'oklch(0.47 0.13 175)' : 'oklch(0.55 0.10 175)',
-                      borderRadius: fadedPortion > 0 ? '0' : '6px 6px 0 0',
-                      transition: 'background 220ms ease, box-shadow 220ms ease',
-                      boxShadow: isHovered
-                        ? '0 -6px 18px oklch(0.55 0.10 175 / 0.44), 0 0 0 1px oklch(0.55 0.10 175 / 0.16)'
-                        : 'none',
-                    }} />
+                    €{Math.round(received)}
                   </div>
-                </div>
-
+                )}
+                {received === 0 && expected > 0 && (
+                  <div className="num" style={{
+                    fontSize: 11, color: '#86868b', fontWeight: 400,
+                    textAlign: 'center', marginBottom: 6,
+                  }}>
+                    €{Math.round(expected)}
+                  </div>
+                )}
                 <div style={{
-                  fontSize: 12,
-                  color: isFutureMonth ? '#86868b' : (received > 0 ? '#1d1d1f' : '#6e6e73'),
-                  fontWeight: received > 0 || i === currentMonth ? 500 : 400,
-                }}>
-                  {MONTH_NAMES[i]}
-                </div>
+                  height: `${fadedPortion}%`,
+                  // Tinted version of the accent — same hue, low alpha
+                  background: isHovered
+                    ? 'oklch(0.55 0.10 175 / 0.35)'
+                    : 'oklch(0.55 0.10 175 / 0.22)',
+                  borderRadius: '6px 6px 0 0',
+                  transition: 'background 120ms',
+                }} />
+                <div style={{
+                  height: `${solidPortion}%`,
+                  background: isHovered ? 'oklch(0.48 0.12 175)' : 'oklch(0.55 0.10 175)',
+                  // Top corners only get rounded when there's no faded tip stacked above.
+                  borderRadius: fadedPortion > 0 ? '0' : '6px 6px 0 0',
+                  transition: 'background 120ms',
+                }} />
+              </div>
+              <div style={{
+                fontSize: 12,
+                color: isFutureMonth ? '#86868b' : (received > 0 ? '#1d1d1f' : '#6e6e73'),
+                fontWeight: received > 0 || i === currentMonth ? 500 : 400,
+              }}>
+                {MONTH_NAMES[i]}
               </div>
             </div>
           );
@@ -133,38 +101,50 @@ export function YearChart({ months, currentMonth }: Props) {
 
 function Tooltip({ month, monthIndex }: { month: MonthOverview; monthIndex: number }) {
   const total = month.received + month.expected;
+  // Position the tooltip above the column. 12 columns → each column is ~8.33% wide.
+  // Center on the column with a max-width clamp so it doesn't overflow.
   const leftPct = (monthIndex + 0.5) * (100 / 12);
   return (
     <div
-      className="cdn-tip"
       style={{
+        position: 'absolute',
         left: `${leftPct}%`,
-        bottom: 'calc(100% + 12px)',
+        bottom: 'calc(100% + 8px)',
         transform: 'translateX(-50%)',
+        background: '#1d1d1f',
+        color: '#fff',
+        padding: '10px 14px',
+        borderRadius: 12,
+        minWidth: 220,
+        maxWidth: 280,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+        fontSize: 12,
+        zIndex: 10,
+        pointerEvents: 'none',
       }}
     >
-      <div className="cdn-tip-header">
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.1)',
+      }}>
         <span style={{ fontWeight: 600, fontSize: 13 }}>{MONTH_NAMES[monthIndex]}</span>
         <span className="num" style={{ fontWeight: 600 }}>
           €{total.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {month.byTicker.map((line) => {
           const amt = line.received + line.expected;
           const isExpected = line.expected > 0 && line.received === 0;
           return (
-            <div key={line.ticker} className="cdn-tip-row">
-              <span style={{
-                color: 'rgba(255,255,255,0.82)',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
+            <div key={line.ticker} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <b style={{ color: '#fff' }}>{line.ticker}</b>
-                {line.name && <span style={{ color: 'rgba(255,255,255,0.46)' }}> · {line.name}</span>}
+                {line.name && <span style={{ color: 'rgba(255,255,255,0.55)' }}> · {line.name}</span>}
               </span>
-              <span className="num" style={{ flexShrink: 0, color: isExpected ? 'rgba(255,255,255,0.58)' : '#fff' }}>
+              <span className="num" style={{ flexShrink: 0, color: isExpected ? 'rgba(255,255,255,0.65)' : '#fff' }}>
                 €{fmt(amt, 2)}
-                {isExpected && <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.6 }}>est.</span>}
+                {isExpected && <span style={{ fontSize: 10, marginLeft: 4, opacity: 0.7 }}>est.</span>}
               </span>
             </div>
           );
