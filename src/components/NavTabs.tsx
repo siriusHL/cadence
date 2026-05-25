@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { AlertsBadge } from '@/components/AlertsBadge';
 
 export interface NavTab {
   label: string;
@@ -19,14 +20,20 @@ export function NavTabs({ tabs }: Props) {
     <nav className="cdn-tabs">
       {tabs.map((t) => {
         const active = isActive(pathname, t.href);
+        const isAlerts = t.href === '/app/alerts';
         return (
           <Link
             key={t.href}
             href={t.href}
-            className={'cdn-tab' + (active ? ' is-active' : '')}
+            className={
+              'cdn-tab'
+              + (active ? ' is-active' : '')
+              + (isAlerts ? ' has-badge' : '')
+            }
             aria-current={active ? 'page' : undefined}
           >
-            {t.label}
+            <span className="label">{t.label}</span>
+            {isAlerts && <AlertsBadge />}
           </Link>
         );
       })}
