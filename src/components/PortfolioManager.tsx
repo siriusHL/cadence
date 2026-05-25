@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from './DialogProvider';
+import { useConfirm, useToast } from './DialogProvider';
 import type { Tier } from '@/lib/tiers';
 
 interface PortfolioRow {
@@ -22,9 +22,12 @@ interface Props {
 export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
   const router = useRouter();
   const toast = useToast();
+  const confirm = useConfirm();
   const [pending, start] = useTransition();
   const [newName, setNewName] = useState('');
   const [expandedShareId, setExpandedShareId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
 
   const ownedCount = portfolios.filter((p) => p.owned).length;
   const atCap = ownedCount >= cap;
@@ -71,26 +74,46 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
     });
   }
 
-  function rename(id: string, current: string) {
-    const name = window.prompt('Rename portfolio', current);
-    if (!name || name === current) return;
+  function beginRename(id: string, current: string) {
+    setEditingId(id);
+    setEditingName(current);
+  }
+
+  function cancelRename() {
+    setEditingId(null);
+    setEditingName('');
+  }
+
+  function commitRename(id: string, current: string) {
+    const next = editingName.trim();
+    if (!next || next === current) {
+      cancelRename();
+      return;
+    }
     start(async () => {
       const res = await fetch(`/api/portfolios/${id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ name: next }),
       });
       if (!res.ok) {
         toast('Could not rename.', 'error');
         return;
       }
       toast('Renamed.');
+      cancelRename();
       router.refresh();
     });
   }
 
-  function remove(id: string, name: string) {
-    if (!window.confirm(`Delete "${name}"? Holdings and transactions inside it will also be deleted.`)) return;
+  async function remove(id: string, name: string) {
+    const ok = await confirm({
+      title: `Delete "${name}"?`,
+      body: 'Holdings and transactions inside it will also be deleted. This can’t be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     start(async () => {
       const res = await fetch(`/api/portfolios/${id}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -135,37 +158,81 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
                   aria-label={`Set ${p.name} active`}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, color: '#1d1d1f' }}>
-                    {p.name}
-                    {p.id === activeId && (
-                      <span style={{ marginLeft: 8, fontSize: 11, color: '#0070f3' }}>active</span>
-                    )}
-                    {!p.owned && (
-                      <span style={{ marginLeft: 8, fontSize: 11, color: '#6e6e73' }}>shared with you</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#86868b' }}>
-                    Created {new Date(p.created_at).toLocaleDateString('en', { month: 'short', day: '2-digit', year: 'numeric' })}
-                  </div>
+                  {editingId === p.id ? (
+                    <input
+                      type="text"
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitRename(p.id, p.name);
+                        if (e.key === 'Escape') cancelRename();
+                      }}
+                      autoFocus
+                      maxLength={80}
+                      disabled={pending}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px',
+                        border: '1px solid #d2d2d7',
+                        borderRadius: 6,
+                        fontSize: 14,
+                        fontWeight: 500,
+                        color: '#1d1d1f',
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <div style={{ fontWeight: 500, color: '#1d1d1f' }}>
+                        {p.name}
+                        {p.id === activeId && (
+                          <span style={{ marginLeft: 8, fontSize: 11, color: '#0070f3' }}>active</span>
+                        )}
+                        {!p.owned && (
+                          <span style={{ marginLeft: 8, fontSize: 11, color: '#6e6e73' }}>shared with you</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#86868b' }}>
+                        Created {new Date(p.created_at).toLocaleDateString('en', { month: 'short', day: '2-digit', year: 'numeric' })}
+                      </div>
+                    </>
+                  )}
                 </div>
                 {p.owned && (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {tier === 'elite' && (
-                      <button
-                        type="button"
-                        onClick={() => setExpandedShareId(expandedShareId === p.id ? null : p.id)}
-                        style={btnGhost}
-                        disabled={pending}
-                      >
-                        Share
-                      </button>
+                    {editingId === p.id ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => commitRename(p.id, p.name)}
+                          style={btnPrimary}
+                          disabled={pending || !editingName.trim()}
+                        >
+                          Save
+                        </button>
+                        <button type="button" onClick={cancelRename} style={btnGhost} disabled={pending}>
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {tier === 'elite' && (
+                          <button
+                            type="button"
+                            onClick={() => setExpandedShareId(expandedShareId === p.id ? null : p.id)}
+                            style={btnGhost}
+                            disabled={pending}
+                          >
+                            Share
+                          </button>
+                        )}
+                        <button type="button" onClick={() => beginRename(p.id, p.name)} style={btnGhost} disabled={pending}>
+                          Rename
+                        </button>
+                        <button type="button" onClick={() => remove(p.id, p.name)} style={btnDanger} disabled={pending}>
+                          Delete
+                        </button>
+                      </>
                     )}
-                    <button type="button" onClick={() => rename(p.id, p.name)} style={btnGhost} disabled={pending}>
-                      Rename
-                    </button>
-                    <button type="button" onClick={() => remove(p.id, p.name)} style={btnDanger} disabled={pending}>
-                      Delete
-                    </button>
                   </div>
                 )}
               </div>
