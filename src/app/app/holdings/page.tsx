@@ -4,6 +4,7 @@ import { getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { HoldingsTable, type HoldingRow } from '@/components/HoldingsTable';
+import { AddHoldingTrigger } from '@/components/AddHoldingTrigger';
 
 interface InstrumentMeta {
   ticker: string;
@@ -34,13 +35,22 @@ export default async function HoldingsScreen() {
   const holdings = (await getHoldingsView(supabase, portfolio.id)).filter((h) => h.quantity > 0);
   if (holdings.length === 0) {
     return (
-      <EmptyState
-        icon="📋"
-        title="No active holdings"
-        body="Once you have buy transactions logged, they'll all appear here in a dense, sortable table."
-        ctaLabel="Add a holding"
-        ctaHref="/app/add"
-      />
+      <div className="cdn-pro">
+        <div className="pro-hero">
+          <div>
+            <div className="eyebrow">Your positions</div>
+            <h1>
+              No active holdings <span className="light">yet</span>
+            </h1>
+            <div className="sub">
+              Add your first buy transaction and it&rsquo;ll appear here in a dense, sortable table.
+            </div>
+          </div>
+          <div className="right-meta" style={{ alignItems: 'flex-end', gap: 10 }}>
+            <AddHoldingTrigger />
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -119,9 +129,12 @@ export default async function HoldingsScreen() {
             {cadenceParts.length > 0 && <> · {cadenceParts.join(', ')} payer{cadenceParts.length === 1 ? '' : 's'}</>}.
           </div>
         </div>
-        <div className="right-meta">
-          <span className="live">Live prices · synced just now</span>
-          <span>{rows.length} positions</span>
+        <div className="right-meta" style={{ alignItems: 'flex-end', gap: 10 }}>
+          <AddHoldingTrigger />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span className="live">Live prices · synced just now</span>
+            <span>{rows.length} positions</span>
+          </div>
         </div>
       </div>
 
