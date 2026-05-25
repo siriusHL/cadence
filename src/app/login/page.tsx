@@ -8,7 +8,7 @@ import { supabaseBrowser } from '@/lib/supabase/browser';
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') ?? '/app/home';
+  const next = params.get('next') ?? '/app';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
