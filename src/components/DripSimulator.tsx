@@ -174,37 +174,6 @@ export function DripSimulator({ baseValue, baseIncome, baseCost }: Props) {
         </div>
       </div>
 
-      <style>{`
-        .cdn-pro .drip-slider {
-          -webkit-appearance: none; appearance: none;
-          height: 4px; background: var(--border-strong); outline: none;
-          border-radius: 2px; margin: 8px 0 6px; width: 100%;
-        }
-        .cdn-pro .drip-slider::-webkit-slider-thumb {
-          -webkit-appearance: none; appearance: none;
-          width: 16px; height: 16px;
-          background: var(--surface);
-          border: 1px solid var(--border-strong);
-          box-shadow: var(--shadow-card);
-          border-radius: 50%; cursor: pointer;
-        }
-        .cdn-pro .drip-slider::-moz-range-thumb {
-          width: 16px; height: 16px;
-          background: var(--surface);
-          border: 1px solid var(--border-strong);
-          box-shadow: var(--shadow-card);
-          border-radius: 50%; cursor: pointer;
-        }
-        .cdn-pro .pbar {
-          position: relative; height: 6px;
-          background: var(--surface-2);
-          border-radius: 3px; overflow: hidden;
-        }
-        .cdn-pro .pbar i {
-          display: block; height: 100%;
-          transition: width 220ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-      `}</style>
     </div>
   );
 }
@@ -221,6 +190,7 @@ interface SliderProps {
 }
 
 function Slider({ label, display, value, min, max, step, onChange, hint }: SliderProps) {
+  const progress = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return (
     <div className="pcard" style={{ padding: '12px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
@@ -235,6 +205,7 @@ function Slider({ label, display, value, min, max, step, onChange, hint }: Slide
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
+        style={{ ['--progress' as string]: `${progress}%` }}
       />
       <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>{hint}</div>
     </div>
