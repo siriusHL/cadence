@@ -2,8 +2,9 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { getPrimaryPortfolio, getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import {
-  getTaxSummary, DEFAULT_RESIDENCE, COUNTRY_NAMES,
-  type TaxResidence,
+  getTaxSummary, computeDomesticTax,
+  DEFAULT_RESIDENCE, COUNTRY_NAMES,
+  type TaxResidence, type DomesticTaxBreakdown, type ResidenceModel,
 } from '@/lib/tax';
 import { EmptyState } from '@/components/EmptyState';
 
@@ -56,6 +57,19 @@ export default async function TaxScreen() {
   const fiscalYear = new Date().getFullYear();
   const summary = await getTaxSummary(supabase, portfolio.id, fiscalYear, residence);
 
+  // Domestic tax: residence-side layer (final tax minus foreign credit).
+  // NL Box 3 needs the user's portfolio value at 1 Jan — for v0 we approximate
+  // with the current total holdings value as a rough proxy.
+  const approxPortfolioValueEur = held.reduce(
+    (s, h) => s + (h.price ?? 0) * h.quantity,
+    0,
+  );
+  const domestic = computeDomesticTax(summary, {
+    portfolioValueJan1: approxPortfolioValueEur,
+  });
+
+  const finalNetEur = summary.totalNetEur - domestic.finalEur;
+
   // Reclaim card recipients — countries where we're over-withheld.
   const reclaimable = summary.rows
     .filter((r) => r.reclaimableEur > 0.01)
@@ -76,21 +90,19 @@ export default async function TaxScreen() {
             )}
           </div>
           <h1>
-            <span style={{ color: 'oklch(0.36 0.08 165)' }}>€{fmtMoney(summary.totalNetEur, 0)}</span>{' '}
-            <span className="light">net dividend income</span>
+            <span style={{ color: 'oklch(0.36 0.08 165)' }}>€{fmtMoney(finalNetEur, 0)}</span>{' '}
+            <span className="light">net after all taxes</span>
           </h1>
           <div className="sub">
             {hasAnyData ? (
               <>
-                Across <b>{summary.rows.length}</b> jurisdiction{summary.rows.length === 1 ? '' : 's'}.{' '}
-                €<b>{fmtMoney(summary.totalWithheldEur)}</b> withheld at source
-                {summary.totalGrossEur > 0 && (
-                  <> ({fmtPct(summary.effectiveRatePct)} effective rate)</>
+                Gross <b>€{fmtMoney(summary.totalGrossEur)}</b> →{' '}
+                <b style={{ color: 'oklch(0.50 0.16 25)' }}>−€{fmtMoney(summary.totalWithheldEur)}</b> foreign WTH
+                {domestic.finalEur > 0.5 && (
+                  <> → <b style={{ color: 'oklch(0.50 0.16 25)' }}>−€{fmtMoney(domestic.finalEur)}</b> {residenceName} tax</>
                 )}
-                {summary.totalReclaimableEur > 1 && (
-                  <>, of which <b style={{ color: 'oklch(0.55 0.10 75)' }}>€{fmtMoney(summary.totalReclaimableEur)}</b> is reclaimable under treaty.</>
-                )}
-                {summary.totalReclaimableEur < 1 && hasAnyData && <>.</>}
+                . Overall effective rate{' '}
+                <b>{fmtPct(domestic.effectiveTotalPct || summary.effectiveRatePct)}</b>.
               </>
             ) : (
               <>No dividend activity yet. The table will populate once your holdings start paying out.</>
@@ -106,7 +118,7 @@ export default async function TaxScreen() {
         </div>
       </div>
 
-      {/* 5-tile hero strip — template parity */}
+      {/* 5-tile hero strip — gross → foreign WTH → domestic → final net → reclaim */}
       <div className="hero-stats" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="tile">
           <div className="l">Gross dividends · YTD</div>
@@ -116,16 +128,27 @@ export default async function TaxScreen() {
           </div>
         </div>
         <div className="tile">
-          <div className="l">Withheld at source</div>
+          <div className="l">Foreign WTH</div>
           <div className="v sm down">€{fmtMoney(summary.totalWithheldEur)}</div>
-          <div className="d">{summary.effectiveRatePct.toFixed(1)}% effective</div>
+          <div className="d">{summary.effectiveRatePct.toFixed(1)}% at source</div>
         </div>
         <div className="tile">
-          <div className="l">Net received</div>
-          <div className="v sm up">€{fmtMoney(summary.totalNetEur)}</div>
+          <div className="l">{residenceName} tax</div>
+          <div className={'v sm ' + (domestic.finalEur > 0.5 ? 'down' : '')}>
+            €{fmtMoney(domestic.finalEur)}
+          </div>
+          <div className="d">
+            {domestic.foreignCreditEur > 0.5
+              ? `after €${fmtMoney(domestic.foreignCreditEur)} credit`
+              : modelLabel(domestic.model)}
+          </div>
+        </div>
+        <div className="tile">
+          <div className="l">Net after all taxes</div>
+          <div className="v sm up">€{fmtMoney(finalNetEur)}</div>
           <div className="d">
             {summary.totalGrossEur > 0
-              ? `${(100 - summary.effectiveRatePct).toFixed(1)}% of gross`
+              ? `${(100 - domestic.effectiveTotalPct).toFixed(1)}% of gross`
               : '—'}
           </div>
         </div>
@@ -138,17 +161,6 @@ export default async function TaxScreen() {
             {reclaimable.length === 0
               ? 'fully treaty-aligned'
               : `${reclaimable.length} country${reclaimable.length === 1 ? '' : 'ies'} over-withheld`}
-          </div>
-        </div>
-        <div className="tile">
-          <div className="l">Top source</div>
-          <div className="v sm">
-            {summary.rows[0]?.country ?? '—'}
-          </div>
-          <div className="d">
-            {summary.rows[0]
-              ? `${((summary.rows[0].grossEur / summary.totalGrossEur) * 100).toFixed(0)}% of gross`
-              : 'no income yet'}
           </div>
         </div>
       </div>
@@ -226,6 +238,23 @@ export default async function TaxScreen() {
           )}
         </div>
 
+        {/* Right column — Domestic tax breakdown + Reclaim opportunities stacked */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* Domestic tax · residence-side layer */}
+        <div className="pcard">
+          <div className="pcard-h">
+            <div className="t">{residenceName} tax · {fiscalYear}</div>
+            <span className="tag">{modelTag(domestic.model)}</span>
+          </div>
+          <DomesticTaxBreakdown
+            breakdown={domestic}
+            summary={summary}
+            residenceName={residenceName}
+            finalNetEur={finalNetEur}
+          />
+        </div>
+
         {/* Reclaim opportunities */}
         <div className="pcard">
           <div className="pcard-h">
@@ -284,12 +313,152 @@ export default async function TaxScreen() {
             </div>
           )}
         </div>
+
+        </div>{/* /right column flex wrapper */}
       </div>
     </div>
   );
 }
 
 // ─── Components ────────────────────────────────────────────────────────
+
+// Brief "what's the regime" tag shown next to the Domestic-tax panel title.
+function modelTag(model: ResidenceModel): string {
+  switch (model.kind) {
+    case 'flat':                  return model.surchargeLabel ?? `flat ${model.rate}%`;
+    case 'progressive':           return 'progressive';
+    case 'marginal-passthrough':  return 'marginal income';
+    case 'box3':                  return 'Box 3 · forfaitair';
+  }
+}
+
+// Compact one-liner used in the hero-stats tile under the residence-tax number.
+function modelLabel(model: ResidenceModel): string {
+  switch (model.kind) {
+    case 'flat':                  return `${model.rate}%${model.allowance ? ` after €${model.allowance}` : ''}`;
+    case 'progressive':           return `${model.bands[0].rate}–${model.bands[model.bands.length - 1].rate}%`;
+    case 'marginal-passthrough':  return `~${model.defaultMarginal}% marginal`;
+    case 'box3':                  return `${model.forfaitairPct}% × ${model.rate}%`;
+  }
+}
+
+function DomesticTaxBreakdown({
+  breakdown, summary, residenceName, finalNetEur,
+}: {
+  breakdown: DomesticTaxBreakdown;
+  summary: { totalGrossEur: number; totalWithheldEur: number; totalNetEur: number };
+  residenceName: string;
+  finalNetEur: number;
+}) {
+  const { model, preCreditEur, foreignCreditEur, finalEur, allowanceUsedEur, note } = breakdown;
+  if (summary.totalGrossEur <= 0) {
+    return (
+      <div style={{ padding: '12px 4px', color: '#86868b', fontSize: 13, lineHeight: 1.5 }}>
+        Once dividend activity starts, Cadence applies {residenceName}&rsquo;s tax rules and shows the
+        residence-side tax due here.
+      </div>
+    );
+  }
+
+  // Build the line items based on the model so each regime tells its own story.
+  const lines: { label: string; value: string; muted?: boolean; total?: boolean; positive?: boolean; negative?: boolean }[] = [];
+
+  if (model.kind === 'box3') {
+    lines.push(
+      { label: 'Forfaitair return basis',  value: `€${fmtMoney(summary.totalGrossEur)} gross (proxy)`, muted: true },
+      { label: 'Heffingvrij vermogen',     value: `−€${fmtMoney(allowanceUsedEur)}`, muted: true },
+      { label: `Box 3 @ ${model.rate}% × ${model.forfaitairPct}% forfaitair`,
+        value: `€${fmtMoney(preCreditEur)}` },
+      { label: 'Foreign WTH credit applied',
+        value: `−€${fmtMoney(foreignCreditEur)}`, positive: true },
+      { label: `Box 3 due`,
+        value: `€${fmtMoney(finalEur)}`, total: true, negative: finalEur > 0.5 },
+    );
+  } else {
+    if (allowanceUsedEur > 0) {
+      const allowanceLabel = (model.kind === 'flat' || model.kind === 'progressive') && model.allowanceLabel
+        ? model.allowanceLabel
+        : 'Annual allowance';
+      lines.push(
+        { label: 'Gross dividends',  value: `€${fmtMoney(summary.totalGrossEur)}`, muted: true },
+        { label: allowanceLabel,     value: `−€${fmtMoney(allowanceUsedEur)}`, muted: true, positive: true },
+      );
+    } else {
+      lines.push({ label: 'Taxable dividends', value: `€${fmtMoney(summary.totalGrossEur)}`, muted: true });
+    }
+    const rateLabel =
+      model.kind === 'flat' ? `${model.rate}%`
+      : model.kind === 'progressive' ? 'progressive bands'
+      : `~${(model as Extract<ResidenceModel, { kind: 'marginal-passthrough' }>).defaultMarginal + ((model as Extract<ResidenceModel, { kind: 'marginal-passthrough' }>).socialSurchargePct ?? 0)}% marginal`;
+    lines.push(
+      { label: `${residenceName} tax @ ${rateLabel}`, value: `€${fmtMoney(preCreditEur)}` },
+      { label: 'Foreign WTH credit applied',
+        value: `−€${fmtMoney(foreignCreditEur)}`, positive: true },
+      { label: `${residenceName} tax due`,
+        value: `€${fmtMoney(finalEur)}`, total: true, negative: finalEur > 0.5 },
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <table className="pt">
+        <tbody>
+          {lines.map((l, i) => (
+            <tr key={i} style={l.total ? { background: 'rgba(0,0,0,0.025)' } : undefined}>
+              <td
+                style={{
+                  fontSize: l.total ? 12 : 11.5,
+                  fontWeight: l.total ? 600 : 500,
+                  color: l.muted ? '#86868b' : '#1d1d1f',
+                }}
+              >
+                {l.label}
+              </td>
+              <td
+                className="r num"
+                style={{
+                  fontSize: l.total ? 14 : 12,
+                  fontWeight: l.total ? 700 : 500,
+                  color: l.negative ? 'oklch(0.50 0.16 25)'
+                    : l.positive ? 'oklch(0.36 0.08 165)'
+                    : '#1d1d1f',
+                }}
+              >
+                {l.value}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* "True net" capstone line — what the user actually keeps */}
+      <div
+        style={{
+          marginTop: 12, padding: '12px 14px',
+          background: 'oklch(0.97 0.03 165)', borderRadius: 10,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#1d1d1f' }}>Net kept after all taxes</span>
+        <span
+          className="num"
+          style={{ fontSize: 18, fontWeight: 700, color: 'oklch(0.36 0.08 165)' }}
+        >
+          €{fmtMoney(finalNetEur)}
+        </span>
+      </div>
+      {note && (
+        <div
+          style={{
+            marginTop: 10, fontSize: 11, color: '#6e6e73',
+            lineHeight: 1.5, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 8,
+          }}
+        >
+          {note}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function StatusChip({ row }: { row: { reclaimableEur: number; treatyRate: number | null; effectiveRate: number; withheldEur: number } }) {
   if (row.withheldEur === 0 && row.effectiveRate === 0) {

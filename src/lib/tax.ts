@@ -131,6 +131,189 @@ export interface TaxSummary {
   projected: boolean;
 }
 
+// ─── Residence-side tax models ────────────────────────────────────────
+// Each EU residence applies its own tax to dividend income on top of any
+// foreign withholding. The shapes below cover the universe of regimes
+// our residence list spans; the actual `computeDomesticTax()` switch
+// handles each kind. NL is the outlier — Box 3 is a notional wealth tax,
+// not a per-dividend tax, so it's modelled separately.
+
+export type ResidenceModel =
+  | {
+      kind: 'flat';
+      rate: number;                  // % e.g. 26.375 for DE
+      allowance?: number;            // EUR, deducted before tax
+      allowanceLabel?: string;
+      surchargeLabel?: string;       // optional descriptive label for the UI
+    }
+  | {
+      kind: 'progressive';
+      // Ascending bands. Each rate applies to the slice up to `upTo`.
+      // Last entry should use Infinity.
+      bands: { upTo: number; rate: number }[];
+      allowance?: number;
+      allowanceLabel?: string;
+    }
+  | {
+      kind: 'marginal-passthrough';
+      // Treats dividends as ordinary income. We can't know the user's
+      // marginal band so we assume a default and let them override later.
+      defaultMarginal: number;
+      socialSurchargePct?: number;   // e.g. IE USC+PRSI roughly 12pp
+      surchargeLabel?: string;
+    }
+  | {
+      kind: 'box3';
+      // Per-dividend tax doesn't apply; instead, a forfaitair return on
+      // taxable assets above a threshold is taxed at a flat rate.
+      forfaitairPct: number;         // e.g. 6.04 for 2026
+      rate: number;                  // e.g. 36
+      threshold: number;             // heffingvrij vermogen, EUR
+    };
+
+export const RESIDENCE_MODELS: Record<TaxResidence, ResidenceModel> = {
+  IE: { kind: 'marginal-passthrough', defaultMarginal: 40, socialSurchargePct: 12, surchargeLabel: 'USC + PRSI' },
+  NL: { kind: 'box3', forfaitairPct: 6.04, rate: 36, threshold: 57000 },
+  DE: { kind: 'flat', rate: 26.375, allowance: 1000, allowanceLabel: 'Sparer-Pauschbetrag', surchargeLabel: 'incl. Soli' },
+  FR: { kind: 'flat', rate: 30, surchargeLabel: 'PFU · 12.8 IT + 17.2 social' },
+  ES: { kind: 'progressive', bands: [
+    { upTo: 6000,   rate: 19 },
+    { upTo: 50000,  rate: 21 },
+    { upTo: 200000, rate: 23 },
+    { upTo: 300000, rate: 27 },
+    { upTo: Infinity, rate: 28 },
+  ]},
+  IT: { kind: 'flat', rate: 26 },
+  BE: { kind: 'flat', rate: 30, allowance: 833, allowanceLabel: 'Précompte mobilier exemption' },
+  PT: { kind: 'flat', rate: 28 },
+  AT: { kind: 'flat', rate: 27.5, surchargeLabel: 'KESt' },
+  GB: { kind: 'flat', rate: 8.75, allowance: 500, allowanceLabel: 'Dividend allowance' },
+};
+
+export interface DomesticTaxInputs {
+  /** IE override (marginal-passthrough): user's top income-tax band, % */
+  marginalPct?: number;
+  /** NL override (box3): taxable portfolio value at 1 Jan of fiscal year */
+  portfolioValueJan1?: number;
+}
+
+export interface DomesticTaxBreakdown {
+  model: ResidenceModel;
+  /** Domestic tax before foreign-tax credit is applied. */
+  preCreditEur: number;
+  /** Foreign WTH eligible for credit: min(treaty-rate portion of WTH,
+   *  domestic tax on the same income). */
+  foreignCreditEur: number;
+  /** Domestic tax actually owed: max(0, preCreditEur − foreignCreditEur). */
+  finalEur: number;
+  /** Allowance applied (DE Sparer-Pauschbetrag, BE exemption, GB allowance). */
+  allowanceUsedEur: number;
+  /** Effective overall rate including domestic tax: (foreignWith + finalDomestic) / gross */
+  effectiveTotalPct: number;
+  /** Free-text caveat shown in the UI (e.g. "approximated from current portfolio value"). */
+  note?: string;
+}
+
+/**
+ * Apply the residence-country tax on top of the source-country withholding.
+ * Returns enough detail for the page to render a "what you actually keep"
+ * breakdown.
+ */
+export function computeDomesticTax(
+  summary: TaxSummary,
+  inputs: DomesticTaxInputs = {},
+): DomesticTaxBreakdown {
+  const model = RESIDENCE_MODELS[summary.residence];
+  if (!model || summary.totalGrossEur <= 0) {
+    return emptyDomesticTax(model);
+  }
+
+  // Foreign credit eligible at home: per-row, treaty-rate portion of gross
+  // capped by what was actually withheld. The excess (effective > treaty)
+  // is the "reclaim from source" side — already in summary.totalReclaimableEur.
+  let creditEligibleAtTreaty = 0;
+  for (const r of summary.rows) {
+    if (r.treatyRate == null) continue;
+    const treatyCap = (r.grossEur * r.treatyRate) / 100;
+    creditEligibleAtTreaty += Math.min(r.withheldEur, treatyCap);
+  }
+
+  if (model.kind === 'box3') {
+    // Box 3: notional tax on portfolio value, not on dividends.
+    // For v0 we approximate with the user-supplied portfolioValueJan1 or
+    // fall back to "skip — needs portfolio value" so the UI can prompt.
+    const value = inputs.portfolioValueJan1;
+    if (value == null || value <= 0) {
+      return {
+        ...emptyDomesticTax(model),
+        note: 'Box 3 needs your portfolio value on 1 January to estimate. Add it in your profile to see the figure.',
+      };
+    }
+    const base = Math.max(0, value - model.threshold);
+    const notionalReturn = (base * model.forfaitairPct) / 100;
+    const preCredit = (notionalReturn * model.rate) / 100;
+    // NL allows tegemoetkoming for foreign WTH against Box 3, capped at
+    // the foreign tax. We treat that as a straight credit for v0.
+    const credit = Math.min(creditEligibleAtTreaty, preCredit);
+    const final = Math.max(0, preCredit - credit);
+    return {
+      model,
+      preCreditEur:     preCredit,
+      foreignCreditEur: credit,
+      finalEur:         final,
+      allowanceUsedEur: model.threshold,
+      effectiveTotalPct: ((summary.totalWithheldEur + final) / summary.totalGrossEur) * 100,
+      note: 'Box 3 is a notional wealth tax, not a per-dividend tax — the figure here is the portion attributable to taxable assets above heffingvrij vermogen.',
+    };
+  }
+
+  // Common path: residence taxes the dividend amount itself.
+  const allowance = (model.kind === 'flat' || model.kind === 'progressive') ? (model.allowance ?? 0) : 0;
+  const allowanceUsed = Math.min(allowance, summary.totalGrossEur);
+  const taxable = Math.max(0, summary.totalGrossEur - allowanceUsed);
+  let preCredit = 0;
+
+  if (model.kind === 'flat') {
+    preCredit = (taxable * model.rate) / 100;
+  } else if (model.kind === 'progressive') {
+    let remaining = taxable;
+    let prev = 0;
+    for (const band of model.bands) {
+      const slice = Math.min(band.upTo, remaining + prev) - prev;
+      if (slice <= 0) break;
+      preCredit += (slice * band.rate) / 100;
+      prev += slice;
+      remaining -= slice;
+      if (remaining <= 0) break;
+    }
+  } else if (model.kind === 'marginal-passthrough') {
+    const margin = inputs.marginalPct ?? model.defaultMarginal;
+    const surcharge = model.socialSurchargePct ?? 0;
+    preCredit = (taxable * (margin + surcharge)) / 100;
+  }
+
+  // Foreign credit cap: can't exceed domestic tax on the credited income.
+  const credit = Math.min(creditEligibleAtTreaty, preCredit);
+  const final = Math.max(0, preCredit - credit);
+
+  return {
+    model,
+    preCreditEur:     preCredit,
+    foreignCreditEur: credit,
+    finalEur:         final,
+    allowanceUsedEur: allowanceUsed,
+    effectiveTotalPct: ((summary.totalWithheldEur + final) / summary.totalGrossEur) * 100,
+  };
+}
+
+function emptyDomesticTax(model: ResidenceModel | undefined): DomesticTaxBreakdown {
+  return {
+    model: model ?? { kind: 'flat', rate: 0 },
+    preCreditEur: 0, foreignCreditEur: 0, finalEur: 0,
+    allowanceUsedEur: 0, effectiveTotalPct: 0,
+  };
+}
+
 interface DivTxRow {
   ticker: string;
   occurred_on: string;
