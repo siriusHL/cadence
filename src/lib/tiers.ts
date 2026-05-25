@@ -9,6 +9,7 @@ export type Feature =
   | 'diversification'
   | 'taxReport'
   | 'alerts'
+  | 'csvImport'
   | 'exportCsv'
   | 'exportPdf'
   | 'apiAccess';
@@ -17,6 +18,7 @@ export type Screen =
   | 'home' | 'next' | 'stocks' | 'year'
   | 'add'                                       // action — available to all tiers, RLS-capped
   | 'profile' | 'settings' | 'portfolios'       // account pages — accessible to every tier
+  | 'import'                                    // CSV broker import (Premium+)
   | 'dashboard' | 'holdings' | 'stock'
   | 'calendar' | 'forecast' | 'drip'
   | 'performance' | 'diversification'
@@ -47,7 +49,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     features: {
       multiCurrency: false, drip: false, calendar: false, forecast: false,
       performance: false, diversification: false, taxReport: false,
-      alerts: false, exportCsv: false, exportPdf: false, apiAccess: false,
+      alerts: false, csvImport: false, exportCsv: false, exportPdf: false, apiAccess: false,
     },
   },
   premium: {
@@ -62,7 +64,7 @@ export const TIERS: Record<Tier, TierConfig> = {
      // year) for the data-dense pro versions (dashboard / holdings / calendar /
      // forecast / drip / performance / diversification).
     screens: [
-      'add', 'profile', 'settings', 'portfolios',
+      'add', 'profile', 'settings', 'portfolios', 'import',
       'dashboard', 'holdings', 'stock',
       'calendar', 'forecast', 'drip',
       'performance', 'diversification',
@@ -70,7 +72,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     features: {
       multiCurrency: true, drip: true, calendar: true, forecast: true,
       performance: true, diversification: true, taxReport: false,
-      alerts: false, exportCsv: true, exportPdf: false, apiAccess: false,
+      alerts: false, csvImport: true, exportCsv: true, exportPdf: false, apiAccess: false,
     },
   },
   elite: {
@@ -83,7 +85,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     fxFreshnessMin: 15,
     // Same exclusions as Premium — the free-tier screens stay free-only.
     screens: [
-      'add', 'profile', 'settings', 'portfolios',
+      'add', 'profile', 'settings', 'portfolios', 'import',
       'dashboard', 'holdings', 'stock',
       'calendar', 'forecast', 'drip',
       'performance', 'diversification',
@@ -92,7 +94,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     features: {
       multiCurrency: true, drip: true, calendar: true, forecast: true,
       performance: true, diversification: true, taxReport: true,
-      alerts: true, exportCsv: true, exportPdf: true, apiAccess: true,
+      alerts: true, csvImport: true, exportCsv: true, exportPdf: true, apiAccess: true,
     },
   },
 };
