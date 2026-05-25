@@ -87,6 +87,13 @@ export interface PerformancePoint {
   returnPct: number;              // (value - cost) / cost × 100
 }
 
+export interface BenchmarkPoint {
+  /** YYYY-MM-DD — week-end */
+  date: string;
+  /** Cumulative return % from the first available week in the queried range */
+  returnPct: number;
+}
+
 export interface YearEvent {
   ticker: string;
   name: string | null;
@@ -789,6 +796,47 @@ export async function getPerformanceSeries(
     if (validTickers === 0 || cost === 0) continue;
     const returnPct = ((value - cost) / cost) * 100;
     out.push({ date: weekStr, value, cost, returnPct });
+  }
+  return out;
+}
+
+/**
+ * Cumulative return series per benchmark, rebased to the first available
+ * week within the queried window. Returned shape mirrors PerformancePoint
+ * so the chart can render every line through one code path.
+ */
+export async function getBenchmarkSeries(
+  supabase: SupabaseClient,
+  weeks = 104,
+): Promise<Map<string, BenchmarkPoint[]>> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - weeks * 7);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from('benchmark_history')
+    .select('benchmark_id, date, value')
+    .gte('date', cutoffStr)
+    .order('date', { ascending: true });
+
+  const out = new Map<string, BenchmarkPoint[]>();
+  if (!data) return out;
+
+  // Group by benchmark_id, sorted by date asc (the query already orders).
+  const grouped = new Map<string, { date: string; value: number }[]>();
+  for (const r of data) {
+    if (!grouped.has(r.benchmark_id)) grouped.set(r.benchmark_id, []);
+    grouped.get(r.benchmark_id)!.push({ date: r.date, value: Number(r.value) });
+  }
+
+  for (const [id, rows] of grouped) {
+    if (rows.length === 0) continue;
+    const base = rows[0].value;
+    if (base <= 0) continue;
+    out.set(id, rows.map((r) => ({
+      date: r.date,
+      returnPct: (r.value / base - 1) * 100,
+    })));
   }
   return out;
 }
