@@ -2,8 +2,13 @@
 
 import { useState, useMemo } from 'react';
 import { type MonthOverview } from '@/lib/portfolio';
+import { EventDetailModal, EventHoverHint } from '@/components/EventDetailModal';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_LONG = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
 type RangeKey = '6M' | '1Y' | '18M' | '3Y';
 const RANGES: Record<RangeKey, { past: number; future: number }> = {
@@ -24,9 +29,12 @@ function fmt(n: number, digits = 0): string {
   return n.toLocaleString('en-IE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
+interface HoverState { idx: number; x: number; y: number; }
+
 export function IncomeRhythmChart({ months, nowIndex }: Props) {
   const [range, setRange] = useState<RangeKey>('18M');
-  const [hover, setHover] = useState<number | null>(null);
+  const [hover, setHover] = useState<HoverState | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
 
   // Slice the full month array based on the selected range
   const { slice, nowIndexInSlice, sliceStart } = useMemo(() => {
@@ -127,7 +135,7 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                     left: 0, right: 0,
                     top: `${(1 - pct) * 100}%`,
                     height: 1,
-                    background: 'var(--surface-2)',
+                    background: 'rgba(0,0,0,0.05)',
                   }}
                 />
               );
@@ -152,22 +160,49 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                   const totalH = (top / top100) * 100;
                   const solidPortion = top > 0 ? (received / top) * totalH : 0;
                   const fadedPortion = Math.max(0, totalH - solidPortion);
-                  const isHovered = hover === i;
+                  const isHovered = hover?.idx === i;
                   const isDim = hover != null && !isHovered;
                   const barDelay = 220 + i * perBar;
+                  const hasEvents = m.byTicker.length > 0;
+
+                  const openMonth = () => {
+                    if (!hasEvents) return;
+                    setHover(null);
+                    setSelected(i);
+                  };
 
                   return (
                     <div
                       key={`${m.year}-${m.month}`}
-                      onMouseEnter={() => setHover(i)}
-                      onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))}
+                      role={hasEvents ? 'button' : undefined}
+                      tabIndex={hasEvents ? 0 : -1}
+                      aria-label={
+                        hasEvents
+                          ? `${MONTH_LONG[m.month]} ${m.year} — €${fmt(received + expected, 2)} from ${m.byTicker.length} payment${m.byTicker.length === 1 ? '' : 's'}. Click for details.`
+                          : `${MONTH_LONG[m.month]} ${m.year} — no payments`
+                      }
+                      onMouseEnter={(ev) => {
+                        if (!hasEvents) return;
+                        const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+                        setHover({ idx: i, x: r.left + r.width / 2, y: r.top });
+                      }}
+                      onMouseLeave={() => setHover((cur) => (cur && cur.idx === i ? null : cur))}
+                      onClick={openMonth}
+                      onKeyDown={(ev) => {
+                        if (!hasEvents) return;
+                        if (ev.key === 'Enter' || ev.key === ' ') {
+                          ev.preventDefault();
+                          openMonth();
+                        }
+                      }}
                       className={`irc-col${isHovered ? ' is-hovered' : ''}${isDim ? ' is-dim' : ''}`}
                       style={{
                         flex: 1, display: 'flex', flexDirection: 'column',
                         justifyContent: 'flex-end',
                         height: '100%',
                         minWidth: 4,
-                        cursor: m.byTicker.length > 0 ? 'pointer' : 'default',
+                        cursor: hasEvents ? 'pointer' : 'default',
+                        outline: 'none',
                       }}
                     >
                       <div
@@ -240,17 +275,36 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
             })}
           </div>
 
-          {/* Hover tooltip */}
-          {hover != null && slice[hover].byTicker.length > 0 && (
-            <Tooltip
-              month={slice[hover]}
-              hoverIdx={hover}
-              totalBars={slice.length}
-              nowIndexInSlice={nowIndexInSlice}
-            />
-          )}
         </div>
       </div>
+
+      {/* Slim hover hint with the click affordance. Hidden while the modal
+          is open. */}
+      {hover != null && selected == null && slice[hover.idx]?.byTicker.length > 0 && (
+        <EventHoverHint
+          title={`${MONTH_LONG[slice[hover.idx].month]} ${slice[hover.idx].year}`}
+          total={slice[hover.idx].received + slice[hover.idx].expected}
+          count={slice[hover.idx].byTicker.length}
+          anchorX={hover.x}
+          anchorY={hover.y}
+          side="top"
+        />
+      )}
+
+      {selected != null && slice[selected]?.byTicker.length > 0 && (
+        <EventDetailModal
+          title={`${MONTH_LONG[slice[selected].month]} ${slice[selected].year}`}
+          total={slice[selected].received + slice[selected].expected}
+          rows={slice[selected].byTicker.map((line) => ({
+            key: line.ticker,
+            ticker: line.ticker,
+            name: line.name,
+            amount: line.received + line.expected,
+            isEstimate: line.expected > 0 && line.received === 0,
+          }))}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }
@@ -289,61 +343,6 @@ function NowMarker({ totalBars, nowIndexInSlice, chartHeight }: {
         Now
       </div>
     </>
-  );
-}
-
-function Tooltip({ month, hoverIdx, totalBars, nowIndexInSlice }: {
-  month: MonthOverview; hoverIdx: number; totalBars: number; nowIndexInSlice: number;
-}) {
-  const total = month.received + month.expected;
-  const isPast = hoverIdx <= nowIndexInSlice;
-  const leftPct = (hoverIdx + 0.5) * (100 / totalBars);
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: `${leftPct}%`,
-        bottom: 'calc(100% - 24px)',
-        transform: 'translateX(-50%)',
-        background: 'var(--btn-primary-bg)',
-        color: 'var(--btn-primary-text)',
-        padding: '10px 14px',
-        borderRadius: 12,
-        minWidth: 220,
-        maxWidth: 280,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
-        fontSize: 12,
-        zIndex: 10,
-        pointerEvents: 'none',
-      }}
-    >
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.1)',
-      }}>
-        <span style={{ fontWeight: 600, fontSize: 13 }}>
-          {MONTH_NAMES[month.month]} {String(month.year).slice(2)}{isPast ? '' : ' · est.'}
-        </span>
-        <span className="num" style={{ fontWeight: 600 }}>€{fmt(total, 2)}</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        {month.byTicker.slice(0, 8).map((line) => {
-          const amt = line.received + line.expected;
-          const isExpectedLine = line.expected > 0 && line.received === 0;
-          return (
-            <div key={line.ticker} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-              <span style={{ color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <b>{line.ticker}</b>
-                {line.name && <span style={{ color: 'rgba(255,255,255,0.55)' }}> · {line.name}</span>}
-              </span>
-              <span className="num" style={{ flexShrink: 0, color: isExpectedLine ? 'rgba(255,255,255,0.65)' : '#fff' }}>
-                €{fmt(amt, 2)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 

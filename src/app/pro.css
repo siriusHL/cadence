@@ -277,6 +277,257 @@
 .cdn-pro .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 
 /* ─────────────────────────────────────────────────────────
+   Calendar heatmap — click-to-open + onboarding pulse
+   ───────────────────────────────────────────────────────── */
+
+/* Reset native button look + tactile hover for cells that have payments. */
+.cdn-pro .heatmap-cell {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  outline: 0;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms ease;
+}
+.cdn-pro .heatmap-cell.has-events:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 2px 6px rgba(0,0,0,0.12);
+  z-index: 1;
+}
+.cdn-pro .heatmap-cell.has-events:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px oklch(0.55 0.10 175);
+}
+
+/* Onboarding pulse — radiating ring that fires three times, then stops.
+   Triggered only on the highest-paying cell of the year, only on the
+   user's first visit (gated by localStorage). */
+.cdn-pro .heatmap-cell.is-pulsing {
+  animation: cdn-heatmap-pulse 1.6s cubic-bezier(0.22, 1, 0.36, 1) 3;
+  /* Bump into its own stacking context so the radiating ring isn't clipped
+     by neighbouring cells. */
+  position: relative;
+  z-index: 2;
+}
+@keyframes cdn-heatmap-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 oklch(0.55 0.10 175 / 0.55),
+      0 0 0 0 oklch(0.55 0.10 175 / 0.0);
+  }
+  60% {
+    box-shadow:
+      0 0 0 10px oklch(0.55 0.10 175 / 0),
+      0 0 0 14px oklch(0.55 0.10 175 / 0);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 oklch(0.55 0.10 175 / 0),
+      0 0 0 0 oklch(0.55 0.10 175 / 0);
+  }
+}
+
+/* ─── Day-detail modal ─── */
+.cdn-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 22, 0.40);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+  animation: cdn-backdrop-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cdn-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  width: min(520px, 100%);
+  max-height: min(80vh, 720px);
+  padding: 22px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 22px 60px rgba(0,0,0,0.22);
+  animation: cdn-modal-pop 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  min-height: 0;
+}
+@keyframes cdn-modal-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.cdn-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(0,0,0,0.04);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  color: #6e6e73;
+  transition: background 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-modal-close:hover {
+  background: rgba(0,0,0,0.08);
+  color: #1d1d1f;
+}
+.cdn-modal-close:active { transform: scale(0.95); }
+
+.cdn-modal-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-right: 38px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: #1d1d1f;
+}
+.cdn-modal-h .num {
+  font-variant-numeric: tabular-nums;
+  color: oklch(0.36 0.08 165);
+}
+
+.cdn-modal-meta {
+  font-size: 12px;
+  color: #86868b;
+  font-weight: 500;
+}
+
+.cdn-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  min-height: 0;
+  margin: 6px -10px 0;
+  padding: 0 2px;
+}
+
+.cdn-modal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  transition: background 160ms ease;
+}
+.cdn-modal-row + .cdn-modal-row {
+  border-top: 1px solid rgba(0,0,0,0.04);
+}
+.cdn-modal-row:hover {
+  background: rgba(0,0,0,0.025);
+}
+.cdn-modal-row .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.cdn-modal-row .left .t {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #1d1d1f;
+}
+.cdn-modal-row .left .n {
+  font-size: 11px;
+  color: #86868b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+  margin-top: 1px;
+}
+.cdn-modal-row .right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.cdn-modal-row .right .amt {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1d1d1f;
+}
+.cdn-modal-row .right .proj {
+  font-size: 9.5px;
+  color: #86868b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 1px;
+}
+
+/* Slim hover hint — shown when the user hovers a payment cell, calls
+   out the click affordance ("Click to see all →") so option-5's pulse
+   isn't the only discovery signal. Portal'd to <body>. */
+.cdn-hover-hint {
+  background: #1d1d1f;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+  font-size: 12px;
+  font-feature-settings: "tnum";
+  animation: cdn-hint-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-hover-hint .t {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+  letter-spacing: -0.01em;
+}
+.cdn-hover-hint .meta {
+  color: rgba(255,255,255,0.65);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+.cdn-hover-hint .cta {
+  font-size: 10.5px;
+  color: oklch(0.78 0.10 175);
+  font-weight: 500;
+  border-top: 1px solid rgba(255,255,255,0.10);
+  padding-top: 5px;
+  letter-spacing: 0.01em;
+}
+@keyframes cdn-hint-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Respect reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .heatmap-cell.is-pulsing,
+  .cdn-modal-backdrop,
+  .cdn-modal,
+  .cdn-hover-hint {
+    animation: none !important;
+  }
+  .cdn-pro .heatmap-cell {
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
    Diversification — entrance + interaction polish
    ───────────────────────────────────────────────────────── */
 
