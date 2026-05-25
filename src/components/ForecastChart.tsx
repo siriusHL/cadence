@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 export interface ForecastMonth {
   /** 0-11 */
@@ -32,6 +32,8 @@ type RangeKey = '6M' | '12M' | '24M';
 
 export function ForecastChart({ months }: Props) {
   const [range, setRange] = useState<RangeKey>('12M');
+  const reactId = useId();
+  const clipId = `fc-clip-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const slice = useMemo(() => {
     const n = range === '6M' ? 6 : range === '12M' ? 12 : 24;
@@ -39,8 +41,11 @@ export function ForecastChart({ months }: Props) {
   }, [months, range]);
 
   const cums = useMemo(() => {
-    let c = 0;
-    return slice.map((m) => (c += m.total));
+    return slice.reduce<number[]>((acc, m) => {
+      const prev = acc[acc.length - 1] ?? 0;
+      acc.push(prev + m.total);
+      return acc;
+    }, []);
   }, [slice]);
 
   const barMax = useMemo(() => {
@@ -120,36 +125,67 @@ export function ForecastChart({ months }: Props) {
             })}
           </div>
 
-          {/* Bars */}
-          <div style={{ position: 'absolute', inset: '0 0 26px 0', display: 'flex', alignItems: 'flex-end', gap: 4 }}>
-            {slice.map((m, i) => {
-              const h = (m.total / barMax) * 100;
-              return (
-                <div key={`${m.year}-${m.month}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
-                  {m.total > 0 && (
-                    <div style={{
-                      textAlign: 'center', fontSize: 10.5, color: '#1d1d1f',
-                      fontWeight: 500, marginBottom: 4,
-                    }}>
-                      €{Math.round(m.total)}
+          {/* Bars — staggered scaleY from baseline, re-keyed by range. */}
+          {(() => {
+            const totalStaggerWindow = 600;
+            const perBar = Math.min(40, totalStaggerWindow / Math.max(1, slice.length));
+            return (
+              <div
+                key={`fc-bars-${range}`}
+                style={{ position: 'absolute', inset: '0 0 26px 0', display: 'flex', alignItems: 'flex-end', gap: 4 }}
+              >
+                {slice.map((m, i) => {
+                  const h = (m.total / barMax) * 100;
+                  const barDelay = 220 + i * perBar;
+                  const labelDelay = barDelay + 480;
+                  return (
+                    <div
+                      key={`${m.year}-${m.month}`}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}
+                    >
+                      {m.total > 0 && (
+                        <div
+                          className="fc-value-label"
+                          style={{
+                            textAlign: 'center', fontSize: 10.5, color: '#1d1d1f',
+                            fontWeight: 500, marginBottom: 4,
+                            animationDelay: `${labelDelay}ms`,
+                          }}
+                        >
+                          €{Math.round(m.total)}
+                        </div>
+                      )}
+                      <div
+                        className="fc-bar"
+                        style={{
+                          height: `${h}%`,
+                          background: 'oklch(0.55 0.10 175)',
+                          borderRadius: '4px 4px 0 0',
+                          animationDelay: `${barDelay}ms`,
+                        }}
+                      />
                     </div>
-                  )}
-                  <div style={{
-                    height: `${h}%`,
-                    background: 'oklch(0.55 0.10 175)',
-                    borderRadius: '4px 4px 0 0',
-                  }} />
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
-          {/* Cumulative line (SVG overlay) */}
+          {/* Cumulative line (SVG overlay) — wipes in left-to-right after bars land. */}
           <svg
+            key={`fc-cum-${range}`}
             style={{ position: 'absolute', inset: '0 0 26px 0', pointerEvents: 'none', width: '100%', height: chartHeight }}
             preserveAspectRatio="none"
             viewBox={`0 0 ${slice.length} ${chartHeight}`}
           >
+            <defs>
+              <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+                <rect
+                  x="0" y="0" width={slice.length} height={chartHeight}
+                  className="fc-clip-rect"
+                />
+              </clipPath>
+            </defs>
             {(() => {
               if (cums.length === 0) return null;
               const points = cums.map((v, i) => ({
@@ -158,7 +194,7 @@ export function ForecastChart({ months }: Props) {
               }));
               const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(3)} ${p.y.toFixed(2)}`).join(' ');
               return (
-                <>
+                <g clipPath={`url(#${clipId})`}>
                   <path
                     d={path}
                     fill="none"
@@ -169,29 +205,40 @@ export function ForecastChart({ months }: Props) {
                     strokeLinejoin="round"
                     style={{ strokeWidth: 2 }}
                   />
-                </>
+                </g>
               );
             })()}
           </svg>
 
-          {/* Cumulative endpoints as dots */}
-          <div style={{ position: 'absolute', inset: '0 0 26px 0', pointerEvents: 'none' }}>
+          {/* Cumulative endpoints as dots — fade in once the line has drawn through. */}
+          <div
+            key={`fc-dots-${range}`}
+            className="fc-dots"
+            style={{ position: 'absolute', inset: '0 0 26px 0', pointerEvents: 'none' }}
+          >
             {cums.map((v, i) => {
               const leftPct = ((i + 0.5) / slice.length) * 100;
               const topPct = (1 - (v / cumMax)) * 100;
               const isLast = i === cums.length - 1;
+              // Dots come in along with the line wipe.
+              const dotDelay = 700 + (i / Math.max(1, cums.length - 1)) * 900;
               return (
-                <div key={i} style={{
-                  position: 'absolute',
-                  left: `${leftPct}%`,
-                  top: `${topPct}%`,
-                  transform: 'translate(-50%, -50%)',
-                  width: isLast ? 8 : 5,
-                  height: isLast ? 8 : 5,
-                  borderRadius: '50%',
-                  background: '#fff',
-                  border: '1.8px solid oklch(0.40 0.06 235)',
-                }} />
+                <div
+                  key={i}
+                  className="fc-dot"
+                  style={{
+                    position: 'absolute',
+                    left: `${leftPct}%`,
+                    top: `${topPct}%`,
+                    transform: 'translate(-50%, -50%)',
+                    width: isLast ? 8 : 5,
+                    height: isLast ? 8 : 5,
+                    borderRadius: '50%',
+                    background: '#fff',
+                    border: '1.8px solid oklch(0.40 0.06 235)',
+                    animationDelay: `${dotDelay}ms`,
+                  }}
+                />
               );
             })}
           </div>

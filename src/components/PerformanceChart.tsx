@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { type PerformancePoint, type BenchmarkPoint } from '@/lib/portfolio';
 
 export interface BenchmarkLine {
@@ -41,6 +41,8 @@ function benchmarkValueAt(series: BenchmarkPoint[], date: string): number | null
 
 export function PerformanceChart({ series, benchmarks = [] }: Props) {
   const [range, setRange] = useState<RangeKey>('1Y');
+  const reactId = useId();
+  const clipId = `perf-clip-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   const slice = useMemo(() => {
     if (series.length === 0) return [];
@@ -222,55 +224,67 @@ export function PerformanceChart({ series, benchmarks = [] }: Props) {
             })}
           </div>
 
-          {/* SVG lines + area */}
+          {/* SVG lines + area — wrapped in a left-to-right clip that wipes
+              the chart on first paint (and on range change via React key). */}
           <svg
+            key={`perf-svg-${range}`}
             style={{ position: 'absolute', inset: '0 0 24px 0', width: '100%', height: chartHeight }}
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             aria-hidden
           >
             <defs>
-              <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={`perfGrad-${clipId}`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%"   stopColor={portColor} stopOpacity="0.18" />
                 <stop offset="100%" stopColor={portColor} stopOpacity="0" />
               </linearGradient>
+              <clipPath id={clipId} clipPathUnits="userSpaceOnUse">
+                <rect
+                  x="0" y="0" width="100" height="100"
+                  className="perf-clip-rect"
+                />
+              </clipPath>
             </defs>
 
-            {/* Benchmarks behind portfolio so the user line stays on top */}
-            {benchmarkRebased.map((b) => (
+            <g clipPath={`url(#${clipId})`}>
+              {/* Benchmarks behind portfolio so the user line stays on top */}
+              {benchmarkRebased.map((b) => (
+                <path
+                  key={b.id}
+                  d={buildPath(b.values)}
+                  fill="none"
+                  stroke={b.color}
+                  strokeWidth="1.4"
+                  strokeDasharray="4 3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  vectorEffect="non-scaling-stroke"
+                  style={{ strokeWidth: 1.4 }}
+                  opacity="0.85"
+                />
+              ))}
+
+              <path d={portAreaPath} fill={`url(#perfGrad-${clipId})`} />
               <path
-                key={b.id}
-                d={buildPath(b.values)}
+                d={portLinePath}
                 fill="none"
-                stroke={b.color}
-                strokeWidth="1.4"
-                strokeDasharray="4 3"
+                stroke={portColor}
+                strokeWidth="0.35"
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
-                style={{ strokeWidth: 1.4 }}
-                opacity="0.85"
+                style={{ strokeWidth: 2 }}
               />
-            ))}
-
-            <path d={portAreaPath} fill="url(#perfGrad)" />
-            <path
-              d={portLinePath}
-              fill="none"
-              stroke={portColor}
-              strokeWidth="0.35"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-              style={{ strokeWidth: 2 }}
-            />
+            </g>
           </svg>
 
-          {/* Endpoint dots — portfolio + benchmark terminals */}
-          <Dot top={ys(portLast)} color={portColor} primary />
-          {benchmarkRebased.map((b) => (
-            <Dot key={b.id} top={ys(b.last)} color={b.color} />
-          ))}
+          {/* Endpoint dots — portfolio + benchmark terminals (fade in after wipe). */}
+          <div key={`perf-dots-${range}`} className="perf-endpoints">
+            <Dot top={ys(portLast)} color={portColor} primary />
+            {benchmarkRebased.map((b) => (
+              <Dot key={b.id} top={ys(b.last)} color={b.color} />
+            ))}
+          </div>
 
           {/* X-axis labels */}
           <div style={{

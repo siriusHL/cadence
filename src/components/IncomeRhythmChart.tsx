@@ -134,56 +134,87 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
             })}
           </div>
 
-          {/* Bars */}
-          <div style={{ position: 'absolute', inset: `0 0 22px 0`, display: 'flex', alignItems: 'flex-end', gap: 3 }}>
-            {slice.map((m, i) => {
-              const received = m.received;
-              const expected = m.expected;
-              const top = Math.max(received, expected);
-              const top100 = yTicks[yTicks.length - 1] || 1;
-              const totalH = (top / top100) * 100;
-              const solidPortion = top > 0 ? (received / top) * totalH : 0;
-              const fadedPortion = Math.max(0, totalH - solidPortion);
-              const isHovered = hover === i;
-              const isFuture = i > nowIndexInSlice;
+          {/* Bars — re-keyed by range so the entrance replays on range change. */}
+          {(() => {
+            const totalStaggerWindow = 700;
+            const perBar = Math.min(30, totalStaggerWindow / Math.max(1, slice.length));
+            return (
+              <div
+                key={`bars-${range}`}
+                className="irc-bars"
+                style={{ position: 'absolute', inset: `0 0 22px 0`, display: 'flex', alignItems: 'flex-end', gap: 3 }}
+              >
+                {slice.map((m, i) => {
+                  const received = m.received;
+                  const expected = m.expected;
+                  const top = Math.max(received, expected);
+                  const top100 = yTicks[yTicks.length - 1] || 1;
+                  const totalH = (top / top100) * 100;
+                  const solidPortion = top > 0 ? (received / top) * totalH : 0;
+                  const fadedPortion = Math.max(0, totalH - solidPortion);
+                  const isHovered = hover === i;
+                  const isDim = hover != null && !isHovered;
+                  const barDelay = 220 + i * perBar;
 
-              return (
-                <div
-                  key={`${m.year}-${m.month}`}
-                  onMouseEnter={() => setHover(i)}
-                  onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))}
-                  style={{
-                    flex: 1, display: 'flex', flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    height: '100%',
-                    minWidth: 4,
-                    cursor: m.byTicker.length > 0 ? 'pointer' : 'default',
-                  }}
-                >
-                  <div style={{
-                    height: `${fadedPortion}%`,
-                    background: isHovered
-                      ? 'oklch(0.55 0.10 175 / 0.40)'
-                      : 'oklch(0.55 0.10 175 / 0.22)',
-                    borderRadius: '3px 3px 0 0',
-                    transition: 'background 120ms',
-                  }} />
-                  <div style={{
-                    height: `${solidPortion}%`,
-                    background: isHovered ? 'oklch(0.48 0.12 175)' : 'oklch(0.55 0.10 175)',
-                    borderRadius: fadedPortion > 0 ? '0' : '3px 3px 0 0',
-                    transition: 'background 120ms',
-                  }} />
-                  {/* Future bars have a subtle pattern; signaled by colour only here */}
-                  {isFuture ? null : null}
-                </div>
-              );
-            })}
-          </div>
+                  return (
+                    <div
+                      key={`${m.year}-${m.month}`}
+                      onMouseEnter={() => setHover(i)}
+                      onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))}
+                      className={`irc-col${isHovered ? ' is-hovered' : ''}${isDim ? ' is-dim' : ''}`}
+                      style={{
+                        flex: 1, display: 'flex', flexDirection: 'column',
+                        justifyContent: 'flex-end',
+                        height: '100%',
+                        minWidth: 4,
+                        cursor: m.byTicker.length > 0 ? 'pointer' : 'default',
+                      }}
+                    >
+                      <div
+                        className="irc-bar-stack"
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'flex-end',
+                          width: '100%',
+                          height: `${totalH}%`,
+                          animationDelay: `${barDelay}ms`,
+                        }}
+                      >
+                        <div
+                          className="irc-bar irc-bar-faded"
+                          style={{
+                            height: totalH > 0 ? `${(fadedPortion / totalH) * 100}%` : '0%',
+                            background: isHovered
+                              ? 'oklch(0.55 0.10 175 / 0.40)'
+                              : 'oklch(0.55 0.10 175 / 0.22)',
+                            borderRadius: '3px 3px 0 0',
+                          }}
+                        />
+                        <div
+                          className="irc-bar irc-bar-solid"
+                          style={{
+                            height: totalH > 0 ? `${(solidPortion / totalH) * 100}%` : '0%',
+                            background: isHovered ? 'oklch(0.46 0.13 175)' : 'oklch(0.55 0.10 175)',
+                            borderRadius: fadedPortion > 0 ? '0' : '3px 3px 0 0',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
-          {/* "Now" divider */}
+          {/* "Now" divider — keyed by range so it fades in alongside the bars. */}
           {nowIndexInSlice >= 0 && nowIndexInSlice < slice.length && (
-            <NowMarker totalBars={slice.length} nowIndexInSlice={nowIndexInSlice} chartHeight={chartHeight} />
+            <NowMarker
+              key={`now-${range}`}
+              totalBars={slice.length}
+              nowIndexInSlice={nowIndexInSlice}
+              chartHeight={chartHeight}
+            />
           )}
 
           {/* Month labels along the bottom — adaptive density */}
@@ -233,6 +264,7 @@ function NowMarker({ totalBars, nowIndexInSlice, chartHeight }: {
     <>
       <div
         aria-hidden
+        className="irc-now-line"
         style={{
           position: 'absolute',
           left: `${leftPct}%`,
@@ -245,6 +277,7 @@ function NowMarker({ totalBars, nowIndexInSlice, chartHeight }: {
       />
       <div
         aria-hidden
+        className="irc-now-label"
         style={{
           position: 'absolute',
           left: `calc(${leftPct}% + 4px)`,

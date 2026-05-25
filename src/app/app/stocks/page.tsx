@@ -39,21 +39,16 @@ function StockCard({ h }: { h: HoldingView }) {
   const sym = symbolFor(h.currency);
 
   return (
-    <div className="card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
-          <TickerLogo ticker={h.ticker} size={40} />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{h.ticker}</div>
-            <div style={{
-              fontSize: 12, color: '#86868b', marginTop: 2,
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {h.name ?? h.ticker}
-            </div>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, minWidth: 0 }}>
+        <div className="stock-name" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <TickerLogo ticker={h.ticker} size={34} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="t">{h.ticker}</div>
+            <div className="n">{h.name ?? h.ticker}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           {safety.label !== 'New' && (
             <span className={'pill ' + safety.cls}>
               <span className="dot" style={{ background: 'currentColor' }} />
@@ -64,38 +59,31 @@ function StockCard({ h }: { h: HoldingView }) {
         </div>
       </div>
 
-      <div>
-        <div style={{ fontSize: 11, color: '#86868b', marginBottom: 2 }}>Pays you</div>
-        <div className="num" style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-          {sym}{fmt(monthlyLocal)}
-          <span style={{ fontSize: 13, color: '#86868b', fontWeight: 400 }}> / month</span>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 10.5, color: '#86868b', marginBottom: 1 }}>Pays you</div>
+        <div className="num stock-pay-line" style={{ fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+          {sym}{fmt(monthlyLocal)}<span className="unit"> / month</span>
         </div>
-        <div style={{ fontSize: 12, color: '#6e6e73', marginTop: 4 }}>
+        <div style={{
+          fontSize: 11.5, color: '#6e6e73', marginTop: 3,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
           {sym}{fmt(annualLocal)} <span style={{ color: '#86868b' }}>per year</span>
         </div>
       </div>
 
-      <div style={{
-        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12,
-        paddingTop: 14, borderTop: '1px solid rgba(0,0,0,0.05)',
-      }}>
+      <div className="stock-stats">
         <div>
-          <div style={{ fontSize: 11, color: '#86868b' }}>Shares</div>
-          <div className="num" style={{ fontSize: 14, fontWeight: 500 }}>
-            {fmt(h.quantity, h.quantity % 1 === 0 ? 0 : 2)}
-          </div>
+          <div className="l">Shares</div>
+          <div className="num v">{fmt(h.quantity, h.quantity % 1 === 0 ? 0 : 2)}</div>
         </div>
         <div>
-          <div style={{ fontSize: 11, color: '#86868b' }}>Value</div>
-          <div className="num" style={{ fontSize: 14, fontWeight: 500 }}>
-            {h.price != null ? `${sym}${fmt(valueLocal)}` : '—'}
-          </div>
+          <div className="l">Value</div>
+          <div className="num v">{h.price != null ? `${sym}${fmt(valueLocal)}` : '—'}</div>
         </div>
         <div>
-          <div style={{ fontSize: 11, color: '#86868b' }}>Yield</div>
-          <div className="num" style={{ fontSize: 14, fontWeight: 500 }}>
-            {h.fwdYieldPct != null ? `${h.fwdYieldPct.toFixed(1)}%` : '—'}
-          </div>
+          <div className="l">Yield</div>
+          <div className="num v">{h.fwdYieldPct != null ? `${h.fwdYieldPct.toFixed(1)}%` : '—'}</div>
         </div>
       </div>
     </div>
@@ -175,7 +163,7 @@ export default async function StocksScreen() {
         </Link>
       </div>
 
-      <div className="grid-4">
+      <div className="stocks-grid">
         {holdings.map((h) => <StockCard key={h.ticker} h={h} />)}
       </div>
 

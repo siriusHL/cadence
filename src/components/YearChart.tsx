@@ -20,7 +20,7 @@ export function YearChart({ months, currentMonth }: Props) {
   const maxBar = Math.max(...months.map((m) => Math.max(m.received, m.expected)), 1) * 1.2;
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative' }} className="year-chart">
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 180, padding: '0 8px' }}>
         {months.map((m, i) => {
           const received = m.received;
@@ -31,12 +31,19 @@ export function YearChart({ months, currentMonth }: Props) {
           const fadedPortion = Math.max(0, totalH - solidPortion);
           const isFutureMonth = i > currentMonth;
           const isHovered = hover === i;
+          const isDim = hover != null && !isHovered;
+
+          // Stagger: bars start ~250ms in, each subsequent month ~55ms later.
+          const barDelay = 250 + i * 55;
+          // Value label and month label come in after the bar has landed.
+          const labelDelay = barDelay + 480;
 
           return (
             <div
               key={i}
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover((cur) => (cur === i ? null : cur))}
+              className={`yc-col${isHovered ? ' is-hovered' : ''}${isDim ? ' is-dim' : ''}`}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
                 alignItems: 'center', gap: 8, height: '100%',
@@ -48,43 +55,69 @@ export function YearChart({ months, currentMonth }: Props) {
                 justifyContent: 'flex-end', width: '100%',
               }}>
                 {received > 0 && (
-                  <div className="num" style={{
-                    fontSize: 12, color: '#1d1d1f', fontWeight: 500,
-                    textAlign: 'center', marginBottom: 6,
-                  }}>
+                  <div
+                    className="num yc-value"
+                    style={{
+                      fontSize: 12, color: '#1d1d1f', fontWeight: 500,
+                      textAlign: 'center', marginBottom: 6,
+                      animationDelay: `${labelDelay}ms`,
+                    }}
+                  >
                     €{Math.round(received)}
                   </div>
                 )}
                 {received === 0 && expected > 0 && (
-                  <div className="num" style={{
-                    fontSize: 11, color: '#86868b', fontWeight: 400,
-                    textAlign: 'center', marginBottom: 6,
-                  }}>
+                  <div
+                    className="num yc-value"
+                    style={{
+                      fontSize: 11, color: '#86868b', fontWeight: 400,
+                      textAlign: 'center', marginBottom: 6,
+                      animationDelay: `${labelDelay}ms`,
+                    }}
+                  >
                     €{Math.round(expected)}
                   </div>
                 )}
-                <div style={{
-                  height: `${fadedPortion}%`,
-                  // Tinted version of the accent — same hue, low alpha
-                  background: isHovered
-                    ? 'oklch(0.55 0.10 175 / 0.35)'
-                    : 'oklch(0.55 0.10 175 / 0.22)',
-                  borderRadius: '6px 6px 0 0',
-                  transition: 'background 120ms',
-                }} />
-                <div style={{
-                  height: `${solidPortion}%`,
-                  background: isHovered ? 'oklch(0.48 0.12 175)' : 'oklch(0.55 0.10 175)',
-                  // Top corners only get rounded when there's no faded tip stacked above.
-                  borderRadius: fadedPortion > 0 ? '0' : '6px 6px 0 0',
-                  transition: 'background 120ms',
-                }} />
+                <div
+                  className="yc-bar-stack"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-end',
+                    width: '100%',
+                    height: `${totalH}%`,
+                    animationDelay: `${barDelay}ms`,
+                  }}
+                >
+                  <div
+                    className="yc-bar yc-bar-faded"
+                    style={{
+                      height: totalH > 0 ? `${(fadedPortion / totalH) * 100}%` : '0%',
+                      background: isHovered
+                        ? 'oklch(0.55 0.10 175 / 0.38)'
+                        : 'oklch(0.55 0.10 175 / 0.22)',
+                      borderRadius: '6px 6px 0 0',
+                    }}
+                  />
+                  <div
+                    className="yc-bar yc-bar-solid"
+                    style={{
+                      height: totalH > 0 ? `${(solidPortion / totalH) * 100}%` : '0%',
+                      background: isHovered ? 'oklch(0.46 0.13 175)' : 'oklch(0.55 0.10 175)',
+                      borderRadius: fadedPortion > 0 ? '0' : '6px 6px 0 0',
+                    }}
+                  />
+                </div>
               </div>
-              <div style={{
-                fontSize: 12,
-                color: isFutureMonth ? '#86868b' : (received > 0 ? '#1d1d1f' : '#6e6e73'),
-                fontWeight: received > 0 || i === currentMonth ? 500 : 400,
-              }}>
+              <div
+                className="yc-label"
+                style={{
+                  fontSize: 12,
+                  color: isFutureMonth ? '#86868b' : (received > 0 ? '#1d1d1f' : '#6e6e73'),
+                  fontWeight: received > 0 || i === currentMonth ? 500 : 400,
+                  animationDelay: `${labelDelay}ms`,
+                }}
+              >
                 {MONTH_NAMES[i]}
               </div>
             </div>
@@ -106,6 +139,7 @@ function Tooltip({ month, monthIndex }: { month: MonthOverview; monthIndex: numb
   const leftPct = (monthIndex + 0.5) * (100 / 12);
   return (
     <div
+      className="yc-tooltip"
       style={{
         position: 'absolute',
         left: `${leftPct}%`,

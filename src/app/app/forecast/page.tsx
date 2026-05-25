@@ -155,7 +155,7 @@ export default async function ForecastScreen() {
       </div>
 
       {/* Forward monthly + cumulative chart */}
-      <div className="pcard">
+      <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 0 }}>
         <div className="pcard-h">
           <div>
             <div className="t">Forward monthly income + cumulative</div>
@@ -169,13 +169,13 @@ export default async function ForecastScreen() {
 
       <div className="row-2" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
         {/* Income by holding */}
-        <div className="pcard flush">
+        <div className="pcard flush cdn-anim interactive forecast-holdings-card" style={{ ['--i' as never]: 1 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
             <div className="t">Income by holding · forward 12M</div>
             <span className="tag">Top {byTicker.length}</span>
           </div>
           <div>
-            <table className="pt">
+            <table className="pt forecast-holdings-table">
               <thead>
                 <tr>
                   <th>Ticker</th>
@@ -186,11 +186,14 @@ export default async function ForecastScreen() {
                 </tr>
               </thead>
               <tbody>
-                {byTicker.map((s) => {
+                {byTicker.map((s, i) => {
                   const sharePct = total12 > 0 ? (s.total / total12) * 100 : 0;
                   const barPct = topTickerTotal > 0 ? (s.total / topTickerTotal) * 100 : 0;
                   return (
-                    <tr key={s.ticker}>
+                    <tr
+                      key={s.ticker}
+                      style={{ animationDelay: `${320 + i * 55}ms` }}
+                    >
                       <td className="ticker">
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <TickerLogo ticker={s.ticker} size={26} />
@@ -205,8 +208,8 @@ export default async function ForecastScreen() {
                       <td className="r b">€{fmt(s.total)}</td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div className="pbar" style={{ flex: 1 }}>
-                            <i style={{ width: `${barPct}%` }} />
+                          <div className="pbar holding-bar" style={{ flex: 1 }}>
+                            <i style={{ width: `${barPct}%`, animationDelay: `${400 + i * 55}ms` }} />
                           </div>
                           <span style={{ minWidth: 42, textAlign: 'right', fontSize: 11 }}>{sharePct.toFixed(1)}%</span>
                         </div>
@@ -221,7 +224,7 @@ export default async function ForecastScreen() {
 
         {/* Right column — cashflow + growth */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="pcard">
+          <div className="pcard cdn-anim interactive cashflow-card" style={{ ['--i' as never]: 2 }}>
             <div className="pcard-h">
               <div className="t">Cashflow projections</div>
             </div>
@@ -253,8 +256,8 @@ export default async function ForecastScreen() {
           </div>
 
           <div
-            className="pcard"
-            style={{ background: 'linear-gradient(135deg, oklch(0.97 0.01 175), oklch(0.94 0.03 195))' }}
+            className="pcard cdn-anim interactive growth-card"
+            style={{ background: 'linear-gradient(135deg, oklch(0.97 0.01 175), oklch(0.94 0.03 195))', ['--i' as never]: 3 }}
           >
             <div style={{ fontSize: 11, color: '#6e6e73', fontWeight: 500, marginBottom: 4 }}>
               If every holding raises 5%
