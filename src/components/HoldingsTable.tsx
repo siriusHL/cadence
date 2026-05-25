@@ -211,7 +211,7 @@ export function HoldingsTable({ rows }: Props) {
       </div>
 
       {filtered.length === 0 && (
-        <div style={{ padding: '32px 0', textAlign: 'center', color: '#86868b', fontSize: 13 }}>
+        <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
           No holdings match &ldquo;{search}&rdquo;.
         </div>
       )}
@@ -317,12 +317,12 @@ function Group({ group, totalValue, router }: { group: Group; totalValue: number
                 title="Edit"
                 style={{
                   display: 'inline-block', width: 22, height: 22, lineHeight: '22px',
-                  textAlign: 'center', borderRadius: 6, color: '#86868b',
+                  textAlign: 'center', borderRadius: 6, color: 'var(--text-dim)',
                   fontSize: 12, cursor: 'pointer',
                   transition: 'background 120ms, color 120ms',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = '#1d1d1f'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#86868b'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-dim)'; }}
               >
                 ›
               </span>

@@ -173,7 +173,7 @@ export default function AddHoldingPage() {
   return (
     <div style={{ maxWidth: 640, margin: '32px auto' }}>
       <div style={{ marginBottom: 18 }}>
-        <Link href="/app/home" style={{ fontSize: 13, color: '#6e6e73', textDecoration: 'none' }}>
+        <Link href="/app/home" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}>
           ← Back
         </Link>
       </div>
@@ -181,7 +181,7 @@ export default function AddHoldingPage() {
         <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 4 }}>
           Add a holding
         </div>
-        <div style={{ fontSize: 14, color: '#6e6e73', marginBottom: 24 }}>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>
           Tell Cadence what you bought. Add multiple lots if you bought at different prices or on different days.
         </div>
 
@@ -201,7 +201,7 @@ export default function AddHoldingPage() {
             </Field>
           </div>
 
-          <div style={{ marginTop: 6, marginBottom: 2, fontSize: 12, fontWeight: 500, color: '#1d1d1f' }}>
+          <div style={{ marginTop: 6, marginBottom: 2, fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>
             Buy lots
           </div>
 
@@ -228,7 +228,7 @@ export default function AddHoldingPage() {
               padding: '8px 14px',
               fontSize: 13,
               fontWeight: 500,
-              color: '#1d1d1f',
+              color: 'var(--text)',
               cursor: 'pointer',
               marginTop: 2,
             }}
@@ -241,12 +241,12 @@ export default function AddHoldingPage() {
               marginTop: 10,
               padding: '12px 14px',
               borderRadius: 10,
-              background: 'rgba(0,0,0,0.03)',
+              background: 'var(--surface-2)',
               display: 'flex',
               justifyContent: 'space-between',
               fontSize: 13,
             }}>
-              <span style={{ color: '#6e6e73' }}>
+              <span style={{ color: 'var(--text-muted)' }}>
                 {totalShares} share{totalShares === 1 ? '' : 's'} · avg cost {curSym}{avgCost.toFixed(2)}
               </span>
               <span style={{ fontWeight: 500 }}>
@@ -296,16 +296,16 @@ function LotRow({ index, lot, canRemove, loading, onChange, onRemove }: LotRowPr
   return (
     <div style={{
       padding: '12px 14px',
-      border: '1px solid rgba(0,0,0,0.08)',
+      border: '1px solid var(--border)',
       borderRadius: 12,
-      background: '#fff',
+      background: 'var(--surface)',
       position: 'relative',
     }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         marginBottom: 10,
       }}>
-        <span style={{ fontSize: 11, fontWeight: 500, color: '#86868b', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+        <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-dim)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
           Lot {index + 1}
         </span>
         {canRemove && (
@@ -315,7 +315,7 @@ function LotRow({ index, lot, canRemove, loading, onChange, onRemove }: LotRowPr
             aria-label="Remove lot"
             style={{
               background: 'transparent', border: 0, cursor: 'pointer',
-              fontSize: 18, color: '#86868b', lineHeight: 1, padding: 0,
+              fontSize: 18, color: 'var(--text-dim)', lineHeight: 1, padding: 0,
             }}
           >
             ×
@@ -346,7 +346,7 @@ function LotRow({ index, lot, canRemove, loading, onChange, onRemove }: LotRowPr
               style={inputStyle}
             />
             {loading && (
-              <div style={{ position: 'absolute', right: 10, top: 12, fontSize: 11, color: '#86868b' }}>…</div>
+              <div style={{ position: 'absolute', right: 10, top: 12, fontSize: 11, color: 'var(--text-dim)' }}>…</div>
             )}
           </div>
         </Field>
@@ -387,9 +387,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   height: 40,
   padding: '0 12px',
-  border: '1px solid rgba(0,0,0,0.12)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 10,
-  background: '#fff',
+  background: 'var(--surface)',
   fontFamily: 'inherit',
   fontSize: 14,
   outline: 'none',
@@ -398,9 +398,9 @@ const inputStyle: React.CSSProperties = {
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 12, fontWeight: 500, color: '#1d1d1f' }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
       {children}
-      {hint && <span style={{ fontSize: 11, color: '#86868b' }}>{hint}</span>}
+      {hint && <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>{hint}</span>}
     </label>
   );
 }

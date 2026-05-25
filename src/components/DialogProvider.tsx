@@ -115,21 +115,21 @@ function ConfirmDialog({ state, onResolve }: { state: ConfirmState; onResolve: (
       <div
         style={{
           width: '100%', maxWidth: 400,
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 16,
           padding: '22px 24px 20px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.18), 0 4px 14px rgba(0,0,0,0.08)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.40), 0 4px 14px rgba(0,0,0,0.18)',
           animation: 'cdn-pop-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1.05)',
         }}
       >
         <div
           id="cdn-confirm-title"
-          style={{ fontSize: 17, fontWeight: 600, color: '#1d1d1f', letterSpacing: '-0.01em' }}
+          style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.01em' }}
         >
           {state.title}
         </div>
         {state.body && (
-          <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.5, color: '#6e6e73' }}>
+          <div style={{ marginTop: 8, fontSize: 14, lineHeight: 1.5, color: 'var(--text-muted)' }}>
             {state.body}
           </div>
         )}
@@ -144,8 +144,8 @@ function ConfirmDialog({ state, onResolve }: { state: ConfirmState; onResolve: (
             style={{
               display: 'inline-flex', alignItems: 'center',
               height: 36, padding: '0 18px',
-              background: danger ? 'oklch(0.50 0.16 25)' : '#1d1d1f',
-              color: '#fff',
+              background: danger ? 'var(--danger)' : 'var(--btn-primary-bg)',
+              color: danger ? '#fff' : 'var(--btn-primary-text)',
               borderRadius: 999,
               fontSize: 14, fontWeight: 500,
               border: 0, cursor: 'pointer',
@@ -190,11 +190,11 @@ function ToastStack({ toasts }: { toasts: ToastEntry[] }) {
             pointerEvents: 'auto',
             minWidth: 240, maxWidth: 380,
             padding: '12px 16px',
-            background: '#fff',
+            background: 'var(--surface)',
             borderRadius: 12,
-            borderLeft: `3px solid ${t.variant === 'error' ? 'oklch(0.50 0.16 25)' : 'oklch(0.48 0.08 175)'}`,
-            boxShadow: '0 4px 18px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.04)',
-            fontSize: 13, fontWeight: 500, color: '#1d1d1f', lineHeight: 1.4,
+            borderLeft: `3px solid ${t.variant === 'error' ? 'var(--danger)' : 'var(--accent)'}`,
+            boxShadow: 'var(--shadow-elev)',
+            fontSize: 13, fontWeight: 500, color: 'var(--text)', lineHeight: 1.4,
             animation: 'cdn-toast-in 180ms ease-out',
           }}
         >

@@ -176,7 +176,7 @@ export default async function TaxScreen() {
             </span>
           </div>
           {summary.rows.length === 0 ? (
-            <div style={{ padding: 20, textAlign: 'center', color: '#86868b', fontSize: 13 }}>
+            <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
               Nothing to break down yet.
             </div>
           ) : (
@@ -222,8 +222,8 @@ export default async function TaxScreen() {
                   })}
                 </tbody>
                 <tfoot>
-                  <tr style={{ background: 'rgba(0,0,0,0.025)' }}>
-                    <td className="b" colSpan={2} style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#86868b' }}>
+                  <tr style={{ background: 'var(--surface-2)' }}>
+                    <td className="b" colSpan={2} style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>
                       Σ totals
                     </td>
                     <td className="r b">€{fmtMoney(summary.totalGrossEur, 2)}</td>
@@ -263,7 +263,7 @@ export default async function TaxScreen() {
             <span className="tag">treaty vs effective</span>
           </div>
           {reclaimable.length === 0 ? (
-            <div style={{ padding: '20px 4px', color: '#86868b', fontSize: 13, lineHeight: 1.5 }}>
+            <div style={{ padding: '20px 4px', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.5 }}>
               {hasAnyData ? (
                 <>You&rsquo;re already withheld at treaty rates — nothing to reclaim. 🎉</>
               ) : (
@@ -277,9 +277,9 @@ export default async function TaxScreen() {
                   key={r.country}
                   style={{
                     padding: '12px 14px',
-                    border: '1px solid rgba(0,0,0,0.08)',
+                    border: '1px solid var(--border)',
                     borderRadius: 10,
-                    background: '#fff',
+                    background: 'var(--surface)',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -291,23 +291,23 @@ export default async function TaxScreen() {
                       +€{fmtMoney(r.reclaimableEur, 2)}
                     </span>
                   </div>
-                  <div style={{ fontSize: 11, color: '#86868b', marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
                     Effective {fmtPct(r.effectiveRate)} · treaty {r.treatyRate?.toFixed(1)}%
                     {r.statutoryRate != null && <> · statutory {r.statutoryRate.toFixed(1)}%</>}
                   </div>
-                  <div style={{ fontSize: 11.5, color: '#1d1d1f', marginTop: 6, lineHeight: 1.45 }}>
+                  <div style={{ fontSize: 11.5, color: 'var(--text)', marginTop: 6, lineHeight: 1.45 }}>
                     {reclaimAction(r.country, residence)}
                   </div>
                 </div>
               ))}
               <div
                 style={{
-                  fontSize: 11.5, color: '#6e6e73',
+                  fontSize: 11.5, color: 'var(--text-muted)',
                   paddingTop: 8, marginTop: 4,
-                  borderTop: '1px solid rgba(0,0,0,0.06)', lineHeight: 1.5,
+                  borderTop: '1px solid var(--border)', lineHeight: 1.5,
                 }}
               >
-                <b style={{ color: '#1d1d1f' }}>€{fmtMoney(summary.totalReclaimableEur, 2)}</b>{' '}
+                <b style={{ color: 'var(--text)' }}>€{fmtMoney(summary.totalReclaimableEur, 2)}</b>{' '}
                 of foreign tax could be reclaimed if treaty paperwork is filed at the source.
                 These are estimates — your broker may already apply treaty rates automatically (e.g. via W-8BEN).
               </div>
@@ -354,7 +354,7 @@ function DomesticTaxBreakdown({
   const { model, preCreditEur, foreignCreditEur, finalEur, allowanceUsedEur, note } = breakdown;
   if (summary.totalGrossEur <= 0) {
     return (
-      <div style={{ padding: '12px 4px', color: '#86868b', fontSize: 13, lineHeight: 1.5 }}>
+      <div style={{ padding: '12px 4px', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.5 }}>
         Once dividend activity starts, Cadence applies {residenceName}&rsquo;s tax rules and shows the
         residence-side tax due here.
       </div>
@@ -405,12 +405,12 @@ function DomesticTaxBreakdown({
       <table className="pt">
         <tbody>
           {lines.map((l, i) => (
-            <tr key={i} style={l.total ? { background: 'rgba(0,0,0,0.025)' } : undefined}>
+            <tr key={i} style={l.total ? { background: 'var(--surface-2)' } : undefined}>
               <td
                 style={{
                   fontSize: l.total ? 12 : 11.5,
                   fontWeight: l.total ? 600 : 500,
-                  color: l.muted ? '#86868b' : '#1d1d1f',
+                  color: l.muted ? 'var(--text-dim)' : 'var(--text)',
                 }}
               >
                 {l.label}
@@ -422,7 +422,7 @@ function DomesticTaxBreakdown({
                   fontWeight: l.total ? 700 : 500,
                   color: l.negative ? 'oklch(0.50 0.16 25)'
                     : l.positive ? 'oklch(0.36 0.08 165)'
-                    : '#1d1d1f',
+                    : 'var(--text)',
                 }}
               >
                 {l.value}
@@ -439,7 +439,7 @@ function DomesticTaxBreakdown({
           display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#1d1d1f' }}>Net kept after all taxes</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>Net kept after all taxes</span>
         <span
           className="num"
           style={{ fontSize: 18, fontWeight: 700, color: 'oklch(0.36 0.08 165)' }}
@@ -450,8 +450,8 @@ function DomesticTaxBreakdown({
       {note && (
         <div
           style={{
-            marginTop: 10, fontSize: 11, color: '#6e6e73',
-            lineHeight: 1.5, borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: 8,
+            marginTop: 10, fontSize: 11, color: 'var(--text-muted)',
+            lineHeight: 1.5, borderTop: '1px solid var(--border)', paddingTop: 8,
           }}
         >
           {note}

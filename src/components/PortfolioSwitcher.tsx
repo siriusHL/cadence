@@ -58,11 +58,11 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
           alignItems: 'center',
           gap: 6,
           padding: '6px 10px',
-          background: '#fff',
-          border: '1px solid #d2d2d7',
+          background: 'var(--surface)',
+          border: '1px solid var(--border-strong)',
           borderRadius: 8,
           fontSize: 12,
-          color: '#1d1d1f',
+          color: 'var(--text)',
           cursor: 'pointer',
           maxWidth: 200,
         }}
@@ -71,7 +71,7 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
           {active.name}
         </span>
-        <span style={{ color: '#86868b', fontSize: 10 }}>▾</span>
+        <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>▾</span>
       </button>
       {open && (
         <div
@@ -80,10 +80,10 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
             top: 'calc(100% + 6px)',
             right: 0,
             minWidth: 220,
-            background: '#fff',
-            border: '1px solid #d2d2d7',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 10,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+            boxShadow: 'var(--shadow-popover)',
             padding: 4,
             zIndex: 50,
           }}
@@ -99,24 +99,24 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
                 gap: 8,
                 width: '100%',
                 padding: '8px 10px',
-                background: it.id === activeId ? '#f5f5f7' : 'transparent',
+                background: it.id === activeId ? 'var(--surface-2)' : 'transparent',
                 border: 'none',
                 borderRadius: 6,
                 fontSize: 13,
                 textAlign: 'left',
                 cursor: 'pointer',
-                color: '#1d1d1f',
+                color: 'var(--text)',
               }}
             >
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {it.name}
               </span>
               {it.id === activeId && (
-                <span style={{ fontSize: 11, color: '#0070f3' }}>●</span>
+                <span style={{ fontSize: 11, color: 'var(--accent)' }}>●</span>
               )}
             </button>
           ))}
-          <div style={{ height: 1, background: '#ececec', margin: '4px 0' }} />
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
           <Link
             href="/app/portfolios"
             onClick={() => setOpen(false)}
@@ -124,7 +124,7 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
               display: 'block',
               padding: '8px 10px',
               fontSize: 13,
-              color: '#0070f3',
+              color: 'var(--accent)',
               textDecoration: 'none',
               borderRadius: 6,
             }}

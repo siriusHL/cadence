@@ -101,7 +101,7 @@ export default async function CalendarScreen() {
           </h1>
           <div className="sub">
             <b>{totalCount}</b> payment{totalCount === 1 ? '' : 's'} from your {held.length} stock{held.length === 1 ? '' : 's'}.
-            {yearTotal > 0 && <> Heaviest month is <b style={{ color: '#1d1d1f' }}>{MONTH_LONG[heaviestMonth]}</b>.</>}
+            {yearTotal > 0 && <> Heaviest month is <b style={{ color: 'var(--text)' }}>{MONTH_LONG[heaviestMonth]}</b>.</>}
           </div>
         </div>
         <div className="right-meta">
@@ -115,7 +115,7 @@ export default async function CalendarScreen() {
         <div className="pcard">
           <div className="pcard-h">
             <div className="t">Year heatmap · ex-div by day</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: '#86868b' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--text-dim)' }}>
               <span>Less</span>
               {[0.1, 0.3, 0.5, 0.7, 0.95].map((f, i) => (
                 <span key={i} style={{
@@ -133,7 +133,7 @@ export default async function CalendarScreen() {
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
             <div>
               <div className="t">Next 40 days</div>
-              <div style={{ fontSize: 11.5, color: '#86868b', marginTop: 2 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
                 {next40.length} payment{next40.length === 1 ? '' : 's'} · €{fmt(next40Gross)} gross
               </div>
             </div>
@@ -143,7 +143,7 @@ export default async function CalendarScreen() {
           </div>
           <div style={{ maxHeight: 560, overflow: 'auto' }}>
             {next40.length === 0 ? (
-              <div style={{ padding: 28, textAlign: 'center', color: '#86868b', fontSize: 13 }}>
+              <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
                 No payments scheduled in the next 40 days.
               </div>
             ) : (
@@ -168,12 +168,12 @@ export default async function CalendarScreen() {
                         <td>
                           <div style={{
                             fontSize: 12, fontWeight: 600,
-                            color: isSoon ? 'oklch(0.36 0.08 175)' : '#1d1d1f',
+                            color: isSoon ? 'oklch(0.36 0.08 175)' : 'var(--text)',
                           }}>
                             {d.toLocaleDateString('en', { month: 'short', day: 'numeric' })}
                           </div>
                           {e.isProjected && (
-                            <div style={{ fontSize: 9.5, color: '#86868b' }}>est.</div>
+                            <div style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>est.</div>
                           )}
                         </td>
                         <td className="ticker">

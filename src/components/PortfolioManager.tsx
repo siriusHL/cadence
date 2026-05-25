@@ -143,7 +143,7 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
                   alignItems: 'center',
                   gap: 12,
                   padding: '14px 16px',
-                  borderTop: i === 0 ? 'none' : '1px solid #ececec',
+                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
                 }}
               >
                 <input
@@ -170,22 +170,22 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
                       style={{
                         width: '100%',
                         padding: '6px 10px',
-                        border: '1px solid #d2d2d7',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 6,
                         fontSize: 14,
                         fontWeight: 500,
-                        color: '#1d1d1f',
+                        color: 'var(--text)',
                       }}
                     />
                   ) : (
                     <>
-                      <div style={{ fontWeight: 500, color: '#1d1d1f' }}>
+                      <div style={{ fontWeight: 500, color: 'var(--text)' }}>
                         {p.name}
                         {p.id === activeId && (
-                          <span style={{ marginLeft: 8, fontSize: 11, color: '#0070f3' }}>active</span>
+                          <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--accent)' }}>active</span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: '#86868b' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
                         Created {new Date(p.created_at).toLocaleDateString('en', { month: 'short', day: '2-digit', year: 'numeric' })}
                       </div>
                     </>
@@ -221,7 +221,7 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
             </div>
           ))}
           {portfolios.length === 0 && (
-            <div style={{ padding: 24, color: '#6e6e73', textAlign: 'center' }}>
+            <div style={{ padding: 24, color: 'var(--text-muted)', textAlign: 'center' }}>
               No portfolios yet.
             </div>
           )}
@@ -246,10 +246,10 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
             style={{
               flex: 1,
               padding: '8px 12px',
-              border: '1px solid #d2d2d7',
+              border: '1px solid var(--border-strong)',
               borderRadius: 8,
               fontSize: 14,
-              background: atCap ? '#f5f5f7' : '#fff',
+              background: atCap ? "var(--input-disabled-bg)" : "var(--input-bg)",
             }}
           />
           <button
@@ -261,9 +261,9 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
           </button>
         </form>
         {atCap && tier !== 'elite' && (
-          <div style={{ padding: '0 16px 16px', fontSize: 13, color: '#6e6e73' }}>
+          <div style={{ padding: '0 16px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
             Need more portfolios?{' '}
-            <a href="/upgrade" style={{ color: '#0070f3' }}>
+            <a href="/upgrade" style={{ color: 'var(--accent)' }}>
               Upgrade to {tier === 'free' ? 'Premium (3) or Elite (∞)' : 'Elite (∞)'}
             </a>
             .
@@ -276,9 +276,9 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
 
 const btnPrimary: React.CSSProperties = {
   padding: '8px 14px',
-  background: '#1d1d1f',
-  color: '#fff',
-  border: '1px solid #1d1d1f',
+  background: 'var(--btn-primary-bg)',
+  color: 'var(--btn-primary-text)',
+  border: '1px solid var(--btn-primary-bg)',
   borderRadius: 8,
   fontSize: 13,
   fontWeight: 500,
@@ -287,9 +287,9 @@ const btnPrimary: React.CSSProperties = {
 
 const btnGhost: React.CSSProperties = {
   padding: '6px 10px',
-  background: '#fff',
-  color: '#1d1d1f',
-  border: '1px solid #d2d2d7',
+  background: 'var(--surface)',
+  color: 'var(--text)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   fontSize: 12,
   cursor: 'pointer',
@@ -297,13 +297,14 @@ const btnGhost: React.CSSProperties = {
 
 const btnDanger: React.CSSProperties = {
   ...btnGhost,
-  color: '#d70015',
-  borderColor: '#f5c2c7',
+  color: 'var(--danger)',
+  borderColor: 'var(--border-strong)',
 };
 
 const btnDisabled: React.CSSProperties = {
   ...btnPrimary,
-  background: '#d2d2d7',
-  borderColor: '#d2d2d7',
+  background: 'var(--border-strong)',
+  borderColor: 'var(--border-strong)',
+  color: 'var(--text-muted)',
   cursor: 'not-allowed',
 };

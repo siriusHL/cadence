@@ -95,7 +95,7 @@ export function TickerAutocomplete({ value, onChange, onSelect, placeholder }: P
         style={inputStyle}
       />
       {loading && (
-        <div style={{ position: 'absolute', right: 12, top: 12, fontSize: 11, color: '#86868b' }}>
+        <div style={{ position: 'absolute', right: 12, top: 12, fontSize: 11, color: 'var(--text-dim)' }}>
           searching…
         </div>
       )}
@@ -114,17 +114,17 @@ export function TickerAutocomplete({ value, onChange, onSelect, placeholder }: P
             >
               <TickerLogo ticker={h.ticker} size={28} />
               <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#1d1d1f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {h.name}
                 </div>
-                <div style={{ fontSize: 11, color: '#86868b' }}>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                   {h.exchange ?? '—'}{h.country ? ` · ${h.country}` : ''}{h.currency ? ` · ${h.currency}` : ''}
                 </div>
               </div>
               <div style={{
                 fontFamily: 'var(--font-jetbrains, ui-monospace)',
-                fontSize: 12, fontWeight: 600, color: '#1d1d1f',
-                background: 'rgba(0,0,0,0.04)', padding: '3px 8px', borderRadius: 6,
+                fontSize: 12, fontWeight: 600, color: 'var(--text)',
+                background: 'var(--surface-2)', padding: '3px 8px', borderRadius: 6,
               }}>
                 {h.ticker}
               </div>
@@ -140,9 +140,9 @@ const inputStyle: React.CSSProperties = {
   width: '100%',
   height: 40,
   padding: '0 12px',
-  border: '1px solid rgba(0,0,0,0.12)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 10,
-  background: '#fff',
+  background: 'var(--surface)',
   fontFamily: 'inherit',
   fontSize: 14,
   outline: 'none',
@@ -153,8 +153,8 @@ const dropdownStyle: React.CSSProperties = {
   top: 'calc(100% + 4px)',
   left: 0,
   right: 0,
-  background: '#fff',
-  border: '1px solid rgba(0,0,0,0.08)',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderRadius: 12,
   boxShadow: '0 4px 18px rgba(0,0,0,0.08)',
   padding: 4,

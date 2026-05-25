@@ -99,7 +99,7 @@ export function YearChart({ months, currentMonth }: Props) {
                   <div
                     className="num yc-value"
                     style={{
-                      fontSize: 12, color: '#1d1d1f', fontWeight: 500,
+                      fontSize: 12, color: 'var(--text)', fontWeight: 500,
                       textAlign: 'center', marginBottom: 6,
                       animationDelay: `${labelDelay}ms`,
                     }}
@@ -111,7 +111,7 @@ export function YearChart({ months, currentMonth }: Props) {
                   <div
                     className="num yc-value"
                     style={{
-                      fontSize: 11, color: '#86868b', fontWeight: 400,
+                      fontSize: 11, color: 'var(--text-dim)', fontWeight: 400,
                       textAlign: 'center', marginBottom: 6,
                       animationDelay: `${labelDelay}ms`,
                     }}
@@ -154,7 +154,7 @@ export function YearChart({ months, currentMonth }: Props) {
                 className="yc-label"
                 style={{
                   fontSize: 12,
-                  color: isFutureMonth ? '#86868b' : (received > 0 ? '#1d1d1f' : '#6e6e73'),
+                  color: isFutureMonth ? 'var(--text-dim)' : (received > 0 ? 'var(--text)' : 'var(--text-muted)'),
                   fontWeight: received > 0 || i === currentMonth ? 500 : 400,
                   animationDelay: `${labelDelay}ms`,
                 }}

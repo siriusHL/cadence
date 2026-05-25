@@ -103,7 +103,7 @@ export default async function HomeScreen() {
         <div className="big">
           <span className="cur">€</span>
           {heroMoney.whole}
-          <span style={{ color: '#86868b', fontWeight: 400 }}>.{heroMoney.cents}</span>
+          <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>.{heroMoney.cents}</span>
         </div>
         <div className="sub">
           {receivedThisMonth ? (
@@ -174,14 +174,14 @@ export default async function HomeScreen() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>Your holdings</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <Link href="/app/stocks" style={{ fontSize: 12, color: '#6e6e73', textDecoration: 'none' }}>
+            <Link href="/app/stocks" style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none' }}>
               See all →
             </Link>
             <Link
               href="/app/add"
               style={{
                 fontSize: 12, fontWeight: 500, padding: '6px 12px',
-                background: '#1d1d1f', color: '#fff', borderRadius: 999,
+                background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)', borderRadius: 999,
                 textDecoration: 'none',
               }}
             >
@@ -201,13 +201,13 @@ export default async function HomeScreen() {
                 <TickerLogo ticker={h.ticker} size={32} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 500 }}>{h.ticker}</div>
-                  <div style={{ fontSize: 12, color: '#86868b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {h.name ?? h.ticker} · {fmt(h.quantity, h.quantity % 1 === 0 ? 0 : 2)} share{h.quantity === 1 ? '' : 's'}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="num" style={{ fontSize: 13, fontWeight: 500 }}>€{fmt(value)}</div>
-                  <div className="num" style={{ fontSize: 11, color: '#86868b' }}>€{fmt(monthly)}/mo</div>
+                  <div className="num" style={{ fontSize: 11, color: 'var(--text-dim)' }}>€{fmt(monthly)}/mo</div>
                 </div>
               </div>
             );
@@ -216,12 +216,12 @@ export default async function HomeScreen() {
         {holdings.length > 10 && (
           <div style={{
             marginTop: 10, paddingTop: 10,
-            borderTop: '1px solid rgba(0,0,0,0.05)',
+            borderTop: '1px solid var(--border)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            fontSize: 12, color: '#86868b',
+            fontSize: 12, color: 'var(--text-dim)',
           }}>
             <span>Showing top 10 by value · {holdings.length - 10} more</span>
-            <Link href="/app/stocks" style={{ color: '#1d1d1f', textDecoration: 'none', fontWeight: 500 }}>
+            <Link href="/app/stocks" style={{ color: 'var(--text)', textDecoration: 'none', fontWeight: 500 }}>
               See all {holdings.length} →
             </Link>
           </div>

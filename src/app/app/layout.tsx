@@ -60,7 +60,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <DialogProvider>
       <div className="cdn-free flex flex-col min-h-screen">
         <div className="fnav">
-          <Link href="/app/home" className="brand">
+          <Link href="/app" className="brand">
             <span className="dot" /> Cadence
           </Link>
           <NavTabs tabs={tabs.map((t) => ({ label: t.label, href: t.href }))} />

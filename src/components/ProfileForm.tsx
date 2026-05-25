@@ -94,7 +94,7 @@ export function ProfileForm({ initial, taxResidences }: Props) {
           className="btn"
           style={{
             height: 36, padding: '0 18px',
-            background: '#1d1d1f', color: '#fff',
+            background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
             borderRadius: 999, fontSize: 14, fontWeight: 500,
             border: 0, cursor: 'pointer',
             opacity: pending ? 0.6 : 1,
@@ -110,9 +110,9 @@ export function ProfileForm({ initial, taxResidences }: Props) {
 function Field({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <span style={{ fontSize: 12, fontWeight: 500, color: '#1d1d1f' }}>{label}</span>
+      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
       {children}
-      {help && <span style={{ fontSize: 11.5, color: '#86868b', lineHeight: 1.45 }}>{help}</span>}
+      {help && <span style={{ fontSize: 11.5, color: 'var(--text-dim)', lineHeight: 1.45 }}>{help}</span>}
     </label>
   );
 }
@@ -121,10 +121,10 @@ const inputStyle: React.CSSProperties = {
   height: 36,
   padding: '0 12px',
   fontSize: 14,
-  border: '1px solid rgba(0,0,0,0.12)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 8,
-  background: '#fff',
-  color: '#1d1d1f',
+  background: 'var(--surface)',
+  color: 'var(--text)',
   outline: 'none',
   fontFamily: 'inherit',
 };

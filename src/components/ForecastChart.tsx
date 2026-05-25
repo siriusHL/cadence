@@ -68,10 +68,10 @@ export function ForecastChart({ months }: Props) {
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#6e6e73' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175)' }} /> Monthly
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#6e6e73' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 14, height: 2, background: 'oklch(0.40 0.06 235)', borderRadius: 1 }} /> Cumulative
           </span>
         </div>
@@ -97,7 +97,7 @@ export function ForecastChart({ months }: Props) {
                 style={{
                   position: 'absolute', right: 8, top: `${pct * 100}%`,
                   transform: 'translateY(-50%)',
-                  fontSize: 10.5, color: '#86868b', fontWeight: 500,
+                  fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 500,
                 }}
               >
                 €{fmt(v)}
@@ -118,7 +118,7 @@ export function ForecastChart({ months }: Props) {
                   style={{
                     position: 'absolute', left: 0, right: 0,
                     top: `${(1 - pct) * 100}%`,
-                    height: 1, background: 'rgba(0,0,0,0.05)',
+                    height: 1, background: 'var(--surface-2)',
                   }}
                 />
               );
@@ -147,7 +147,7 @@ export function ForecastChart({ months }: Props) {
                         <div
                           className="fc-value-label"
                           style={{
-                            textAlign: 'center', fontSize: 10.5, color: '#1d1d1f',
+                            textAlign: 'center', fontSize: 10.5, color: 'var(--text)',
                             fontWeight: 500, marginBottom: 4,
                             animationDelay: `${labelDelay}ms`,
                           }}
@@ -234,7 +234,7 @@ export function ForecastChart({ months }: Props) {
                     width: isLast ? 8 : 5,
                     height: isLast ? 8 : 5,
                     borderRadius: '50%',
-                    background: '#fff',
+                    background: 'var(--surface)',
                     border: '1.8px solid oklch(0.40 0.06 235)',
                     animationDelay: `${dotDelay}ms`,
                   }}
@@ -254,7 +254,7 @@ export function ForecastChart({ months }: Props) {
               return (
                 <div key={`${m.year}-${m.month}-l`} style={{
                   flex: 1, textAlign: 'center',
-                  fontSize: 10.5, color: '#6e6e73', fontWeight: 500,
+                  fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 500,
                   overflow: 'hidden', whiteSpace: 'nowrap',
                 }}>
                   {show ? `${MONTH_NAMES[m.month]}${slice.length > 12 ? ` ${String(m.year).slice(2)}` : ''}` : ''}

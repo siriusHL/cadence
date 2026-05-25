@@ -128,7 +128,7 @@ export function YearHeatmap({ events, year }: Props) {
                 key={i}
                 style={{
                   fontSize: 9, padding: '2px 0',
-                  fontWeight: 500, color: '#86868b', textAlign: 'center',
+                  fontWeight: 500, color: 'var(--text-dim)', textAlign: 'center',
                 }}
               >
                 {i + 1}
@@ -136,7 +136,7 @@ export function YearHeatmap({ events, year }: Props) {
             ))}
             <th style={{
               width: 70, textAlign: 'right',
-              fontSize: 10.5, color: '#86868b', fontWeight: 500, paddingLeft: 8,
+              fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 500, paddingLeft: 8,
             }}>
               Total
             </th>
@@ -145,7 +145,7 @@ export function YearHeatmap({ events, year }: Props) {
         <tbody>
           {MONTH_NAMES.map((mn, mi) => (
             <tr key={mn}>
-              <td style={{ fontSize: 11.5, color: '#1d1d1f', fontWeight: 500, paddingRight: 6 }}>
+              <td style={{ fontSize: 11.5, color: 'var(--text)', fontWeight: 500, paddingRight: 6 }}>
                 {mn}
               </td>
               {Array.from({ length: 31 }, (_, di) => {
@@ -210,7 +210,7 @@ export function YearHeatmap({ events, year }: Props) {
               })}
               <td className="num" style={{
                 textAlign: 'right', fontSize: 11.5, fontWeight: 500,
-                color: monthTotals[mi] > 0 ? '#1d1d1f' : '#c7c7cc',
+                color: monthTotals[mi] > 0 ? 'var(--text)' : 'var(--text-dim)',
                 paddingLeft: 8,
               }}>
                 {monthTotals[mi] > 0 ? `€${fmt(monthTotals[mi])}` : '—'}

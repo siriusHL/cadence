@@ -61,15 +61,15 @@ function StockCard({ h }: { h: HoldingView }) {
       </div>
 
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 10.5, color: '#86868b', marginBottom: 1 }}>Pays you</div>
+        <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginBottom: 1 }}>Pays you</div>
         <div className="num stock-pay-line" style={{ fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
           {sym}{fmt(monthlyLocal)}<span className="unit"> / month</span>
         </div>
         <div style={{
-          fontSize: 11.5, color: '#6e6e73', marginTop: 3,
+          fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {sym}{fmt(annualLocal)} <span style={{ color: '#86868b' }}>per year</span>
+          {sym}{fmt(annualLocal)} <span style={{ color: 'var(--text-dim)' }}>per year</span>
         </div>
       </div>
 
@@ -151,8 +151,8 @@ export default async function StocksScreen() {
             Your <span className="light">{holdings.length} dividend stock{holdings.length === 1 ? '' : 's'}</span>
           </div>
           <div className="sect-sub">
-            Worth about <b style={{ color: '#1d1d1f', fontWeight: 500 }}>€{fmt(totalValue)}</b>,
-            paying you <b style={{ color: '#1d1d1f', fontWeight: 500 }}>€{fmt(totalMonthly)} every month</b>.
+            Worth about <b style={{ color: 'var(--text)', fontWeight: 500 }}>€{fmt(totalValue)}</b>,
+            paying you <b style={{ color: 'var(--text)', fontWeight: 500 }}>€{fmt(totalMonthly)} every month</b>.
           </div>
         </div>
         <Link

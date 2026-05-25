@@ -68,10 +68,10 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
       {/* Toolbar: legend + range selector */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#6e6e73' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175)' }} /> Received
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#6e6e73' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175 / 0.22)' }} /> Expected
           </span>
         </div>
@@ -111,7 +111,7 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                   top: `${pct * 100}%`,
                   transform: 'translateY(-50%)',
                   fontSize: 10,
-                  color: '#86868b',
+                  color: 'var(--text-dim)',
                   fontWeight: 500,
                 }}
               >
@@ -264,7 +264,7 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                 <div key={`${m.year}-${m.month}-l`} style={{
                   flex: 1, textAlign: 'center', minWidth: 4,
                   fontSize: 10,
-                  color: i > nowIndexInSlice ? '#86868b' : '#6e6e73',
+                  color: i > nowIndexInSlice ? 'var(--text-dim)' : 'var(--text-muted)',
                   fontWeight: 500,
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
@@ -336,7 +336,7 @@ function NowMarker({ totalBars, nowIndexInSlice, chartHeight }: {
           position: 'absolute',
           left: `calc(${leftPct}% + 4px)`,
           top: 0,
-          fontSize: 10, fontWeight: 500, color: '#86868b',
+          fontSize: 10, fontWeight: 500, color: 'var(--text-dim)',
           pointerEvents: 'none',
         }}
       >

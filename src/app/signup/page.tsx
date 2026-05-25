@@ -21,14 +21,14 @@ export default function SignupPage() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/app/home` },
+      options: { emailRedirectTo: `${window.location.origin}/app` },
     });
     setBusy(false);
     if (error) { setError(error.message); return; }
     // If email confirmation is off, log in immediately; otherwise show confirm message.
     const { data: session } = await supabase.auth.getSession();
     if (session.session) {
-      router.push('/app/home');
+      router.push('/app');
       router.refresh();
     } else {
       setDone(true);

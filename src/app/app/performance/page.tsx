@@ -329,7 +329,7 @@ export default async function PerformanceScreen() {
         <div className="pcard-h">
           <div>
             <div className="t">Cumulative total return</div>
-            <div style={{ fontSize: 11.5, color: '#86868b', marginTop: 3 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3 }}>
               Weekly snapshots of value vs cost basis. Returns are rebased to the start of the selected range.
             </div>
           </div>
@@ -517,12 +517,12 @@ function RiskRow({
   good?: boolean;
   bad?: boolean;
 }) {
-  const color = good ? 'oklch(0.36 0.08 165)' : bad ? 'oklch(0.50 0.16 25)' : '#1d1d1f';
+  const color = good ? 'oklch(0.36 0.08 165)' : bad ? 'oklch(0.50 0.16 25)' : 'var(--text)';
   return (
     <tr>
-      <td style={{ color: '#86868b', fontSize: 12 }}>{label}</td>
+      <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{label}</td>
       <td className="r num" style={{ color, fontWeight: 600 }}>{value}</td>
-      <td style={{ color: '#86868b', fontSize: 11, paddingLeft: 8 }}>{note}</td>
+      <td style={{ color: 'var(--text-dim)', fontSize: 11, paddingLeft: 8 }}>{note}</td>
     </tr>
   );
 }

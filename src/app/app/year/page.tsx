@@ -89,12 +89,12 @@ export default async function YearScreen() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.015em' }}>Income by month</div>
-            <div style={{ fontSize: 13, color: '#86868b', marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 2 }}>
               Solid blocks are what you&apos;ve received. Faded blocks show what&apos;s expected.
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <span className="pill" style={{ background: 'rgba(0,0,0,0.04)' }}>{year}</span>
+            <span className="pill" style={{ background: 'var(--surface-2)' }}>{year}</span>
           </div>
         </div>
 

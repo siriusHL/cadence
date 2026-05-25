@@ -66,7 +66,7 @@ export function Donut({
         style={{
           fontSize: 24,
           fontWeight: 600,
-          fill: '#1d1d1f',
+          fill: 'var(--text)',
           letterSpacing: '-0.025em',
           fontVariantNumeric: 'tabular-nums',
         }}
@@ -79,7 +79,7 @@ export function Donut({
         textAnchor="middle"
         style={{
           fontSize: 10.5,
-          fill: '#86868b',
+          fill: 'var(--text-dim)',
           fontWeight: 500,
           textTransform: 'uppercase',
           letterSpacing: '0.06em',
