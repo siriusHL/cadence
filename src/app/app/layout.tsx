@@ -4,6 +4,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
 import { NavTabs } from '@/components/NavTabs';
 import { DialogProvider } from '@/components/DialogProvider';
+import { UserMenu } from '@/components/UserMenu';
 
 interface NavTab { label: string; href: string; screen: Screen; }
 
@@ -65,7 +66,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className={'plan ' + (tier === 'premium' ? 'pro' : tier === 'elite' ? 'elite' : '')}>
               {planLabel}
             </span>
-            <span className="avatar">{initials}</span>
+            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} />
           </div>
         </div>
         <div className="scroll">{children}</div>
