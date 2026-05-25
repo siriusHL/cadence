@@ -58,7 +58,7 @@ export function YearChart({ months, currentMonth }: Props) {
                   <div
                     className="num yc-value"
                     style={{
-                      fontSize: 12, color: '#1d1d1f', fontWeight: 500,
+                      fontSize: 12, color: 'var(--text)', fontWeight: 500,
                       textAlign: 'center', marginBottom: 6,
                       animationDelay: `${labelDelay}ms`,
                     }}
@@ -70,7 +70,7 @@ export function YearChart({ months, currentMonth }: Props) {
                   <div
                     className="num yc-value"
                     style={{
-                      fontSize: 11, color: '#86868b', fontWeight: 400,
+                      fontSize: 11, color: 'var(--text-dim)', fontWeight: 400,
                       textAlign: 'center', marginBottom: 6,
                       animationDelay: `${labelDelay}ms`,
                     }}
@@ -113,7 +113,7 @@ export function YearChart({ months, currentMonth }: Props) {
                 className="yc-label"
                 style={{
                   fontSize: 12,
-                  color: isFutureMonth ? '#86868b' : (received > 0 ? '#1d1d1f' : '#6e6e73'),
+                  color: isFutureMonth ? 'var(--text-dim)' : (received > 0 ? 'var(--text)' : 'var(--text-muted)'),
                   fontWeight: received > 0 || i === currentMonth ? 500 : 400,
                   animationDelay: `${labelDelay}ms`,
                 }}
@@ -145,8 +145,8 @@ function Tooltip({ month, monthIndex }: { month: MonthOverview; monthIndex: numb
         left: `${leftPct}%`,
         bottom: 'calc(100% + 8px)',
         transform: 'translateX(-50%)',
-        background: '#1d1d1f',
-        color: '#fff',
+        background: 'var(--btn-primary-bg)',
+        color: 'var(--btn-primary-text)',
         padding: '10px 14px',
         borderRadius: 12,
         minWidth: 220,
@@ -173,7 +173,7 @@ function Tooltip({ month, monthIndex }: { month: MonthOverview; monthIndex: numb
           return (
             <div key={line.ticker} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <b style={{ color: '#fff' }}>{line.ticker}</b>
+                <b>{line.ticker}</b>
                 {line.name && <span style={{ color: 'rgba(255,255,255,0.55)' }}> · {line.name}</span>}
               </span>
               <span className="num" style={{ flexShrink: 0, color: isExpected ? 'rgba(255,255,255,0.65)' : '#fff' }}>

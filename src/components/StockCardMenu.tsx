@@ -63,8 +63,8 @@ export function StockCardMenu({ ticker, name }: Props) {
         disabled={busy}
         style={{
           width: 28, height: 28, borderRadius: 8,
-          border: 0, background: open ? 'rgba(0,0,0,0.06)' : 'transparent',
-          color: '#6e6e73', cursor: 'pointer',
+          border: 0, background: open ? 'var(--surface-hover)' : 'transparent',
+          color: 'var(--text-muted)', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 18, lineHeight: 1, padding: 0,
           transition: 'background 120ms',
@@ -79,10 +79,10 @@ export function StockCardMenu({ ticker, name }: Props) {
             position: 'absolute',
             top: 'calc(100% + 4px)',
             right: 0,
-            background: '#fff',
-            border: '1px solid rgba(0,0,0,0.08)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 10,
-            boxShadow: '0 4px 18px rgba(0,0,0,0.08)',
+            boxShadow: 'var(--shadow-elev)',
             padding: 4,
             minWidth: 140,
             zIndex: 20,
@@ -109,10 +109,10 @@ function MenuItem({ children, onClick, destructive }: { children: React.ReactNod
         border: 0, background: 'transparent',
         borderRadius: 6,
         fontSize: 13, fontWeight: 500,
-        color: destructive ? 'oklch(0.50 0.16 25)' : '#1d1d1f',
+        color: destructive ? 'var(--danger)' : 'var(--text)',
         cursor: 'pointer',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = destructive ? 'oklch(0.96 0.03 25)' : 'rgba(0,0,0,0.04)'; }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface-hover)'; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
     >
       {children}

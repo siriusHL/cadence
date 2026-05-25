@@ -88,7 +88,7 @@ export default async function AlertsScreen() {
             {alerts.length === 0
               ? <>All clear <span className="light">— nothing needs your attention</span></>
               : <>
-                  <span style={{ color: negative > 0 ? 'oklch(0.50 0.16 25)' : '#1d1d1f' }}>
+                  <span style={{ color: negative > 0 ? 'oklch(0.50 0.16 25)' : 'var(--text)' }}>
                     {alerts.length}
                   </span>{' '}
                   <span className="light">
@@ -123,7 +123,7 @@ export default async function AlertsScreen() {
           className="pcard"
           style={{
             textAlign: 'center', padding: 40,
-            color: '#86868b', fontSize: 14, lineHeight: 1.5,
+            color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.5,
           }}
         >
           <div style={{ fontSize: 32, marginBottom: 8 }}>✓</div>
@@ -140,11 +140,11 @@ export default async function AlertsScreen() {
       <div
         style={{
           marginTop: 24, padding: '14px 16px',
-          background: 'rgba(0,0,0,0.025)', borderRadius: 10,
-          fontSize: 11.5, color: '#6e6e73', lineHeight: 1.6,
+          background: 'var(--surface-2)', borderRadius: 10,
+          fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.6,
         }}
       >
-        <b style={{ color: '#1d1d1f' }}>Thresholds:</b>{' '}
+        <b style={{ color: 'var(--text)' }}>Thresholds:</b>{' '}
         Ex-dates surfaced within 7 days · dividend cuts &amp; raises at ≥5% change ·
         single-position concentration at ≥10% of portfolio ·
         HHI ≥1500 · reclaimable foreign WTH ≥€50 ·
@@ -161,7 +161,7 @@ function AlertRow({ alert }: { alert: AlertCard }) {
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 14,
         padding: '14px 18px',
-        background: '#fff',
+        background: 'var(--surface)',
         borderRadius: 12,
         borderLeft: `3px solid ${color}`,
         boxShadow: '0 1px 2px rgba(0,0,0,.03), 0 1px 3px rgba(0,0,0,.02)',
@@ -182,7 +182,7 @@ function AlertRow({ alert }: { alert: AlertCard }) {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#1d1d1f' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
             {alert.title}
           </div>
           {alert.amountEur != null && alert.amountEur > 0 && (
@@ -194,7 +194,7 @@ function AlertRow({ alert }: { alert: AlertCard }) {
             </span>
           )}
         </div>
-        <div style={{ marginTop: 3, fontSize: 12.5, color: '#6e6e73', lineHeight: 1.5 }}>
+        <div style={{ marginTop: 3, fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
           {alert.body}
         </div>
         {alert.action && (

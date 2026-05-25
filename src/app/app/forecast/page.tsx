@@ -144,7 +144,7 @@ export default async function ForecastScreen() {
           <h1>€{fmt(total12)} <span className="light">expected</span></h1>
           <div className="sub">
             <b>{eventsCount}</b> payment{eventsCount === 1 ? '' : 's'} forecasted ·
-            avg <b style={{ color: '#1d1d1f' }}>€{fmt(total12 / 12)}/mo</b> ·
+            avg <b style={{ color: 'var(--text)' }}>€{fmt(total12 / 12)}/mo</b> ·
             based on declared schedules and projected cadence.
           </div>
         </div>
@@ -160,7 +160,7 @@ export default async function ForecastScreen() {
         <div className="pcard-h">
           <div>
             <div className="t">Forward monthly income + cumulative</div>
-            <div style={{ fontSize: 11.5, color: '#86868b', marginTop: 3 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3 }}>
               Bars are per-month gross. Line tracks the running total over the selected range.
             </div>
           </div>
@@ -260,7 +260,7 @@ export default async function ForecastScreen() {
             className="pcard cdn-anim interactive growth-card"
             style={{ background: 'linear-gradient(135deg, oklch(0.97 0.01 175), oklch(0.94 0.03 195))', ['--i' as never]: 3 }}
           >
-            <div style={{ fontSize: 11, color: '#6e6e73', fontWeight: 500, marginBottom: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 4 }}>
               If every holding raises 5%
             </div>
             <div className="num" style={{
@@ -269,10 +269,10 @@ export default async function ForecastScreen() {
             }}>
               +€{fmt(fivePct)}/yr
             </div>
-            <div style={{ fontSize: 11.5, color: '#6e6e73', marginTop: 8, lineHeight: 1.45 }}>
-              At a historical <b style={{ color: '#1d1d1f' }}>7.8%</b> dividend growth rate,
-              income would hit <b style={{ color: '#1d1d1f' }}>€{fmt(in5y)}</b> in 5 years and
-              <b style={{ color: '#1d1d1f' }}> €{fmt(in10y)}</b> in 10.
+            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.45 }}>
+              At a historical <b style={{ color: 'var(--text)' }}>7.8%</b> dividend growth rate,
+              income would hit <b style={{ color: 'var(--text)' }}>€{fmt(in5y)}</b> in 5 years and
+              <b style={{ color: 'var(--text)' }}> €{fmt(in10y)}</b> in 10.
             </div>
           </div>
         </div>
@@ -287,16 +287,16 @@ function CashRow({ label, value, hint, emphasized }: {
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-      gap: 12, paddingBottom: 10, borderBottom: '1px solid rgba(0,0,0,0.04)',
+      gap: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)',
     }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, color: '#6e6e73' }}>{label}</div>
-        {hint && <div style={{ fontSize: 11, color: '#86868b', marginTop: 2 }}>{hint}</div>}
+        <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{label}</div>
+        {hint && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{hint}</div>}
       </div>
       <div className="num" style={{
         fontSize: emphasized ? 18 : 15,
         fontWeight: emphasized ? 600 : 500,
-        color: emphasized ? 'oklch(0.42 0.07 175)' : '#1d1d1f',
+        color: emphasized ? 'oklch(0.42 0.07 175)' : 'var(--text)',
         whiteSpace: 'nowrap',
       }}>
         {value}

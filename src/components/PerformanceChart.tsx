@@ -57,7 +57,7 @@ export function PerformanceChart({ series, benchmarks = [] }: Props) {
 
   if (series.length === 0) {
     return (
-      <div style={{ padding: 32, textAlign: 'center', color: '#86868b', fontSize: 13 }}>
+      <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
         Building performance history… data will populate shortly.
       </div>
     );
@@ -78,9 +78,9 @@ export function PerformanceChart({ series, benchmarks = [] }: Props) {
             ))}
           </div>
         </div>
-        <div style={{ padding: 32, textAlign: 'center', color: '#86868b', fontSize: 13, lineHeight: 1.5 }}>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.5 }}>
           No data in this range.
-          <div style={{ marginTop: 4, fontSize: 12, color: '#86868b' }}>
+          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-dim)' }}>
             Most recent weekly snapshot is from {latestStr}.
           </div>
         </div>
@@ -165,7 +165,7 @@ export function PerformanceChart({ series, benchmarks = [] }: Props) {
           <span style={{ fontSize: 28, fontWeight: 600, color: portColor, letterSpacing: '-0.02em' }} className="num">
             {fmtPct(portLast)}
           </span>
-          <span style={{ fontSize: 12, color: '#86868b' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
             {firstDate.toLocaleDateString('en', { month: 'short', day: '2-digit', year: '2-digit' })} → {lastDate.toLocaleDateString('en', { month: 'short', day: '2-digit', year: '2-digit' })}
           </span>
         </div>
@@ -180,7 +180,7 @@ export function PerformanceChart({ series, benchmarks = [] }: Props) {
 
       {/* Legend */}
       {benchmarkRebased.length > 0 && (
-        <div style={{ display: 'flex', gap: 16, fontSize: 11.5, color: '#6e6e73' }}>
+        <div style={{ display: 'flex', gap: 16, fontSize: 11.5, color: 'var(--text-muted)' }}>
           <LegendChip color={portColor} label="Your portfolio" value={fmtPct(portLast)} />
           {benchmarkRebased.map((b) => (
             <LegendChip key={b.id} color={b.color} label={b.name} value={fmtPct(b.last)} />
@@ -198,7 +198,7 @@ export function PerformanceChart({ series, benchmarks = [] }: Props) {
               <div key={i} className="num" style={{
                 position: 'absolute', right: 8, top: `${pct * 100}%`,
                 transform: 'translateY(-50%)',
-                fontSize: 10.5, color: v === 0 ? '#1d1d1f' : '#86868b',
+                fontSize: 10.5, color: v === 0 ? 'var(--text)' : 'var(--text-dim)',
                 fontWeight: v === 0 ? 600 : 500,
               }}>
                 {fmtPct(v)}
@@ -290,7 +290,7 @@ export function PerformanceChart({ series, benchmarks = [] }: Props) {
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
             height: 20, display: 'flex', justifyContent: 'space-between',
-            fontSize: 10.5, color: '#86868b', fontWeight: 500,
+            fontSize: 10.5, color: 'var(--text-dim)', fontWeight: 500,
           }}>
             <span>{firstDate.toLocaleDateString('en', { month: 'short', year: '2-digit' })}</span>
             <span>{lastDate.toLocaleDateString('en', { month: 'short', year: '2-digit' })}</span>
@@ -308,7 +308,7 @@ function LegendChip({ color, label, value }: { color: string; label: string; val
         display: 'inline-block', width: 14, height: 2,
         background: color, verticalAlign: 'middle', borderRadius: 1,
       }} />
-      <span style={{ color: '#1d1d1f', fontWeight: 500 }}>{label}</span>
+      <span style={{ color: 'var(--text)', fontWeight: 500 }}>{label}</span>
       <span className="num" style={{ color }}>{value}</span>
     </span>
   );

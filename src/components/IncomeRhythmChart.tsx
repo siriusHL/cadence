@@ -60,10 +60,10 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
       {/* Toolbar: legend + range selector */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#6e6e73' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175)' }} /> Received
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: '#6e6e73' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175 / 0.22)' }} /> Expected
           </span>
         </div>
@@ -103,7 +103,7 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                   top: `${pct * 100}%`,
                   transform: 'translateY(-50%)',
                   fontSize: 10,
-                  color: '#86868b',
+                  color: 'var(--text-dim)',
                   fontWeight: 500,
                 }}
               >
@@ -127,7 +127,7 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                     left: 0, right: 0,
                     top: `${(1 - pct) * 100}%`,
                     height: 1,
-                    background: 'rgba(0,0,0,0.05)',
+                    background: 'var(--surface-2)',
                   }}
                 />
               );
@@ -229,7 +229,7 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                 <div key={`${m.year}-${m.month}-l`} style={{
                   flex: 1, textAlign: 'center', minWidth: 4,
                   fontSize: 10,
-                  color: i > nowIndexInSlice ? '#86868b' : '#6e6e73',
+                  color: i > nowIndexInSlice ? 'var(--text-dim)' : 'var(--text-muted)',
                   fontWeight: 500,
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
@@ -282,7 +282,7 @@ function NowMarker({ totalBars, nowIndexInSlice, chartHeight }: {
           position: 'absolute',
           left: `calc(${leftPct}% + 4px)`,
           top: 0,
-          fontSize: 10, fontWeight: 500, color: '#86868b',
+          fontSize: 10, fontWeight: 500, color: 'var(--text-dim)',
           pointerEvents: 'none',
         }}
       >
@@ -305,8 +305,8 @@ function Tooltip({ month, hoverIdx, totalBars, nowIndexInSlice }: {
         left: `${leftPct}%`,
         bottom: 'calc(100% - 24px)',
         transform: 'translateX(-50%)',
-        background: '#1d1d1f',
-        color: '#fff',
+        background: 'var(--btn-primary-bg)',
+        color: 'var(--btn-primary-text)',
         padding: '10px 14px',
         borderRadius: 12,
         minWidth: 220,
@@ -333,7 +333,7 @@ function Tooltip({ month, hoverIdx, totalBars, nowIndexInSlice }: {
           return (
             <div key={line.ticker} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <span style={{ color: 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <b style={{ color: '#fff' }}>{line.ticker}</b>
+                <b>{line.ticker}</b>
                 {line.name && <span style={{ color: 'rgba(255,255,255,0.55)' }}> · {line.name}</span>}
               </span>
               <span className="num" style={{ flexShrink: 0, color: isExpectedLine ? 'rgba(255,255,255,0.65)' : '#fff' }}>

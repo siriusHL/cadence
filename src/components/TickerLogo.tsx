@@ -51,7 +51,7 @@ export function TickerLogo({ ticker, size = 28, radius }: Props) {
       onError={() => setErrored(true)}
       style={{
         width: size, height: size, borderRadius: r,
-        background: '#fff',
+        background: 'var(--surface)',
         objectFit: 'contain',
         flexShrink: 0,
       }}

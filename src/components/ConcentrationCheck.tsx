@@ -53,7 +53,7 @@ export function ConcentrationCheck({
           value={`${top5Pct.toFixed(1)}%`}
           pct={top5Pct}
           caption="Target < 40%"
-          color="#1d1d1f"
+          color="var(--text)"
           delay={340}
         />
         <Metric
@@ -61,7 +61,7 @@ export function ConcentrationCheck({
           value={`${top10Pct.toFixed(1)}%`}
           pct={top10Pct}
           caption="Target < 60%"
-          color="#1d1d1f"
+          color="var(--text)"
           delay={420}
         />
         <Metric
@@ -115,7 +115,7 @@ function Metric({
           alignItems: 'baseline',
         }}
       >
-        <span style={{ fontSize: 12, color: '#1d1d1f', fontWeight: 500 }}>
+        <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>
           {label}
           {tip && <InfoTip>{tip}</InfoTip>}
         </span>
@@ -141,7 +141,7 @@ function Metric({
           }}
         />
       </div>
-      <div style={{ fontSize: 10.5, color: '#86868b', marginTop: 3 }}>{caption}</div>
+      <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 3 }}>{caption}</div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ export function EmptyState({ icon = '✦', title, body, ctaLabel, ctaHref }: Pro
   return (
     <div
       style={{
-        background: '#fff',
+        background: 'var(--surface)',
         borderRadius: 16,
         boxShadow: '0 1px 2px rgba(0,0,0,.04), 0 6px 18px rgba(0,0,0,.04)',
         padding: '48px 32px',
@@ -40,7 +40,7 @@ export function EmptyState({ icon = '✦', title, body, ctaLabel, ctaHref }: Pro
       <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 6 }}>
         {title}
       </div>
-      <div style={{ fontSize: 14, color: '#6e6e73', maxWidth: 380, margin: '0 auto', lineHeight: 1.45 }}>
+      <div style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 380, margin: '0 auto', lineHeight: 1.45 }}>
         {body}
       </div>
       {ctaLabel && ctaHref && (

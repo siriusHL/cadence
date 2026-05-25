@@ -89,7 +89,7 @@ export default async function DashboardScreen() {
           <div className="eyebrow">Your portfolio · {todayLabel}</div>
           <h1>
             €{Math.floor(summary.totalValue).toLocaleString('en-IE')}
-            <span style={{ color: '#86868b', fontWeight: 400 }}>
+            <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>
               .{(summary.totalValue % 1).toFixed(2).slice(2)}
             </span>
           </h1>
@@ -121,8 +121,8 @@ export default async function DashboardScreen() {
         </div>
         <div className="tile" style={{ ['--i' as never]: 1 }}>
           <div className="l">Forward yield</div>
-          <div className="v">{summary.forwardYieldPct.toFixed(2)}<span style={{ fontSize: 16, color: '#86868b', fontWeight: 400 }}>%</span></div>
-          <div className="d">YoC <b style={{ color: '#1d1d1f' }}>{summary.yieldOnCostPct.toFixed(2)}%</b></div>
+          <div className="v">{summary.forwardYieldPct.toFixed(2)}<span style={{ fontSize: 16, color: 'var(--text-dim)', fontWeight: 400 }}>%</span></div>
+          <div className="d">YoC <b style={{ color: 'var(--text)' }}>{summary.yieldOnCostPct.toFixed(2)}%</b></div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 2 }}>
           <div className="l">YTD income</div>
@@ -141,7 +141,7 @@ export default async function DashboardScreen() {
         <div className="pcard-h">
           <div>
             <div className="t">Income rhythm</div>
-            <div style={{ fontSize: 11.5, color: '#86868b', marginTop: 3 }}>
+            <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3 }}>
               Dividends received and expected. Hover any month for the breakdown.
             </div>
           </div>
@@ -170,7 +170,7 @@ export default async function DashboardScreen() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {c.ticker}
-                      {c.name && <span style={{ color: '#86868b', fontWeight: 400, fontSize: 11.5 }}> · {c.name}</span>}
+                      {c.name && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11.5 }}> · {c.name}</span>}
                     </div>
                     <div className="pbar contrib-bar" style={{ marginTop: 5 }}>
                       <i style={{ width: `${widthPct}%`, animationDelay: `${420 + i * 70}ms` }} />
@@ -178,7 +178,7 @@ export default async function DashboardScreen() {
                   </div>
                   <div style={{ textAlign: 'right' }} className="num">
                     <div style={{ fontSize: 13, fontWeight: 600 }}>€{fmt(c.forwardAnnualLocal)}</div>
-                    <div style={{ fontSize: 11, color: '#86868b' }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                       {c.yieldPct != null ? `${c.yieldPct.toFixed(2)}% yld` : '—'}
                     </div>
                   </div>
@@ -195,7 +195,7 @@ export default async function DashboardScreen() {
             <span className="tag">{next5.length === 0 ? '—' : `next ${next5[next5.length - 1]?.daysUntil ?? 0}d`}</span>
           </div>
           {next5.length === 0 ? (
-            <div style={{ fontSize: 12, color: '#86868b', padding: '20px 0' }}>
+            <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 0' }}>
               No dividends scheduled in the next 60 days.
             </div>
           ) : (
@@ -216,20 +216,20 @@ export default async function DashboardScreen() {
                       <div className="num" style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em' }}>
                         {String(d.getDate()).padStart(2, '0')}
                       </div>
-                      <div style={{ fontSize: 9.5, color: '#86868b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                      <div style={{ fontSize: 9.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
                         {MONTH_SHORT[d.getMonth()]}
                       </div>
                     </div>
                     <TickerLogo ticker={e.ticker} size={28} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12.5, fontWeight: 500 }}>{e.ticker}</div>
-                      <div style={{ fontSize: 11, color: '#86868b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {e.name ?? e.ticker}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }} className="num">
                       <div style={{ fontSize: 13, fontWeight: 600 }}>€{fmt(e.estimatedTotalLocal, 2)}</div>
-                      <div style={{ fontSize: 10.5, color: '#86868b' }}>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
                         {e.daysUntil === 0 ? 'today' : `in ${e.daysUntil}d`}
                         {e.isProjected && ' · est'}
                       </div>
@@ -248,18 +248,18 @@ export default async function DashboardScreen() {
             <span className="tag">€{(fireTarget / 1000).toFixed(0)}k / yr target</span>
           </div>
           <div className="num" style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1.05 }}>
-            <span style={{ fontSize: 17, color: '#86868b', fontWeight: 400 }}>€</span>{fmt(summary.forwardAnnualIncome)}
-            <span style={{ fontSize: 13, color: '#86868b', fontWeight: 400, marginLeft: 8 }}>/ €{fmt(fireTarget)}</span>
+            <span style={{ fontSize: 17, color: 'var(--text-dim)', fontWeight: 400 }}>€</span>{fmt(summary.forwardAnnualIncome)}
+            <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 400, marginLeft: 8 }}>/ €{fmt(fireTarget)}</span>
           </div>
-          <div style={{ fontSize: 11.5, color: '#6e6e73', marginTop: 4 }}>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>
             {firePct.toFixed(1)}% of FIRE
-            {yearsToFire > 0 && <> · est. <b style={{ color: '#1d1d1f' }}>~{yearsToFire} years</b> at {(growth * 100).toFixed(0)}% growth</>}
+            {yearsToFire > 0 && <> · est. <b style={{ color: 'var(--text)' }}>~{yearsToFire} years</b> at {(growth * 100).toFixed(0)}% growth</>}
           </div>
 
           <div
             className="fire-track"
             style={{
-              position: 'relative', height: 8, background: 'rgba(0,0,0,0.06)', borderRadius: 4,
+              position: 'relative', height: 8, background: 'var(--surface-hover)', borderRadius: 4,
               overflow: 'hidden', marginTop: 16,
             }}
           >
@@ -268,21 +268,21 @@ export default async function DashboardScreen() {
               style={{ position: 'absolute', inset: 0, width: `${firePct}%`, background: 'oklch(0.55 0.10 175)', borderRadius: 4 }}
             />
             {[0.25, 0.5, 0.75].map((p, i) => (
-              <div key={i} style={{ position: 'absolute', top: -2, bottom: -2, left: `${p * 100}%`, width: 1, background: '#fff' }} />
+              <div key={i} style={{ position: 'absolute', top: -2, bottom: -2, left: `${p * 100}%`, width: 1, background: 'var(--surface)' }} />
             ))}
           </div>
           <div style={{
             display: 'flex', justifyContent: 'space-between', marginTop: 5,
-            fontSize: 10, color: '#86868b', fontWeight: 500,
+            fontSize: 10, color: 'var(--text-dim)', fontWeight: 500,
           }} className="num">
             <span>€0</span><span>€7.5k</span><span>€15k</span><span>€22.5k</span><span>€30k</span>
           </div>
 
-          <div style={{ marginTop: 18, padding: '10px 12px', background: 'rgba(0,0,0,0.025)', borderRadius: 10 }}>
-            <div style={{ fontSize: 11, color: '#86868b', marginBottom: 2 }}>YTD received</div>
+          <div style={{ marginTop: 18, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 2 }}>YTD received</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span className="num" style={{ fontSize: 18, fontWeight: 600 }}>€{fmt(summary.ytdReceived)}</span>
-              <span style={{ marginLeft: 'auto', fontSize: 10.5, color: '#86868b' }}>
+              <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text-dim)' }}>
                 {summary.forwardAnnualIncome > 0
                   ? `${((summary.ytdReceived / summary.forwardAnnualIncome) * 100).toFixed(0)}% of forward annual`
                   : '—'}
@@ -292,7 +292,7 @@ export default async function DashboardScreen() {
         </div>
       </div>
 
-      <div style={{ marginTop: 10, fontSize: 11, color: '#86868b', textAlign: 'center' }}>
+      <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-dim)', textAlign: 'center' }}>
         <Link href="/app/stocks" style={{ color: 'inherit' }}>← Back to Your Stocks</Link>
       </div>
     </div>
