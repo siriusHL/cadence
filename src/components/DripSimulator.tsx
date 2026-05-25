@@ -244,6 +244,16 @@ function DripCurves({
           <stop offset="0%"   stopColor="oklch(0.55 0.10 175)" stopOpacity="0.16" />
           <stop offset="100%" stopColor="oklch(0.55 0.10 175)" stopOpacity="0" />
         </linearGradient>
+        {/* Left-to-right reveal — matches PerformanceChart's wipe pattern. */}
+        <clipPath id="drip-clip">
+          <rect
+            className="drip-clip-rect"
+            x={pad.l}
+            y={pad.t - 4}
+            width={iw}
+            height={ih + 8}
+          />
+        </clipPath>
       </defs>
 
       {gridLines.map((g, i) => {
@@ -274,28 +284,34 @@ function DripCurves({
         FIRE €{(FIRE_THRESHOLD_EUR / 1000).toFixed(0)}k
       </text>
 
-      <path d={`${pathFor(series.dripPlus)} L ${xs(years)} ${pad.t + ih} L ${xs(0)} ${pad.t + ih} Z`}
-            fill="url(#g-drip)" />
-      <path d={pathFor(series.noDrip)}   fill="none" stroke="rgba(0,0,0,0.3)"        strokeWidth="1.5" strokeDasharray="4 4" />
-      <path d={pathFor(series.drip)}     fill="none" stroke="oklch(0.40 0.06 235)" strokeWidth="1.8" />
-      <path d={pathFor(series.dripPlus)} fill="none" stroke="oklch(0.55 0.10 175)" strokeWidth="2.4" strokeLinecap="round" />
+      {/* Animated layer — wiped left-to-right via the clipPath. */}
+      <g clipPath="url(#drip-clip)">
+        <path d={`${pathFor(series.dripPlus)} L ${xs(years)} ${pad.t + ih} L ${xs(0)} ${pad.t + ih} Z`}
+              fill="url(#g-drip)" />
+        <path d={pathFor(series.noDrip)}   fill="none" stroke="rgba(0,0,0,0.3)"        strokeWidth="1.5" strokeDasharray="4 4" />
+        <path d={pathFor(series.drip)}     fill="none" stroke="oklch(0.40 0.06 235)" strokeWidth="1.8" />
+        <path d={pathFor(series.dripPlus)} fill="none" stroke="oklch(0.55 0.10 175)" strokeWidth="2.4" strokeLinecap="round" />
+      </g>
 
-      {[
-        { p: series.noDrip[years],   c: 'rgba(0,0,0,0.5)' },
-        { p: series.drip[years],     c: 'oklch(0.40 0.06 235)' },
-        { p: series.dripPlus[years], c: 'oklch(0.55 0.10 175)' },
-      ].map((s, i) => (
-        <g key={i}>
-          <circle cx={xs(s.p.year)} cy={ys(s.p.income)} r="4" fill="var(--surface)" stroke={s.c} strokeWidth="2" />
-          <text x={xs(s.p.year) + 8} y={ys(s.p.income) + 4}
-                style={{ fontSize: 11, fill: s.c, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-            €{(s.p.income / 1000).toFixed(1)}k
-          </text>
-        </g>
-      ))}
+      {/* Endpoint dots — pop in once the line reaches them. */}
+      <g className="drip-endpoints">
+        {[
+          { p: series.noDrip[years],   c: 'rgba(0,0,0,0.5)' },
+          { p: series.drip[years],     c: 'oklch(0.40 0.06 235)' },
+          { p: series.dripPlus[years], c: 'oklch(0.55 0.10 175)' },
+        ].map((s, i) => (
+          <g key={i}>
+            <circle cx={xs(s.p.year)} cy={ys(s.p.income)} r="4" fill="var(--surface)" stroke={s.c} strokeWidth="2" />
+            <text x={xs(s.p.year) + 8} y={ys(s.p.income) + 4}
+                  style={{ fontSize: 11, fill: s.c, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+              €{(s.p.income / 1000).toFixed(1)}k
+            </text>
+          </g>
+        ))}
+      </g>
 
       {fireYear > 0 && (
-        <g>
+        <g className="drip-fire-marker">
           <line x1={xs(fireYear)} x2={xs(fireYear)} y1={pad.t} y2={pad.t + ih}
                 stroke="oklch(0.55 0.10 175)" strokeOpacity="0.4" />
           <rect x={xs(fireYear) - 30} y={pad.t + 4} width="60" height="18" rx="9"
