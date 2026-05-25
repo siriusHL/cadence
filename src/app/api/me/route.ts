@@ -13,7 +13,8 @@ const PatchBody = z.object({
   base_currency:   z.enum(['EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK']).optional(),
   // Stored as ISO-2 uppercase; null means "unset".
   tax_country:     z.string().trim().length(2).regex(/^[A-Z]{2}$/i).nullable().optional(),
-  theme:           z.enum(['light', 'dark', 'system']).optional(),
+  contrast:        z.enum(['soft', 'standard', 'sharp']).optional(),
+  bg_tone:         z.enum(['cream', 'neutral', 'cool']).optional(),
   default_screen:  z.enum(ALLOWED_SCREENS).nullable().optional(),
 });
 
@@ -28,7 +29,8 @@ export const PATCH = withAuth({}, async ({ userId, req }) => {
   if ('tax_country'    in parsed.data) patch.tax_country    = parsed.data.tax_country
     ? parsed.data.tax_country.toUpperCase()
     : null;
-  if ('theme'          in parsed.data) patch.theme          = parsed.data.theme;
+  if ('contrast'       in parsed.data) patch.contrast       = parsed.data.contrast;
+  if ('bg_tone'        in parsed.data) patch.bg_tone        = parsed.data.bg_tone;
   if ('default_screen' in parsed.data) patch.default_screen = parsed.data.default_screen;
   if (Object.keys(patch).length === 0) return json({ ok: true });
 
@@ -36,15 +38,13 @@ export const PATCH = withAuth({}, async ({ userId, req }) => {
   const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
   if (error) return json({ error: error.message }, 500);
 
-  // Mirror the theme into a cookie so the no-flash boot script in root layout
-  // can pick it up before React hydrates on next reload.
-  if (typeof patch.theme === 'string') {
+  // Mirror visual prefs into cookies so the no-flash boot script in root layout
+  // can read them before React hydrates on the next reload.
+  if (typeof patch.contrast === 'string' || typeof patch.bg_tone === 'string') {
     const cookieStore = await cookies();
-    cookieStore.set('theme', patch.theme, {
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 365,
-    });
+    const opts = { sameSite: 'lax' as const, path: '/', maxAge: 60 * 60 * 24 * 365 };
+    if (typeof patch.contrast === 'string') cookieStore.set('contrast', patch.contrast, opts);
+    if (typeof patch.bg_tone  === 'string') cookieStore.set('bg_tone',  patch.bg_tone,  opts);
   }
 
   return json({ ok: true });
@@ -58,7 +58,7 @@ export const GET = withAuth({}, async ({ userId, tier }) => {
     { count: portfolioCount },
     { data: holdingRows },
   ] = await Promise.all([
-    supabase.from('profiles').select('display_name, base_currency, tax_country, theme, default_screen').eq('id', userId).single(),
+    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen').eq('id', userId).single(),
     supabase.from('portfolios').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     // RLS already scopes to caller's portfolios; selecting holdings.id is enough to count.
     supabase.from('holdings').select('id'),

@@ -11,16 +11,15 @@ export const metadata: Metadata = {
   description: 'Track dividends, forecast income, see your money working.',
 };
 
-// Runs synchronously before the first paint so the theme is in place before
-// any CSS is applied — eliminates the dark-mode flash on reload.
-const themeBootScript = `
+// Applies the user's contrast + background-tone preferences before first paint
+// so the page never flashes the default palette on reload.
+const visualPrefsBootScript = `
 (function(){try{
-  var m = document.cookie.match(/(?:^|; )theme=(light|dark|system)/);
-  var t = m ? m[1] : 'system';
-  if (t === 'system') {
-    t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  var d = document.documentElement;
+  var m = document.cookie.match(/(?:^|; )contrast=(soft|standard|sharp)/);
+  if (m && m[1] !== 'standard') d.setAttribute('data-contrast', m[1]);
+  var t = document.cookie.match(/(?:^|; )bg_tone=(cream|neutral|cool)/);
+  if (t && t[1] !== 'cream') d.setAttribute('data-bg-tone', t[1]);
 }catch(e){}})();
 `;
 
@@ -28,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrains.variable} h-full`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script dangerouslySetInnerHTML={{ __html: visualPrefsBootScript }} />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>{children}</body>
     </html>
