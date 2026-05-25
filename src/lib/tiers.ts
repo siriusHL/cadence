@@ -58,8 +58,11 @@ export const TIERS: Record<Tier, TierConfig> = {
     dividendFreshnessHours: 24,
     fundamentalsFreshnessHours: 168,
     fxFreshnessMin: 15,
+    // Premium swaps the four beginner-oriented screens (home / next / stocks /
+     // year) for the data-dense pro versions (dashboard / holdings / calendar /
+     // forecast / drip / performance / diversification).
     screens: [
-      'home', 'next', 'stocks', 'year', 'add', 'profile', 'settings', 'portfolios',
+      'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
       'calendar', 'forecast', 'drip',
       'performance', 'diversification',
@@ -78,7 +81,14 @@ export const TIERS: Record<Tier, TierConfig> = {
     dividendFreshnessHours: 24,
     fundamentalsFreshnessHours: 24,
     fxFreshnessMin: 15,
-    screens: '*',
+    // Same exclusions as Premium — the free-tier screens stay free-only.
+    screens: [
+      'add', 'profile', 'settings', 'portfolios',
+      'dashboard', 'holdings', 'stock',
+      'calendar', 'forecast', 'drip',
+      'performance', 'diversification',
+      'tax', 'alerts',
+    ],
     features: {
       multiCurrency: true, drip: true, calendar: true, forecast: true,
       performance: true, diversification: true, taxReport: true,

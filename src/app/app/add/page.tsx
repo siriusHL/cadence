@@ -158,7 +158,8 @@ export default function AddHoldingPage() {
       setError(j.error ?? 'Could not add holding');
       return;
     }
-    router.push('/app/stocks');
+    // Dispatch redirect — Premium/Elite land on /app/dashboard, Free on /app/home.
+    router.push('/app');
     router.refresh();
   }
 
@@ -173,7 +174,7 @@ export default function AddHoldingPage() {
   return (
     <div style={{ maxWidth: 640, margin: '32px auto' }}>
       <div style={{ marginBottom: 18 }}>
-        <Link href="/app/home" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}>
+        <Link href="/app" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}>
           ← Back
         </Link>
       </div>
