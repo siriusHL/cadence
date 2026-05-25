@@ -261,65 +261,72 @@
   padding: 6px 10px;
 }
 
-/* Range slider — used on the DRIP screen. The track is filled up to the
-   thumb via a linear-gradient driven by the `--progress` custom property
-   set inline (0–100). The thumb is a tactile white circle with a soft
-   shadow so it reads on any background tone. */
+/* Range slider — used on the DRIP screen. The track gradient is set on
+   the browser-specific track pseudo-elements (the input's own background
+   sits below the track and never shows). The fill stops at --progress,
+   which the React component sets inline per slider. */
 .cdn-pro .drip-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
-  margin: 10px 0 6px;
-  border-radius: 999px;
+  height: 22px;       /* room for the 18px thumb */
+  margin: 8px 0 4px;
+  padding: 0;
+  background: transparent;
   outline: none;
   cursor: pointer;
-  background: linear-gradient(
-    to right,
-    var(--accent-soft) 0%,
-    var(--accent-soft) var(--progress, 0%),
-    rgba(0, 0, 0, 0.12) var(--progress, 0%),
-    rgba(0, 0, 0, 0.12) 100%
-  );
-  transition: background 80ms ease;
 }
 .cdn-pro .drip-slider::-webkit-slider-runnable-track {
   height: 6px;
-  background: transparent;
   border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    oklch(0.55 0.10 175) 0%,
+    oklch(0.55 0.10 175) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) 100%
+  );
 }
 .cdn-pro .drip-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 18px;
   height: 18px;
-  margin-top: -6px;
-  background: var(--surface);
-  border: 1px solid rgba(0, 0, 0, 0.14);
+  margin-top: -6px;     /* center on the 6px track */
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.08);
   cursor: grab;
-  transition: transform 100ms ease, box-shadow 100ms ease;
+  transition: transform 100ms ease;
 }
 .cdn-pro .drip-slider:active::-webkit-slider-thumb { transform: scale(1.08); cursor: grabbing; }
 .cdn-pro .drip-slider::-moz-range-track {
   height: 6px;
-  background: transparent;
   border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    oklch(0.55 0.10 175) 0%,
+    oklch(0.55 0.10 175) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) 100%
+  );
+  border: 0;
 }
 .cdn-pro .drip-slider::-moz-range-thumb {
   width: 18px;
   height: 18px;
-  background: var(--surface);
-  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 1px 1px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.08);
   cursor: grab;
 }
-.cdn-pro .drip-slider:focus-visible {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 4px;
-  border-radius: 999px;
+.cdn-pro .drip-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px oklch(0.55 0.10 175 / 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.cdn-pro .drip-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px oklch(0.55 0.10 175 / 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* Progress bar (table FIRE column) */
