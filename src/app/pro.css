@@ -466,6 +466,22 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Add-holding modal — wider than the calendar variant (the form needs room
+   for the lots editor's 4-column grid). The body scrolls internally if the
+   user adds many lots. */
+.cdn-modal.add-holding-modal {
+  width: min(680px, 100%);
+  max-height: min(86vh, 820px);
+}
+.add-holding-modal-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 4px -8px 0;
+  padding: 4px 8px;
+}
+
 .cdn-modal-close {
   position: absolute;
   top: 14px;
