@@ -290,12 +290,20 @@ export default function LandingPage() {
           <a href="#plans" className="hover-underline">Plans</a>
           <a href="#faq" className="hover-underline">FAQ</a>
         </div>
-        <Link
-          href="/signup"
-          className="inline-flex items-center h-9 px-4 rounded-full bg-ink text-white text-[13.5px] font-medium hover:opacity-90 transition-opacity"
-        >
-          Start free →
-        </Link>
+        <div className="flex items-center gap-5">
+          <Link
+            href="/login"
+            className="hidden sm:inline-block text-[13.5px] text-ink-soft font-medium hover-underline"
+          >
+            Log in
+          </Link>
+          <Link
+            href="/signup"
+            className="inline-flex items-center h-9 px-4 rounded-full bg-ink text-white text-[13.5px] font-medium hover:opacity-90 transition-opacity"
+          >
+            Start free →
+          </Link>
+        </div>
       </nav>
 
       {/* ─── 2. LIVE TICKER ─────────────────────────────── */}
