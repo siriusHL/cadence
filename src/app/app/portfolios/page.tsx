@@ -2,6 +2,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 import { TIERS, type Tier } from '@/lib/tiers';
 import { PortfolioManager } from '@/components/PortfolioManager';
+import { AccountMobile } from '@/components/mobile/AccountMobile';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,31 @@ export default async function PortfoliosPage() {
 
   const cap = TIERS[tier].maxPortfolios;
 
+  const portfolioName = active?.name ?? 'Main portfolio';
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
+  const managerContent = (
+    <PortfolioManager
+      tier={tier}
+      portfolios={portfolios}
+      activeId={active?.id ?? null}
+      cap={cap}
+    />
+  );
+
   return (
+    <>
+      <div className="cdn-mobile-only">
+        <AccountMobile
+          title="Portfolios"
+          sub="Group holdings into separate portfolios — retirement, taxable, watchlist, whatever suits how you think about your money."
+          portfolioName={portfolioName}
+          avatarInitials={avatarInitials}
+        >
+          {managerContent}
+        </AccountMobile>
+      </div>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro" style={{ maxWidth: 880, marginInline: 'auto' }}>
       <div className="pro-hero">
         <div>
@@ -43,12 +68,9 @@ export default async function PortfoliosPage() {
         </div>
       </div>
 
-      <PortfolioManager
-        tier={tier}
-        portfolios={portfolios}
-        activeId={active?.id ?? null}
-        cap={cap}
-      />
+      {managerContent}
     </div>
+      </div>
+    </>
   );
 }

@@ -1,6 +1,8 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { ProfileForm } from '@/components/ProfileForm';
 import { COUNTRY_NAMES } from '@/lib/tax';
+import { getActivePortfolio } from '@/lib/activePortfolio';
+import { AccountMobile } from '@/components/mobile/AccountMobile';
 
 export default async function ProfilePage() {
   const supabase = await getSupabaseServer();
@@ -23,7 +25,34 @@ export default async function ProfilePage() {
     name: COUNTRY_NAMES[code] ?? code,
   }));
 
+  const activePortfolio = await getActivePortfolio(supabase, user!.id);
+  const portfolioName = activePortfolio?.name ?? 'Main portfolio';
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
+  const formContent = (
+    <ProfileForm
+      initial={{
+        displayName:  profile?.display_name ?? '',
+        baseCurrency: profile?.base_currency ?? 'EUR',
+        taxCountry:   profile?.tax_country ?? '',
+      }}
+      taxResidences={taxResidences}
+    />
+  );
+
   return (
+    <>
+      <div className="cdn-mobile-only">
+        <AccountMobile
+          title="Profile"
+          sub="Display name, base currency, and tax residence drive how Cadence formats numbers and computes your dividend tax."
+          portfolioName={portfolioName}
+          avatarInitials={avatarInitials}
+        >
+          {formContent}
+        </AccountMobile>
+      </div>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro" style={{ maxWidth: 720, marginInline: 'auto' }}>
       <div className="pro-hero">
         <div>
@@ -51,15 +80,10 @@ export default async function ProfilePage() {
         <div className="pcard-h">
           <div className="t">Personal details</div>
         </div>
-        <ProfileForm
-          initial={{
-            displayName:  profile?.display_name ?? '',
-            baseCurrency: profile?.base_currency ?? 'EUR',
-            taxCountry:   profile?.tax_country ?? '',
-          }}
-          taxResidences={taxResidences}
-        />
+        {formContent}
       </div>
     </div>
+      </div>
+    </>
   );
 }

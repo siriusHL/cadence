@@ -1,6 +1,8 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
 import { SettingsForm } from '@/components/SettingsForm';
+import { getActivePortfolio } from '@/lib/activePortfolio';
+import { AccountMobile } from '@/components/mobile/AccountMobile';
 
 interface ScreenOption { value: Screen; label: string; }
 
@@ -31,7 +33,35 @@ export default async function SettingsPage() {
   const tier = (sub?.tier ?? 'free') as Tier;
   const screenOptions = ALL_SCREENS.filter((s) => canAccessScreen(tier, s.value));
 
+  const activePortfolio = await getActivePortfolio(supabase, user!.id);
+  const portfolioName = activePortfolio?.name ?? 'Main portfolio';
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
+  const formContent = (
+    <SettingsForm
+      initial={{
+        contrast: (profile?.contrast as 'soft' | 'standard' | 'sharp' | undefined) ?? 'standard',
+        bgTone:   (profile?.bg_tone  as 'cream' | 'neutral' | 'cool' | undefined) ?? 'cream',
+        defaultScreen: (profile?.default_screen as Screen | null | undefined) ?? null,
+        incomeTarget:  Number(profile?.income_target ?? 30000),
+      }}
+      screenOptions={screenOptions}
+    />
+  );
+
   return (
+    <>
+      <div className="cdn-mobile-only">
+        <AccountMobile
+          title="Settings"
+          sub="Personal preferences for how Cadence looks and behaves on this account."
+          portfolioName={portfolioName}
+          avatarInitials={avatarInitials}
+        >
+          {formContent}
+        </AccountMobile>
+      </div>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro" style={{ maxWidth: 720, marginInline: 'auto' }}>
       <div className="pro-hero">
         <div>
@@ -43,16 +73,9 @@ export default async function SettingsPage() {
           </div>
         </div>
       </div>
-
-      <SettingsForm
-        initial={{
-          contrast: (profile?.contrast as 'soft' | 'standard' | 'sharp' | undefined) ?? 'standard',
-          bgTone:   (profile?.bg_tone  as 'cream' | 'neutral' | 'cool' | undefined) ?? 'cream',
-          defaultScreen: (profile?.default_screen as Screen | null | undefined) ?? null,
-          incomeTarget:  Number(profile?.income_target ?? 30000),
-        }}
-        screenOptions={screenOptions}
-      />
+      {formContent}
     </div>
+      </div>
+    </>
   );
 }
