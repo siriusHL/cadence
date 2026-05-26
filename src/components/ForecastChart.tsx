@@ -1,12 +1,23 @@
 'use client';
 
 import { useId, useMemo, useState } from 'react';
+import { EventDetailModal, EventHoverHint } from '@/components/EventDetailModal';
+
+export interface ForecastMonthTickerLine {
+  ticker: string;
+  name: string | null;
+  /** Per-ticker contribution for this month (gross, in base currency). */
+  amount: number;
+  /** True when the row is a projection (not a declared/received payment yet). */
+  isEstimate: boolean;
+}
 
 export interface ForecastMonth {
   /** 0-11 */
   month: number;
   year: number;
   total: number;
+  byTicker: ForecastMonthTickerLine[];
 }
 
 interface Props {
@@ -14,6 +25,12 @@ interface Props {
 }
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_LONG = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+interface HoverState { idx: number; x: number; y: number; }
 
 function fmt(n: number, digits = 0): string {
   return n.toLocaleString('en-IE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -32,6 +49,8 @@ type RangeKey = '6M' | '12M' | '24M';
 
 export function ForecastChart({ months }: Props) {
   const [range, setRange] = useState<RangeKey>('12M');
+  const [hover, setHover] = useState<HoverState | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const reactId = useId();
   const clipId = `fc-clip-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
@@ -138,10 +157,51 @@ export function ForecastChart({ months }: Props) {
                   const h = (m.total / barMax) * 100;
                   const barDelay = 220 + i * perBar;
                   const labelDelay = barDelay + 480;
+                  const hasEvents = m.byTicker.length > 0;
+                  const isHovered = hover?.idx === i;
+                  const isDim = hover != null && !isHovered;
+
+                  const openMonth = () => {
+                    if (!hasEvents) return;
+                    setHover(null);
+                    setSelected(i);
+                  };
+
                   return (
                     <div
                       key={`${m.year}-${m.month}`}
-                      style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}
+                      role={hasEvents ? 'button' : undefined}
+                      tabIndex={hasEvents ? 0 : -1}
+                      aria-label={
+                        hasEvents
+                          ? `${MONTH_LONG[m.month]} ${m.year} — €${fmt(m.total, 2)} from ${m.byTicker.length} payment${m.byTicker.length === 1 ? '' : 's'}. Click for details.`
+                          : `${MONTH_LONG[m.month]} ${m.year} — no payments`
+                      }
+                      onMouseEnter={(ev) => {
+                        if (!hasEvents) return;
+                        const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
+                        setHover({ idx: i, x: r.left + r.width / 2, y: r.top });
+                      }}
+                      onMouseLeave={() => setHover((cur) => (cur && cur.idx === i ? null : cur))}
+                      onClick={openMonth}
+                      onKeyDown={(ev) => {
+                        if (!hasEvents) return;
+                        if (ev.key === 'Enter' || ev.key === ' ') {
+                          ev.preventDefault();
+                          openMonth();
+                        }
+                      }}
+                      className={`fc-col${isHovered ? ' is-hovered' : ''}${isDim ? ' is-dim' : ''}`}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'flex-end',
+                        height: '100%',
+                        minWidth: 4,
+                        cursor: hasEvents ? 'pointer' : 'default',
+                        outline: 'none',
+                      }}
                     >
                       {m.total > 0 && (
                         <div
@@ -159,7 +219,7 @@ export function ForecastChart({ months }: Props) {
                         className="fc-bar"
                         style={{
                           height: `${h}%`,
-                          background: 'oklch(0.55 0.10 175)',
+                          background: isHovered ? 'oklch(0.46 0.13 175)' : 'oklch(0.55 0.10 175)',
                           borderRadius: '4px 4px 0 0',
                           animationDelay: `${barDelay}ms`,
                         }}
@@ -283,6 +343,34 @@ export function ForecastChart({ months }: Props) {
           )}
         </div>
       </div>
+
+      {/* Hover hint — shown while hovering a bar, hidden once a modal is open. */}
+      {hover != null && selected == null && slice[hover.idx]?.byTicker.length > 0 && (
+        <EventHoverHint
+          title={`${MONTH_LONG[slice[hover.idx].month]} ${slice[hover.idx].year}`}
+          total={slice[hover.idx].total}
+          count={slice[hover.idx].byTicker.length}
+          anchorX={hover.x}
+          anchorY={hover.y}
+          side="top"
+        />
+      )}
+
+      {/* Click-to-open per-month detail modal. */}
+      {selected != null && slice[selected]?.byTicker.length > 0 && (
+        <EventDetailModal
+          title={`${MONTH_LONG[slice[selected].month]} ${slice[selected].year}`}
+          total={slice[selected].total}
+          rows={slice[selected].byTicker.map((line) => ({
+            key: line.ticker,
+            ticker: line.ticker,
+            name: line.name,
+            amount: line.amount,
+            isEstimate: line.isEstimate,
+          }))}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   );
 }

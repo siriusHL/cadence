@@ -268,6 +268,15 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
     month: m.month,
     year: m.year,
     total: Math.max(m.received, m.expected),
+    byTicker: m.byTicker.map((line) => ({
+      ticker:     line.ticker,
+      name:       line.name,
+      amount:     line.received + line.expected,
+      // A row is an estimate when there's no received cash yet — i.e. the
+      // payment hasn't actually happened, only the cadence projection has
+      // placed it in this month.
+      isEstimate: line.expected > 0 && line.received === 0,
+    })),
   }));
 
   const total12 = forecastMonths.slice(0, 12).reduce((s, m) => s + m.total, 0);
