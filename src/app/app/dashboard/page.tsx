@@ -139,14 +139,43 @@ export default async function DashboardScreen() {
           <div className="d">YoC <b style={{ color: 'var(--text)' }}>{summary.yieldOnCostPct.toFixed(2)}%</b></div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 2 }}>
-          <div className="l">YTD income</div>
-          <div className="v"><span className="cur">€</span>{fmt(summary.ytdReceived)}</div>
-          <div className="d">received Jan {today.getFullYear()} → today</div>
+          <div className="l">Total return</div>
+          <div
+            className="v"
+            style={{
+              color:
+                summary.unrealizedPL >= 0
+                  ? 'oklch(0.48 0.08 165)'
+                  : 'oklch(0.50 0.16 25)',
+            }}
+          >
+            <span className="cur" style={{ color: 'inherit' }}>
+              {summary.unrealizedPL >= 0 ? '+€' : '−€'}
+            </span>
+            {fmt(Math.abs(summary.unrealizedPL))}
+          </div>
+          <div className="d">
+            <b
+              style={{
+                color:
+                  summary.unrealizedPL >= 0
+                    ? 'oklch(0.48 0.08 165)'
+                    : 'oklch(0.50 0.16 25)',
+              }}
+            >
+              {summary.unrealizedPLPct >= 0 ? '+' : ''}
+              {summary.unrealizedPLPct.toFixed(2)}%
+            </b>{' '}
+            unrealized
+          </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 3 }}>
-          <div className="l">T12M income</div>
-          <div className="v"><span className="cur">€</span>{fmt(summary.t12mReceived)}</div>
-          <div className="d">trailing 12 months</div>
+          <div className="l">Capital deployed</div>
+          <div className="v"><span className="cur">€</span>{fmt(summary.costBasis)}</div>
+          <div className="d">
+            across <b style={{ color: 'var(--text)' }}>{summary.positionsCount}</b>{' '}
+            position{summary.positionsCount === 1 ? '' : 's'}
+          </div>
         </div>
       </div>
 
