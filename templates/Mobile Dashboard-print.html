@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cadence — Mobile Dashboard (print)</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="tokens.css" />
+
+  <style>
+    :root {
+      --font-inter: 'Inter';
+      --font-jetbrains: 'JetBrains Mono';
+    }
+    .num { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
+
+    /* Print page setup: A4 portrait, small margin, force colors. */
+    @page { size: A4 portrait; margin: 12mm; }
+    @media print {
+      html, body { background: #ffffff !important; }
+    }
+    html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body {
+      background: #e9e7e1;
+      margin: 0;
+      padding: 28px;
+      display: flex; justify-content: center; align-items: flex-start;
+    }
+
+    /* The print frame — fixed mobile width, no height clipping. */
+    .print-frame {
+      width: 402px;
+      background: var(--bg);
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 12px 36px rgba(0,0,0,0.08);
+      border: 1px solid var(--border);
+      break-inside: avoid;
+    }
+
+    /* Status-bar strip to keep the iPhone reference visual. */
+    .print-frame .statusbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 18px 6px;
+      font-size: 13px; font-weight: 600;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .print-frame .statusbar .icons {
+      display: flex; gap: 4px; align-items: center;
+      color: var(--text);
+    }
+
+    /* In print: let the dashboard expand to its full height (no scrollbar). */
+    .print-frame .mob,
+    .print-frame .mob .scroll {
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+    }
+    .print-frame .mob {
+      display: block !important;
+    }
+    /* Hide the bottom tab bar in print — wastes a page on its own. */
+    .print-frame .tabbar { display: none !important; }
+    /* No drawer scrim in print. */
+    .print-frame .drawer-scrim,
+    .print-frame .drawer { display: none !important; }
+
+    /* Kill animations for print — they cause flicker / blank captures. */
+    .print-frame .cdn-anim {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .print-frame {
+        box-shadow: none;
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 18px;
+      }
+    }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+    integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
+    crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+    integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
+    crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+    integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
+    crossorigin="anonymous"></script>
+
+  <script src="data.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Bring in just what's needed (skip design-canvas + tweaks-panel). -->
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="dashboard-mobile.jsx"></script>
+  <script type="text/babel" src="dashboard-v2.jsx"></script>
+
+  <script type="text/babel">
+    // Render the print frame: a status bar + the full V2 Breathing dashboard
+    // with the bottom tab bar removed and content flowing free of any
+    // overflow clip. Auto-prints once fonts + Babel have settled.
+
+    function PrintStatus() {
+      return (
+        <div className="statusbar">
+          <span>9:41</span>
+          <div className="icons">
+            {/* signal · wifi · battery — simple text glyphs for print fidelity */}
+            <svg width="18" height="11" viewBox="0 0 18 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4" y="5" width="3" height="6" rx="1"/><rect x="8" y="3" width="3" height="8" rx="1"/><rect x="12" y="0" width="3" height="11" rx="1"/></svg>
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><path d="M8 1a11 11 0 0 1 7.8 3.3l-1.4 1.4A9 9 0 0 0 8 3 9 9 0 0 0 1.6 5.7L.2 4.3A11 11 0 0 1 8 1zm0 4a7 7 0 0 1 5 2.1L11.6 8.5A5 5 0 0 0 8 7a5 5 0 0 0-3.6 1.5L3 7.1A7 7 0 0 1 8 5zm0 4a3 3 0 0 1 2.1.9L8 11l-2.1-1.1A3 3 0 0 1 8 9z"/></svg>
+            <svg width="27" height="11" viewBox="0 0 27 11" fill="none" stroke="currentColor" strokeOpacity=".4"><rect x="0.5" y="0.5" width="22" height="10" rx="2.5"/><rect x="2" y="2" width="16" height="7" rx="1" fill="currentColor" stroke="none"/><rect x="23" y="3" width="1.5" height="5" rx="0.5" fill="currentColor" stroke="none" fillOpacity=".4"/></svg>
+          </div>
+        </div>
+      );
+    }
+
+    function PrintRoot() {
+      return (
+        <div className="print-frame">
+          <PrintStatus />
+          <window.V2Breathing density="regular" navPattern="tabs" statStyle="label-top" />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<PrintRoot />);
+
+    // Auto-print after fonts loaded + a beat for layout to settle.
+    (async () => {
+      try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+      await new Promise((r) => setTimeout(r, 600));
+      window.print();
+    })();
+  </script>
+</body>
+</html>

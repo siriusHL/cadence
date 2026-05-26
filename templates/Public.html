@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cadence · Public — mobile</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="tokens.css" />
+  <style>
+    :root { --font-inter: 'Inter'; --font-jetbrains: 'JetBrains Mono'; }
+    .num { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script src="data.js"></script>
+  <script src="data-pro.js"></script>
+  <script src="data-extended.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="dashboard-mobile.jsx"></script>
+  <script type="text/babel" src="dashboard-v2.jsx"></script>
+  <script type="text/babel" src="pro-pages.jsx"></script>
+  <script type="text/babel" src="tier-shell.jsx"></script>
+  <script type="text/babel" src="public-pages.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "density": "regular",
+      "accent": "#3a857e"
+    }/*EDITMODE-END*/;
+    const ACCENT_PRESETS = {
+      '#3a857e': { accent: 'oklch(0.48 0.08 175)', soft: 'oklch(0.55 0.10 175)' },
+      '#c97a4b': { accent: 'oklch(0.62 0.13 50)',  soft: 'oklch(0.68 0.14 55)'  },
+      '#5b6cc6': { accent: 'oklch(0.55 0.12 265)', soft: 'oklch(0.62 0.13 265)' },
+      '#8856a3': { accent: 'oklch(0.50 0.13 305)', soft: 'oklch(0.58 0.14 305)' },
+    };
+    function App() {
+      const [t, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
+      React.useEffect(() => {
+        const p = ACCENT_PRESETS[t.accent] || ACCENT_PRESETS['#3a857e'];
+        document.documentElement.style.setProperty('--accent', p.accent);
+        document.documentElement.style.setProperty('--accent-soft', p.soft);
+      }, [t.accent]);
+      const pages = [
+        { id: 'landing', label: 'Landing', C: window.LandingPage },
+        { id: 'login',   label: 'Login',   C: window.LoginPage },
+        { id: 'signup',  label: 'Signup',  C: window.SignupPage },
+        { id: 'pricing', label: 'Pricing', C: window.PricingPage },
+        { id: 'upgrade', label: 'Upgrade', C: window.UpgradePage },
+      ];
+      return (
+        <>
+          <window.TierBar active="public" />
+          <window.DesignCanvas defaultPan={{ x: 80, y: 80 }} defaultZoom={0.7}>
+            <window.DCSection id="public-tier" title="Cadence · Public" subtitle="5 mobile screens · 402 × 874">
+              {pages.map((p) => (
+                <window.DCArtboard key={p.id} id={p.id} label={p.label} width={402} height={874}
+                  style={{ background: 'var(--bg)', borderRadius: 24, overflow: 'hidden' }}>
+                  <p.C density={t.density} />
+                </window.DCArtboard>
+              ))}
+            </window.DCSection>
+          </window.DesignCanvas>
+          <window.TweaksPanel title="Tweaks">
+            <window.TweakSection label="Layout" />
+            <window.TweakRadio label="Density" value={t.density} options={['compact', 'regular', 'comfy']} onChange={(v) => setTweak('density', v)} />
+            <window.TweakSection label="Brand" />
+            <window.TweakColor label="Accent" value={t.accent} options={['#3a857e','#c97a4b','#5b6cc6','#8856a3']} onChange={(v) => setTweak('accent', v)} />
+          </window.TweaksPanel>
+        </>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

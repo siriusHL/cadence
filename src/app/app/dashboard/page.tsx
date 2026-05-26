@@ -14,6 +14,7 @@ import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { IncomeRhythmChart } from '@/components/IncomeRhythmChart';
+import { DashboardMobile } from '@/components/mobile/DashboardMobile';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -145,7 +146,24 @@ export default async function DashboardScreen() {
     ? Math.ceil(Math.log(incomeTarget / summary.forwardAnnualIncome) / Math.log(1 + growth))
     : 0;
 
+  // Compose props for the mobile dashboard view. Mobile renders only the most
+  // recent 12 past + 6 future months — 18 bars fit comfortably on a phone.
+  const MOBILE_PAST = 12;
+  const MOBILE_FUTURE = 6;
+  const mobileRhythmStart = Math.max(0, nowIndex + 1 - MOBILE_PAST);
+  const mobileRhythmEnd = Math.min(rhythm.length, nowIndex + 1 + MOBILE_FUTURE);
+  const mobileRhythm = rhythm.slice(mobileRhythmStart, mobileRhythmEnd).map((r) => ({
+    month: r.month,
+    year: r.year,
+    received: r.received,
+    expected: r.expected,
+  }));
+  const mobileNowIndex = nowIndex - mobileRhythmStart;
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
+    <>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
@@ -491,6 +509,44 @@ export default async function DashboardScreen() {
         <Link href="/app/stocks" style={{ color: 'inherit' }}>← Back to Your Stocks</Link>
       </div>
     </div>
+      </div>
+      <div className="cdn-mobile-only">
+        <DashboardMobile
+          summary={{
+            totalValue: summary.totalValue,
+            unrealizedPL: summary.unrealizedPL,
+            unrealizedPLPct: summary.unrealizedPLPct,
+            forwardAnnualIncome: summary.forwardAnnualIncome,
+            forwardYieldPct: summary.forwardYieldPct,
+            yieldOnCostPct: summary.yieldOnCostPct,
+            ytdReceived: summary.ytdReceived,
+            t12mReceived: summary.t12mReceived,
+            positionsCount: summary.positionsCount,
+            countriesCount: summary.countriesCount,
+          }}
+          rhythm={mobileRhythm}
+          nowIndex={mobileNowIndex}
+          contributors={contributors.map((c) => ({
+            ticker: c.ticker,
+            name: c.name,
+            forwardAnnualLocal: c.forwardAnnualLocal,
+            yieldPct: c.yieldPct,
+          }))}
+          upcoming={upcoming.map((u) => ({
+            ticker: u.ticker,
+            name: u.name,
+            exDate: u.exDate,
+            estimatedTotalLocal: u.estimatedTotalLocal,
+            daysUntil: u.daysUntil,
+            isProjected: u.isProjected,
+          }))}
+          todayLabel={todayLabel}
+          portfolioName={portfolio.name}
+          incomeTarget={incomeTarget}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+    </>
   );
 }
 
