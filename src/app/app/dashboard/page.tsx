@@ -175,11 +175,8 @@ export default async function DashboardScreen() {
         </div>
       </div>
 
-      {/* 5-tile stat strip — dividend metrics, total return, capital deployed, avg safety. */}
-      <div
-        className="hero-stats dash-stats cdn-anim"
-        style={{ ['--i' as never]: 0, gridTemplateColumns: 'repeat(5, 1fr)' }}
-      >
+      {/* 4-tile stat strip (Avg safety has been promoted to its own card below). */}
+      <div className="hero-stats dash-stats cdn-anim" style={{ ['--i' as never]: 0 }}>
         <div className="tile" style={{ ['--i' as never]: 0 }}>
           <div className="l">Forward income</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}</div>
@@ -229,45 +226,43 @@ export default async function DashboardScreen() {
             position{summary.positionsCount === 1 ? '' : 's'}
           </div>
         </div>
-        <div className="tile" style={{ ['--i' as never]: 4 }}>
-          <div className="l">Avg safety</div>
-          <div
-            className="v"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'flex-start',
-              gap: 4,
-              color: safetyColor,
-              lineHeight: 1,
-            }}
-          >
-            <span
-              aria-hidden
+      </div>
+
+      {/* Cadence Safety Score — ring gauge on the left, headline + body text
+          on the right. Modeled on the research template. */}
+      <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+          <SafetyRing score={avgSafety} color={safetyColor} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500 }}>
+              Cadence Safety Score
+            </div>
+            <div
               style={{
-                fontSize: 48,
-                fontWeight: 700,
-                letterSpacing: '-0.04em',
+                fontSize: 22,
+                fontWeight: 600,
+                letterSpacing: '-0.02em',
+                marginTop: 2,
+                color: safetyColor,
               }}
             >
-              {safetyLetter}
-            </span>
-            {avgSafety == null ? (
-              <span style={{ color: 'var(--text-dim)', fontSize: 11, fontWeight: 500, marginTop: 4 }}>
-                no data
-              </span>
-            ) : (
-              <span style={{ color: 'var(--text-dim)', fontSize: 11, fontWeight: 500, marginTop: 4 }}>
-                {avgSafety}/100
-              </span>
-            )}
-          </div>
-          <div className="d">
-            <b style={{ color: safetyColor }}>{safetyLabel}</b>
-            {watchCount > 0 && (
-              <>
-                {' '}· {watchCount} high-yield risk{watchCount === 1 ? '' : 's'}
-              </>
-            )}
+              {safetyLabel} · {safetyLetter}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.45 }}>
+              Weighted across{' '}
+              <b style={{ color: 'var(--text)' }}>{summary.positionsCount}</b>{' '}
+              position{summary.positionsCount === 1 ? '' : 's'} by market value.{' '}
+              {watchCount > 0 ? (
+                <>
+                  <b style={{ color: 'oklch(0.50 0.16 25)' }}>
+                    {watchCount} high-yield risk{watchCount === 1 ? '' : 's'}
+                  </b>{' '}
+                  flagged (yield ≥ 7%) — sustainability worth checking.
+                </>
+              ) : (
+                <>No high-yield risks flagged — every holding sits below the 7% sustainability bar.</>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -498,5 +493,88 @@ export default async function DashboardScreen() {
         <Link href="/app/stocks" style={{ color: 'inherit' }}>← Back to Your Stocks</Link>
       </div>
     </div>
+  );
+}
+
+/**
+ * Compact ring gauge for the Cadence Safety Score card — ported from the
+ * research template (templates/pro-holdings.jsx). The arc sweeps ~270° from
+ * 4 o'clock around to 8 o'clock so the open mouth sits at the bottom; score
+ * sits centred in the middle with a small "SAFETY" caption beneath.
+ */
+function SafetyRing({
+  score,
+  color,
+  size = 110,
+}: {
+  score: number | null;
+  color: string;
+  size?: number;
+}) {
+  const r = size / 2 - 8;
+  const cx = size / 2;
+  const cy = size / 2;
+  const start = -Math.PI * 0.62;
+  const end = Math.PI * 1.62;
+  const total = end - start;
+  const arc = (frac: number): [number, number] => {
+    const a = start + total * frac;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+  const ringPath = (frac: number): string => {
+    if (frac <= 0) return '';
+    const [x0, y0] = arc(0);
+    const [x1, y1] = arc(frac);
+    const large = frac > 0.5 ? 1 : 0;
+    return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+  };
+  const frac = score == null ? 0 : Math.max(0, Math.min(1, score / 100));
+  return (
+    <svg width={size} height={size} aria-hidden style={{ flexShrink: 0 }}>
+      <path
+        d={ringPath(1)}
+        fill="none"
+        stroke="rgba(0,0,0,0.06)"
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <path
+        d={ringPath(frac)}
+        fill="none"
+        stroke={color}
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <text
+        x={cx}
+        y={cy + 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fontSize: 28,
+          fontWeight: 600,
+          fill: 'var(--text)',
+          fontVariantNumeric: 'tabular-nums',
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {score == null ? '—' : score}
+      </text>
+      <text
+        x={cx}
+        y={cy + 18}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fontSize: 9,
+          fill: 'var(--text-dim)',
+          fontWeight: 500,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+        }}
+      >
+        Safety
+      </text>
+    </svg>
   );
 }
