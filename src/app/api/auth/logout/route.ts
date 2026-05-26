@@ -7,5 +7,5 @@ export async function POST(req: Request) {
   const supabase = await getSupabaseServer();
   await supabase.auth.signOut();
   const origin = new URL(req.url).origin;
-  return Response.redirect(`${origin}/login`, 303);
+  return Response.redirect(`${origin}/`, 303);
 }
