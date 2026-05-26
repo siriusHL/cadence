@@ -213,8 +213,10 @@
   border-top: 1px solid var(--border-strong);
   border-bottom: 0;
   position: sticky; bottom: 0;
-  /* Sit above the previous row's border */
+  /* Sit above the previous row's border + intercept hover/clicks so the
+     data row underneath the sticky overlap can't fire its own onClick. */
   box-shadow: 0 -1px 0 rgba(0,0,0,0.10);
+  z-index: 2;
 }
 
 /* Filter chip bar */
