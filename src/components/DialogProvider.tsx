@@ -103,7 +103,9 @@ function ConfirmDialog({ state, onResolve }: { state: ConfirmState; onResolve: (
       aria-labelledby="cdn-confirm-title"
       onClick={(e) => { if (e.target === e.currentTarget) onResolve(false); }}
       style={{
-        position: 'fixed', inset: 0, zIndex: 100,
+        // Sits above any other modal (.cdn-modal-backdrop is z-index 1000) —
+        // a confirm/alert is an interruption, it must never end up underneath.
+        position: 'fixed', inset: 0, zIndex: 1100,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 24,
         background: 'rgba(20, 20, 22, 0.32)',
@@ -178,7 +180,8 @@ function ToastStack({ toasts }: { toasts: ToastEntry[] }) {
   return (
     <div
       style={{
-        position: 'fixed', right: 24, bottom: 24, zIndex: 101,
+        // Above confirms — toasts are the highest-priority transient UI.
+        position: 'fixed', right: 24, bottom: 24, zIndex: 1200,
         display: 'flex', flexDirection: 'column-reverse', gap: 8,
         pointerEvents: 'none',
       }}
