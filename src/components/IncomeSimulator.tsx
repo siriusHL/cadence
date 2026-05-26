@@ -77,7 +77,7 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost }: Props) {
         <div>
           <div className="eyebrow">Income simulator · Compounding scenarios</div>
           <h1>
-            Reach passive income in{' '}
+            Hit €{fmt(PASSIVE_INCOME_TARGET_EUR)}/yr in{' '}
             <span className="num" style={{ color: 'var(--accent-soft)' }}>
               {targetYear > 0 ? `${targetYear}y` : '—'}
             </span>
