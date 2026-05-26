@@ -24,13 +24,14 @@ interface Props {
   /** Index of the current month inside `months`. */
   nowIndex: number;
   /**
-   * Optional portfolio cumulative return % sampled at end-of-month, same
-   * length and index alignment as `months`. The chart rebases to 0 at the
-   * first non-null point in the visible slice — so the line always starts at
-   * 0% on the left edge and grows from there (same idea as the Performance
-   * screen). `null` entries become gaps.
+   * Optional cumulative absolute P/L in € (value − cost), sampled at
+   * end-of-month, same length and index alignment as `months`. The chart
+   * rebases each visible slice to 0 at the first non-null point and
+   * auto-scales the right axis to the actual range, so even small
+   * month-over-month variations on a steady-state portfolio are visible.
+   * `null` entries become gaps.
    */
-  plReturnLine?: (number | null)[];
+  plLine?: (number | null)[];
 }
 
 function fmt(n: number, digits = 0): string {
@@ -39,20 +40,19 @@ function fmt(n: number, digits = 0): string {
 
 interface HoverState { idx: number; x: number; y: number; }
 
-export function IncomeRhythmChart({ months, nowIndex, plReturnLine }: Props) {
+export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
   const [range, setRange] = useState<RangeKey>('18M');
   const [hover, setHover] = useState<HoverState | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
 
-  // Slice the full month array based on the selected range. The return-% line
-  // is rebased to 0 at the first non-null point in the visible slice — the
-  // curve always starts at 0% on the left edge and grows from there, matching
-  // the Performance screen's rebasing convention.
+  // Slice the months for the selected range, then rebase the P/L line to 0 at
+  // the first non-null point in the slice — small month-over-month deltas
+  // become readable instead of getting flattened against a 0-anchored axis.
   const { slice, slicePL, nowIndexInSlice, sliceStart } = useMemo(() => {
     const cfg = RANGES[range];
     const start = Math.max(0, nowIndex - cfg.past + 1);
     const end = Math.min(months.length, nowIndex + cfg.future + 1);
-    const rawSlice = plReturnLine ? plReturnLine.slice(start, end) : null;
+    const rawSlice = plLine ? plLine.slice(start, end) : null;
     let rebased: (number | null)[] | null = null;
     if (rawSlice) {
       const firstNonNull = rawSlice.find((v) => v != null);
@@ -65,39 +65,47 @@ export function IncomeRhythmChart({ months, nowIndex, plReturnLine }: Props) {
       nowIndexInSlice: nowIndex - start,
       sliceStart: start,
     };
-  }, [months, nowIndex, range, plReturnLine]);
+  }, [months, nowIndex, range, plLine]);
 
-  // Dual scales — bars on the left axis (€), cumulative-return line on the
-  // right (%). The line can dip below 0%; right axis extends as needed.
+  // Bars: left axis, 0 → niceCeil(barMax). P/L line: right axis, auto-scaled
+  // tightly to the rebased data range with light padding — the line is
+  // already centred near zero by rebasing, so no need to anchor at 0.
   const { barTop, plTop, plBottom } = useMemo(() => {
     const barMax = Math.max(...slice.map((m) => Math.max(m.received, m.expected)), 0);
     const plValues = slicePL?.filter((v): v is number => v != null) ?? [];
-    const plMax = plValues.length > 0 ? Math.max(...plValues) : 0;
-    const plMin = plValues.length > 0 ? Math.min(...plValues) : 0;
-    // Pad by 15%, round to nearest 5pp for the % axis so labels stay tidy.
-    const rawPLTop = Math.max(plMax * 1.15, 0);
-    const rawPLBottom = Math.min(plMin * 1.15, 0);
+    if (plValues.length < 2) {
+      return {
+        barTop: Math.max(1, niceCeil(barMax * 1.18)),
+        plTop: 1,
+        plBottom: 0,
+      };
+    }
+    const plMax = Math.max(...plValues);
+    const plMin = Math.min(...plValues);
+    const span = Math.max(Math.abs(plMax), Math.abs(plMin), Math.abs(plMax - plMin));
+    const pad = Math.max(span * 0.2, 1);
     return {
       barTop: Math.max(1, niceCeil(barMax * 1.18)),
-      plTop: Math.max(5, Math.ceil(rawPLTop / 5) * 5),
-      plBottom: rawPLBottom < 0 ? Math.floor(rawPLBottom / 5) * 5 : 0,
+      plTop: niceCeil(plMax + pad),
+      plBottom: plMin < 0 ? -niceCeil(-(plMin - pad)) : 0,
     };
   }, [slice, slicePL]);
 
-  // Left-axis ticks (bars, €) and right-axis ticks (line, %) — three each.
+  // Left-axis ticks (bars, €) and right-axis ticks (line, €) — three each.
   const barTicks = useMemo(() => [0, barTop / 2, barTop], [barTop]);
   const plTicks = useMemo(() => {
-    if (plBottom < 0) return [plBottom, 0, plTop];
+    if (plBottom < 0 && plTop > 0) return [plBottom, 0, plTop];
+    if (plBottom < 0) return [plBottom, plBottom / 2, 0];
     return [0, plTop / 2, plTop];
   }, [plBottom, plTop]);
 
   /** Project a bar € value into 0–100% of chart height (0 = top, 100 = bottom). */
   const barYPct = (v: number): number => ((barTop - v) / barTop) * 100;
-  /** Project a return % onto the same vertical scale, using the right axis. */
+  /** Project a P/L € value onto the same vertical span, using the right axis. */
   const plRange = plTop - plBottom;
   const plYPct = (v: number): number =>
     plRange > 0 ? ((plTop - v) / plRange) * 100 : 100;
-  const hasPL = slicePL?.some((v) => v != null) ?? false;
+  const hasPL = (slicePL?.filter((v) => v != null).length ?? 0) >= 2;
   const lastPLValue = (() => {
     if (!slicePL) return null;
     for (let i = slicePL.length - 1; i >= 0; i--) {
@@ -132,7 +140,7 @@ export function IncomeRhythmChart({ months, nowIndex, plReturnLine }: Props) {
                   borderRadius: 1,
                 }}
               />{' '}
-              Cumulative return
+              P/L Δ
               {lastPLValue != null && (
                 <span
                   className="num"
@@ -144,8 +152,8 @@ export function IncomeRhythmChart({ months, nowIndex, plReturnLine }: Props) {
                     fontWeight: 600,
                   }}
                 >
-                  {lastPLValue >= 0 ? '+' : ''}
-                  {lastPLValue.toFixed(2)}%
+                  {lastPLValue >= 0 ? '+€' : '−€'}
+                  {fmt(Math.abs(lastPLValue))}
                 </span>
               )}
               <span style={{ color: 'var(--text-dim)', fontSize: 10.5 }}>
@@ -424,7 +432,7 @@ export function IncomeRhythmChart({ months, nowIndex, plReturnLine }: Props) {
                   fontWeight: 500,
                 }}
               >
-                {v > 0 ? '+' : ''}{v.toFixed(0)}%
+                {v < 0 ? '−€' : v > 0 ? '+€' : '€'}{fmt(Math.abs(v))}
               </div>
             ))}
           </div>

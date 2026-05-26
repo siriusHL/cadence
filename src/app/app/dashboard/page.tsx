@@ -76,17 +76,18 @@ export default async function DashboardScreen() {
     getPerformanceSeries(supabase, portfolio.id, (FULL_PAST + FULL_FUTURE) * 5),
   ]);
 
-  // Resample weekly perf → one cumulative return-% value per rhythm month. For
-  // each month we take the last weekly point on or before its last day. The
-  // chart rebases this to 0% at the slice start (same concept as the
-  // Performance screen) so the curve has motion even on a mature portfolio
-  // whose absolute P/L is near steady-state.
+  // Resample weekly perf → one absolute P/L € value per rhythm month. The
+  // chart rebases each visible slice to 0 at its left edge, so a portfolio
+  // whose total P/L sits at a near-steady ~€25k still shows the month-over-
+  // month delta against a tight auto-scaled range (gains and dips of a few
+  // hundred euros become visible). returnPct was tried first but DCA
+  // portfolios keep returnPct nearly constant, which rebased to a flat 0%.
   function lastDayOfMonth(year: number, monthIdx: number): string {
     const d = new Date(Date.UTC(year, monthIdx + 1, 0));
     return d.toISOString().slice(0, 10);
   }
   let perfCursor = 0;
-  const plReturnLine: (number | null)[] = rhythm.map((m) => {
+  const plLine: (number | null)[] = rhythm.map((m) => {
     const eom = lastDayOfMonth(m.year, m.month);
     let lastIdx = -1;
     for (let i = perfCursor; i < perfSeries.length; i++) {
@@ -95,7 +96,8 @@ export default async function DashboardScreen() {
     }
     if (lastIdx === -1) return null;
     perfCursor = lastIdx;
-    return perfSeries[lastIdx].returnPct;
+    const p = perfSeries[lastIdx];
+    return p.value - p.cost;
   });
 
   // Index of the current month inside `rhythm` (0-based).
@@ -215,7 +217,7 @@ export default async function DashboardScreen() {
             </div>
           </div>
         </div>
-        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} plReturnLine={plReturnLine} />
+        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} plLine={plLine} />
       </div>
 
       {/* Top contributors — income side-by-side with P/L */}
