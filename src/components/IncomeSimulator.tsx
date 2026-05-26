@@ -252,7 +252,9 @@ function IncomeCurves({
 }) {
   const W = 1180;
   const H = 240;
-  const pad = { t: 16, r: 80, b: 26, l: 50 };
+  // r is small now — endpoint labels render inside the plot, to the left of each dot,
+  // so we don't need to reserve any margin for them.
+  const pad = { t: 16, r: 24, b: 26, l: 44 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
 
@@ -322,7 +324,9 @@ function IncomeCurves({
         <path d={pathFor(series.reinvestPlus)} fill="none" stroke="oklch(0.55 0.10 175)" strokeWidth="2.4" strokeLinecap="round" />
       </g>
 
-      {/* Endpoint dots — pop in once the line reaches them. */}
+      {/* Endpoint dots — pop in once the line reaches them. Labels sit
+          inside the plot just left of each dot so the chart can use the
+          full container width. */}
       <g className="drip-endpoints">
         {[
           { p: series.noReinvest[years],   c: 'rgba(0,0,0,0.5)' },
@@ -331,7 +335,7 @@ function IncomeCurves({
         ].map((s, i) => (
           <g key={i}>
             <circle cx={xs(s.p.year)} cy={ys(s.p.income)} r="4" fill="var(--surface)" stroke={s.c} strokeWidth="2" />
-            <text x={xs(s.p.year) + 8} y={ys(s.p.income) + 4}
+            <text x={xs(s.p.year) - 8} y={ys(s.p.income) + 4} textAnchor="end"
                   style={{ fontSize: 11, fill: s.c, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
               €{(s.p.income / 1000).toFixed(1)}k
             </text>
