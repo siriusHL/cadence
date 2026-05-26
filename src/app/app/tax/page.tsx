@@ -9,6 +9,7 @@ import {
   type TaxResidence, type DomesticTaxBreakdown, type ResidenceModel,
   type CapitalGainsSummary, type CGTBreakdown, type CGTModel,
 } from '@/lib/tax';
+import { getActivityYears } from '@/lib/export';
 import { EmptyState } from '@/components/EmptyState';
 
 function fmtMoney(n: number, digits = 0): string {
@@ -58,9 +59,10 @@ export default async function TaxScreen() {
 
   const residence = (profile?.tax_country as TaxResidence | null) ?? DEFAULT_RESIDENCE;
   const fiscalYear = new Date().getFullYear();
-  const [summary, capitalGains] = await Promise.all([
+  const [summary, capitalGains, activityYears] = await Promise.all([
     getTaxSummary(supabase, portfolio.id, fiscalYear, residence),
     getCapitalGainsSummary(supabase, portfolio.id, fiscalYear, residence),
+    getActivityYears(supabase, portfolio.id),
   ]);
   const cgt = computeCapitalGainsTax(capitalGains);
 
@@ -336,7 +338,123 @@ export default async function TaxScreen() {
         residenceName={residenceName}
         fiscalYear={fiscalYear}
       />
+
+      {/* ─── Export tax data ─────────────────────────────────────────── */}
+      <ExportSection years={activityYears} />
     </div>
+  );
+}
+
+function ExportSection({
+  years,
+}: {
+  years: { year: number; hasDividends: boolean; hasSales: boolean }[];
+}) {
+  return (
+    <div className="pcard" style={{ marginTop: 14 }}>
+      <div className="pcard-h">
+        <div className="t">Export tax data</div>
+        <span className="tag">CSV · per fiscal year</span>
+      </div>
+      {years.length === 0 ? (
+        <div style={{ padding: '12px 4px', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.55 }}>
+          Once a dividend payment or share sale lands in your portfolio, Cadence
+          will offer year-by-year CSVs here — ready to drop into your tax return
+          or hand off to your accountant.
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>
+            One file per stream, per year. Dividends and capital-gains rows
+            live in separate CSVs because most tax forms ask for them
+            independently. Open in Excel, Numbers, or Google Sheets.
+          </div>
+          <div
+            style={{
+              border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden',
+            }}
+          >
+            {years.map((y, i) => (
+              <div
+                key={y.year}
+                style={{
+                  display: 'grid', gridTemplateColumns: '80px 1fr auto',
+                  gap: 14, alignItems: 'center',
+                  padding: '12px 14px',
+                  borderTop: i === 0 ? 0 : '1px solid var(--border)',
+                }}
+              >
+                <div
+                  className="num"
+                  style={{ fontSize: 16, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {y.year}
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+                  {[
+                    y.hasDividends ? 'dividend payments' : null,
+                    y.hasSales     ? 'share sales' : null,
+                  ].filter(Boolean).join(' · ')}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <DownloadButton
+                    href={`/api/export/dividends?year=${y.year}`}
+                    filename={`dividends-${y.year}.csv`}
+                    label="Dividends"
+                    enabled={y.hasDividends}
+                  />
+                  <DownloadButton
+                    href={`/api/export/capital-gains?year=${y.year}`}
+                    filename={`capital-gains-${y.year}.csv`}
+                    label="Capital gains"
+                    enabled={y.hasSales}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function DownloadButton({
+  href, filename, label, enabled,
+}: {
+  href: string; filename: string; label: string; enabled: boolean;
+}) {
+  if (!enabled) {
+    return (
+      <span
+        style={{
+          height: 28, padding: '0 12px',
+          display: 'inline-flex', alignItems: 'center',
+          fontSize: 11.5, fontWeight: 500,
+          color: 'var(--text-muted)', background: 'var(--surface-2)',
+          border: '1px dashed var(--border)', borderRadius: 999,
+          cursor: 'not-allowed',
+        }}
+        title={`No ${label.toLowerCase()} in this year`}
+      >
+        {label} —
+      </span>
+    );
+  }
+  return (
+    <a
+      href={href}
+      download={filename}
+      className="chip"
+      style={{
+        height: 28, padding: '0 12px',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 11.5, fontWeight: 500,
+        textDecoration: 'none',
+      }}
+    >
+      ↓ {label}
+    </a>
   );
 }
 
