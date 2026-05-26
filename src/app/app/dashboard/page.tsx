@@ -11,7 +11,7 @@ import {
   getUpcomingDividends,
   getPerformanceSeries,
 } from '@/lib/portfolio';
-import { enrichInstruments } from '@/lib/marketdata/enrich';
+import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { IncomeRhythmChart } from '@/components/IncomeRhythmChart';
@@ -57,13 +57,18 @@ export default async function DashboardScreen() {
     );
   }
 
-  // Make sure quote/dividend caches are warm for every held ticker
-  await enrichInstruments(held.map((h) => h.ticker));
-
   // Fetch a wide window so the client range selector can show 6M / 1Y / 18M / 3Y
   // without re-querying. 36 past + 6 future = 42 total.
   const FULL_PAST = 36;
   const FULL_FUTURE = 6;
+
+  // Warm quote cache + backfill weekly closes. The history backfill is what
+  // makes the rhythm-chart P/L line move month-to-month — without it the
+  // instrument_history table only has whatever the Performance/Alerts pages
+  // last populated, so getPerformanceSeries returns near-constant values
+  // and the line goes flat.
+  await enrichInstruments(held.map((h) => h.ticker));
+  await enrichWeeklyHistory(held.map((h) => h.ticker), (FULL_PAST + FULL_FUTURE) * 5);
 
   const [summary, rhythm, contributors, plContributors, upcoming, perfSeries] = await Promise.all([
     getPortfolioSummary(supabase, portfolio.id),
@@ -71,8 +76,8 @@ export default async function DashboardScreen() {
     getTopContributors(supabase, portfolio.id, 6),
     getTopPLContributors(supabase, portfolio.id, 6),
     getUpcomingDividends(supabase, portfolio.id, 60),
-    // Weekly perf series covering the same window as `rhythm` (36 past + 6
-    // future). 5 weeks per month ≈ 210 weeks; we trim down per-month below.
+    // Weekly perf series covering the same window as `rhythm`. ~5 weeks
+    // per month; we trim down per-month below.
     getPerformanceSeries(supabase, portfolio.id, (FULL_PAST + FULL_FUTURE) * 5),
   ]);
 
