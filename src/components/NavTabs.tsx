@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { AlertsBadge } from '@/components/AlertsBadge';
 
 export interface NavTab {
@@ -15,6 +15,7 @@ interface Props {
 
 export function NavTabs({ tabs }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <nav className="cdn-tabs">
@@ -31,6 +32,15 @@ export function NavTabs({ tabs }: Props) {
               + (isAlerts ? ' has-badge' : '')
             }
             aria-current={active ? 'page' : undefined}
+            onClick={
+              isAlerts
+                // Always invalidate the App Router cache for the Alerts tab so
+                // its server components re-run on every click — fresh counts,
+                // fresh status, even if the user is already on the page or
+                // returned within the 30s router-cache TTL.
+                ? () => router.refresh()
+                : undefined
+            }
           >
             <span className="label">{t.label}</span>
             {isAlerts && <AlertsBadge />}
