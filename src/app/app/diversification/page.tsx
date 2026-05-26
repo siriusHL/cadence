@@ -7,6 +7,7 @@ import {
   DiversificationView,
   type DiversificationPos,
 } from '@/components/DiversificationView';
+import { DiversificationMobile } from '@/components/mobile/DiversificationMobile';
 
 export default async function DiversificationScreen() {
   const supabase = await getSupabaseServer();
@@ -58,5 +59,26 @@ export default async function DiversificationScreen() {
     fwdIncome: (h.fwdDivAnnualLocal ?? 0) * h.quantity,
   }));
 
-  return <DiversificationView positions={positions} />;
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
+  return (
+    <>
+      <div className="cdn-desktop-only">
+        <DiversificationView positions={positions} />
+      </div>
+      <div className="cdn-mobile-only">
+        <DiversificationMobile
+          positions={positions.map((p) => ({
+            ticker: p.ticker,
+            sector: p.sector,
+            country: p.country,
+            currency: p.currency,
+            value: p.value,
+          }))}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+    </>
+  );
 }
