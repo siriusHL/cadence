@@ -1483,6 +1483,15 @@ a.cdn-free .fnav .right .plan,
   color: var(--surface);
 }
 
+/* Portaled mobile FAB — rendered into `document.body` (not inside
+   `.cdn-mobile-only`) so we can't rely on the visibility toggle that
+   normally hides the mobile chassis at desktop width. Show it only
+   at the same phone-width breakpoint the mobile shell uses. */
+.cdn-mobile-fab { display: none !important; }
+@media (max-width: 640px) {
+  .cdn-mobile-fab { display: inline-flex !important; }
+}
+
 /* Floating action button */
 .mob.v2b .fab {
   /* Glued to the viewport bottom-right with `position: fixed`. The

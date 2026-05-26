@@ -15,6 +15,7 @@
 // out automatically without touching state).
 
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { MobileShell } from '@/components/mobile/MobileShell';
 import { Icon } from '@/components/mobile/Icon';
@@ -477,17 +478,6 @@ export function HoldingsMobile({
       </div>
       <div style={{ height: 80 }} />
 
-      {/* FAB — opens the add-holding modal in place. No navigation,
-          no back-button trap. */}
-      <button
-        type="button"
-        className="fab"
-        aria-label="Add holding"
-        onClick={() => setAddOpen(true)}
-      >
-        <Icon name="plus" size={22} />
-      </button>
-
       {/* Quick edit modal — opened by tapping a row */}
       {editingTicker && (
         <HoldingEditModal
@@ -498,6 +488,47 @@ export function HoldingsMobile({
 
       {/* Add-holding modal — opened by the FAB */}
       <HoldingAddModal open={addOpen} onClose={() => setAddOpen(false)} />
+
+      {/* FAB — portaled to <body> so it sits OUTSIDE `.mob`. Earlier
+          attempts to make a `position: fixed` button work inside
+          `.mob` (an `overflow-y: auto` container) failed in the
+          tester's browser — the button kept anchoring to the bottom
+          of `.mob`'s scroll content instead of the viewport. The
+          portal sidesteps all containing-block ambiguity: the button
+          is a direct child of body, so `position: fixed` is
+          unambiguously relative to the viewport. Inline styles win
+          over any cached CSS that might still be in flight. */}
+      {typeof document !== 'undefined' && createPortal(
+        <button
+          type="button"
+          aria-label="Add holding"
+          onClick={() => setAddOpen(true)}
+          style={{
+            position: 'fixed',
+            right: 18,
+            bottom: 'calc(78px + env(safe-area-inset-bottom, 0px))',
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: 'var(--text)',
+            color: 'var(--surface)',
+            border: 0,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
+            zIndex: 50,
+            // Hide on desktop — the FAB is a mobile-shell affordance,
+            // and desktop has the AddHoldingTrigger button in the
+            // header instead. CSS media query toggles display.
+          }}
+          className="cdn-mobile-fab"
+        >
+          <Icon name="plus" size={22} />
+        </button>,
+        document.body,
+      )}
     </MobileShell>
   );
 }
