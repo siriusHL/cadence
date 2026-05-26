@@ -8,6 +8,7 @@ import {
   type TaxResidence, type DomesticTaxBreakdown, type ResidenceModel,
 } from '@/lib/tax';
 import { EmptyState } from '@/components/EmptyState';
+import { TaxMobile } from '@/components/mobile/TaxMobile';
 
 function fmtMoney(n: number, digits = 0): string {
   if (!Number.isFinite(n)) return '—';
@@ -80,7 +81,54 @@ export default async function TaxScreen() {
   const hasAnyData = summary.totalGrossEur > 0;
   const residenceName = COUNTRY_NAMES[residence] ?? residence;
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+  // Pre-credit label for the mobile domestic-tax row — matches the
+  // existing modelLabel() helper, formatted for the breakdown table.
+  const preCreditLabel =
+      domestic.model.kind === 'box3'
+        ? `Box 3 @ ${(domestic.model as { rate: number }).rate}% × forfaitair`
+    : domestic.model.kind === 'flat'
+        ? `Flat ${(domestic.model as { rate: number }).rate}%`
+    : domestic.model.kind === 'progressive'
+        ? 'Progressive bands'
+    : domestic.model.kind === 'marginal-passthrough'
+        ? 'Marginal passthrough'
+    : 'Domestic tax';
+
   return (
+    <>
+      <div className="cdn-mobile-only">
+        <TaxMobile
+          fiscalYear={fiscalYear}
+          residenceName={residenceName}
+          totalGrossEur={summary.totalGrossEur}
+          totalWithheldEur={summary.totalWithheldEur}
+          totalNetEur={summary.totalNetEur}
+          totalReclaimableEur={summary.totalReclaimableEur}
+          effectiveRatePct={domestic.effectiveTotalPct || summary.effectiveRatePct}
+          domestic={{
+            modelLabel: modelLabel(domestic.model),
+            final: domestic.finalEur,
+            foreignCredit: domestic.foreignCreditEur,
+            preCreditTax: domestic.preCreditEur,
+            preCreditLabel,
+          }}
+          rows={summary.rows.map((r) => ({
+            country: r.country,
+            countryName: COUNTRY_NAMES[r.country] ?? r.country,
+            grossEur: r.grossEur,
+            netEur: r.netEur,
+            effective: r.effectiveRate,
+            treaty: r.treatyRate,
+            statutory: r.statutoryRate,
+            reclaimableEur: r.reclaimableEur,
+          }))}
+          finalNetEur={finalNetEur}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
@@ -318,6 +366,8 @@ export default async function TaxScreen() {
         </div>{/* /right column flex wrapper */}
       </div>
     </div>
+      </div>
+    </>
   );
 }
 
