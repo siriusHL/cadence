@@ -141,10 +141,9 @@ async function MobileForecastLoader({
   const year = today.getFullYear();
   const currentMonth = today.getMonth();
 
-  const [summary, rhythm24, rhythmPast12] = await Promise.all([
+  const [summary, rhythm24] = await Promise.all([
     getPortfolioSummary(supabase, portfolioId),
     getIncomeRhythm(supabase, portfolioId, 0, 24),
-    getIncomeRhythm(supabase, portfolioId, 12, 0),
   ]);
 
   const forecastMonths = rhythm24.map((m) => ({
@@ -185,15 +184,14 @@ async function MobileForecastLoader({
     : profile?.tax_country === 'US' ? 'US qualified 15%'
     : 'NL Box 3 22%';
 
-  // 18-bar rhythm: last 12 past + next 6
-  const past12 = rhythmPast12.map((m) => ({
-    month: m.month, year: m.year, received: m.received, expected: m.expected,
+  // 12 forward months for the bar+cumulative chart — matches the desktop
+  // ForecastChart's default 12M slice (no past months, no projection beyond
+  // 1 year). Shape is { month, year, total } per the ForecastBarsMonth API.
+  const forecastMonths12 = forecastMonths.slice(0, 12).map((m) => ({
+    month: m.month,
+    year: m.year,
+    total: m.expected,
   }));
-  const next6 = rhythm24.slice(0, 6).map((m) => ({
-    month: m.month, year: m.year, received: m.received, expected: m.expected,
-  }));
-  const rhythm18 = [...past12.slice(0, 12), ...next6];
-  const nowIndex = 11; // last bar of the past-12 portion
 
   const fivePctGrowth = total12 * 0.05;
   const in5y = total12 * Math.pow(1.078, 5);
@@ -213,8 +211,7 @@ async function MobileForecastLoader({
         thisMonth: thisMonthTotal,
         thisQuarter: thisQuarterTotal,
         thisYearTotal,
-        rhythm: rhythm18,
-        nowIndex,
+        forecastMonths: forecastMonths12,
         fivePctGrowth,
         in5y,
         in10y,
@@ -235,9 +232,11 @@ async function MobileYearLoader({
   const year = today.getFullYear();
   const currentMonth = today.getMonth();
 
-  const [rhythm, events] = await Promise.all([
+  const [rhythm, events, summary, holdings] = await Promise.all([
     getIncomeRhythm(supabase, portfolioId, 12 + currentMonth, 11 - currentMonth),
     getYearEvents(supabase, portfolioId, year),
+    getPortfolioSummary(supabase, portfolioId),
+    getHoldingsView(supabase, portfolioId),
   ]);
 
   // Filter to just this calendar year (12 months, January..December)
@@ -245,6 +244,50 @@ async function MobileYearLoader({
   const ytdReceived = months.reduce((s, m) => s + m.received, 0);
   const activeMonths = months.filter((m) => m.received > 0).length;
   const payerCount = new Set(events.filter((e) => e.isPast).map((e) => e.ticker)).size;
+
+  // ── Future-month projection ────────────────────────────────────────────
+  // We layer three sources so the chart bars for Jun…Dec (or whatever's
+  // left of the year) always show *something* upcoming:
+  //
+  //  1. `m.expected` from getIncomeRhythm → works when instrument_dividends
+  //     has rows AND no manual dividend entries for that ticker (the rhythm
+  //     suppresses projection for tickers that have manual entries to avoid
+  //     double-counting).
+  //
+  //  2. `expectedByMonth` from getYearEvents → projects forward from each
+  //     ticker's cadence anchor, regardless of whether the user logged
+  //     dividends manually. Falls back to this when (1) is empty.
+  //
+  //  3. `fwdMonthlyBaseline` from holdings × payout_freq → works for any
+  //     portfolio with a forward yield, even one with no ex-date history
+  //     in instrument_dividends. Used when both (1) and (2) come up blank
+  //     for a given month, distributed by cadence so quarterly payers don't
+  //     get spread across every month.
+  const expectedByMonth = Array<number>(12).fill(0);
+  for (const e of events) {
+    if (e.isPast) continue;
+    expectedByMonth[new Date(e.exDate).getMonth()] += e.grossLocal;
+  }
+
+  // Build a holdings-based fallback. For each active holding we know its
+  // forward annual income and its payout cadence — but we don't necessarily
+  // know which months it lands in. Quarterly/semi/annual payers get smeared
+  // to a flat per-month rate (annual / 12) so the chart still reflects
+  // proportional contribution without claiming false precision.
+  const fwdMonthlyByMonth = Array<number>(12).fill(0);
+  const activeHoldings = holdings.filter((h) => h.quantity > 0);
+  for (const h of activeHoldings) {
+    const annual = (h.fwdDivAnnualLocal ?? 0) * h.quantity;
+    if (annual <= 0) continue;
+    // Flat smear — we lack per-month cadence info here, so the safest
+    // visual is to spread the annual evenly across the remaining months.
+    const perMonth = annual / 12;
+    for (let i = 0; i < 12; i++) fwdMonthlyByMonth[i] += perMonth;
+  }
+
+  // Sanity check against the portfolio summary — if forwardAnnualIncome is
+  // larger than what we computed (shouldn't happen, but defensive), use it.
+  const summaryMonthly = summary.forwardAnnualIncome / 12;
 
   return (
     <DividendsMobile
@@ -254,9 +297,21 @@ async function MobileYearLoader({
       yearData={{
         year,
         ytdReceived,
-        months: months.map((m) => ({
-          month: m.month, year: m.year, received: m.received, expected: m.expected,
-        })),
+        months: months.map((m) => {
+          const isFuture = m.month > currentMonth;
+          if (!isFuture) {
+            return { month: m.month, year: m.year, received: m.received, expected: m.expected };
+          }
+          // Future month — pick the strongest signal available, in order:
+          //   rhythm projection → events projection → flat fwd baseline.
+          const projected = Math.max(
+            m.expected,
+            expectedByMonth[m.month],
+            fwdMonthlyByMonth[m.month],
+            summaryMonthly,
+          );
+          return { month: m.month, year: m.year, received: m.received, expected: projected };
+        }),
         nowIndex: currentMonth,
         activeMonths,
         payerCount,

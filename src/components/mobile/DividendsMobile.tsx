@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { MobileShell } from '@/components/mobile/MobileShell';
 import { TickerLogo } from '@/components/TickerLogo';
 import { RhythmBars, type RhythmMonth } from '@/components/mobile/RhythmBars';
+import { ForecastBarsMobile, type ForecastBarsMonth } from '@/components/mobile/ForecastBarsMobile';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -37,9 +38,10 @@ export interface DividendsMobileForecast {
   thisMonth: number;
   thisQuarter: number;
   thisYearTotal: number;
-  /** 18-bar rhythm: last 12 + next 6 (for the Forward monthly income chart). */
-  rhythm: RhythmMonth[];
-  nowIndex: number;
+  /** 12 forward months (next month → same month next year) for the
+   *  Forward monthly income + cumulative chart. Mirrors the desktop
+   *  ForecastChart's default 12M slice. */
+  forecastMonths: ForecastBarsMonth[];
   /** Growth scenarios. */
   fivePctGrowth: number;
   in5y: number;
@@ -311,14 +313,15 @@ function ForecastMobile({ data }: { data: DividendsMobileForecast }) {
         </div>
       </div>
 
-      {/* Forward monthly income chart */}
-      {data.rhythm.length > 0 && (
+      {/* Forward monthly income + cumulative chart — mirrors desktop's
+          12-month forward window with bar+line overlay. */}
+      {data.forecastMonths.length > 0 && (
         <div className="pcard cdn-anim" style={{ '--i': 3 } as React.CSSProperties}>
           <div className="pcard-h">
-            <div className="t">Forward monthly income</div>
-            <span className="more">12M + 6M</span>
+            <div className="t">Forward monthly income + cumulative</div>
+            <span className="more">12M</span>
           </div>
-          <RhythmBars months={data.rhythm} nowIndex={data.nowIndex} height={120} />
+          <ForecastBarsMobile months={data.forecastMonths} height={140} />
         </div>
       )}
 
@@ -381,7 +384,15 @@ function YearMobile({ data }: { data: DividendsMobileYear }) {
           <div className="t">Monthly income</div>
           <span className="more">{data.year}</span>
         </div>
-        <RhythmBars months={data.months} nowIndex={data.nowIndex} height={140} />
+        {/* Calendar Year view — solid bars everywhere (projection bars
+            faded but filled, not dashed) and every month labelled. */}
+        <RhythmBars
+          months={data.months}
+          nowIndex={data.nowIndex}
+          height={140}
+          solid
+          showAllLabels
+        />
       </div>
 
       {biggest && biggest.received > 0 && (
