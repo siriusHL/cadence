@@ -6,9 +6,11 @@ interface Props {
   body: string;
   ctaLabel?: string;
   ctaHref?: string;
+  /** Optional client-side action rendered next to the primary CTA. */
+  secondaryAction?: React.ReactNode;
 }
 
-export function EmptyState({ icon = '✦', title, body, ctaLabel, ctaHref }: Props) {
+export function EmptyState({ icon = '✦', title, body, ctaLabel, ctaHref, secondaryAction }: Props) {
   return (
     <div
       style={{
@@ -43,15 +45,16 @@ export function EmptyState({ icon = '✦', title, body, ctaLabel, ctaHref }: Pro
       <div style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 380, margin: '0 auto', lineHeight: 1.45 }}>
         {body}
       </div>
-      {ctaLabel && ctaHref && (
-        <Link
-          href={ctaHref}
-          className="btn"
-          style={{ marginTop: 22, textDecoration: 'none' }}
-        >
-          {ctaLabel}
-        </Link>
-      )}
+      {(ctaLabel && ctaHref) || secondaryAction ? (
+        <div style={{ marginTop: 22, display: 'inline-flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {ctaLabel && ctaHref && (
+            <Link href={ctaHref} className="btn" style={{ textDecoration: 'none' }}>
+              {ctaLabel}
+            </Link>
+          )}
+          {secondaryAction}
+        </div>
+      ) : null}
     </div>
   );
 }

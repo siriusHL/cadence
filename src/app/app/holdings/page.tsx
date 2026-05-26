@@ -5,6 +5,8 @@ import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { HoldingsTable, type HoldingRow } from '@/components/HoldingsTable';
 import { AddHoldingTrigger } from '@/components/AddHoldingTrigger';
+import { ImportCsvButton } from '@/components/ImportCsvButton';
+import { can, type Tier } from '@/lib/tiers';
 
 interface InstrumentMeta {
   ticker: string;
@@ -19,6 +21,13 @@ interface QuoteMeta {
 export default async function HoldingsScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('tier')
+    .eq('user_id', user!.id)
+    .maybeSingle();
+  const tier = (sub?.tier ?? 'free') as Tier;
+  const canImport = can(tier, 'csvImport');
   const portfolio = await getActivePortfolio(supabase, user!.id);
 
   if (!portfolio) {
@@ -28,6 +37,7 @@ export default async function HoldingsScreen() {
         body="Add your first holding to unlock the Holdings table."
         ctaLabel="Add a holding"
         ctaHref="/app/add"
+        secondaryAction={canImport ? <ImportCsvButton variant="ghost" /> : undefined}
       />
     );
   }
@@ -48,6 +58,7 @@ export default async function HoldingsScreen() {
           </div>
           <div className="right-meta" style={{ alignItems: 'flex-end', gap: 10 }}>
             <AddHoldingTrigger />
+            {canImport && <ImportCsvButton variant="ghost" />}
           </div>
         </div>
       </div>
@@ -130,7 +141,10 @@ export default async function HoldingsScreen() {
           </div>
         </div>
         <div className="right-meta" style={{ alignItems: 'flex-end', gap: 10 }}>
-          <AddHoldingTrigger />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <AddHoldingTrigger />
+            {canImport && <ImportCsvButton variant="ghost" />}
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <span className="live">Live prices · synced just now</span>
             <span>{rows.length} positions</span>
