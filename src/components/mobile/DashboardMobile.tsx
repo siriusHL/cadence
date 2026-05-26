@@ -12,7 +12,8 @@
 
 import Link from 'next/link';
 import { MobileShell } from '@/components/mobile/MobileShell';
-import { RhythmBars, type RhythmMonth } from '@/components/mobile/RhythmBars';
+import { IncomeRhythmChart } from '@/components/IncomeRhythmChart';
+import { type MonthOverview } from '@/lib/portfolio';
 import { TickerLogo } from '@/components/TickerLogo';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -58,7 +59,10 @@ export interface DashboardMobileUpcoming {
 
 export interface DashboardMobileProps {
   summary: DashboardMobileSummary;
-  rhythm: RhythmMonth[];
+  /** Full MonthOverview window (with byTicker for the chart's hover/
+   *  click-to-detail) — fed straight into the desktop IncomeRhythmChart
+   *  for visual parity with the desktop dashboard. */
+  rhythm: MonthOverview[];
   nowIndex: number;
   contributors: DashboardMobileContributor[];
   upcoming: DashboardMobileUpcoming[];
@@ -185,16 +189,15 @@ export function DashboardMobile({
         </Link>
       </div>
 
-      {/* Income rhythm */}
+      {/* Income rhythm — using the desktop IncomeRhythmChart directly so
+          mobile and desktop are visually identical (y-axis ticks, legend,
+          range selector, hover/tap-to-open detail modal, Now marker). */}
       {rhythm.length > 0 && (
         <div className="pcard cdn-anim" style={{ '--i': 2 } as React.CSSProperties}>
           <div className="pcard-h">
             <div className="t">Income rhythm</div>
-            <span className="more">12M + 6M</span>
           </div>
-          <div className="rhythm-wrap">
-            <RhythmBars months={rhythm} nowIndex={nowIndex} height={120} />
-          </div>
+          <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} />
         </div>
       )}
 
@@ -290,8 +293,3 @@ export function DashboardMobile({
     </MobileShell>
   );
 }
-
-// Avoid "unused export" warnings if RhythmMonth isn't directly referenced
-// elsewhere in this module — re-export so importers can pull the type from
-// the same file as the component if convenient.
-export type { RhythmMonth };

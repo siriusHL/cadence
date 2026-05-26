@@ -15,11 +15,6 @@
 //     "empty/missing" rather than "projected".
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-// Single-letter labels for the X-axis on narrow phone widths — 3-char
-// labels overflow their grid column (~12-14px) and get clipped by
-// `.mob`'s `overflow-x: hidden`. With 1-char labels every month fits
-// comfortably, so the user sees the full timeline without gaps.
-const MONTH_LETTER = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
 // Match the desktop IncomeRhythmChart exactly — keep the two callers
 // visually consistent at desktop vs phone.
@@ -205,40 +200,26 @@ export function RhythmBars({
             display: 'grid',
             gridTemplateColumns: `repeat(${months.length}, 1fr)`,
             gap,
-            marginTop: 6,
+            marginTop: 4,
           }}
         >
-          {months.map((m, i) => {
-            const isNow = i === nowIndex;
-            // Year-calendar (solid) mode keeps 3-char labels — there are
-            // only 12 columns so they fit comfortably. Default (rhythm)
-            // mode shows ALL months as single letters so the 18-bar
-            // strip fits every label without clipping at the right edge.
-            const label = solid ? MONTH_SHORT[m.month] : MONTH_LETTER[m.month];
-            // Solid mode: every-other-month stride unless showAllLabels.
-            // Default mode: show every label — single-letter is narrow
-            // enough that none of them overflow.
-            const visible = solid
-              ? (showAllLabels || (i - nowIndex) % 2 === 0)
-              : true;
-            return (
-              <div
-                key={`${m.year}-${m.month}-l`}
-                style={{
-                  fontSize: solid ? 8.5 : 9.5,
-                  color: isNow && !solid ? 'var(--text)' : 'var(--text-dim)',
-                  textAlign: 'center',
-                  fontWeight: isNow && !solid ? 700 : 500,
-                  letterSpacing: '0.02em',
-                  overflow: 'hidden',
-                  whiteSpace: 'nowrap',
-                  opacity: visible ? 1 : 0,
-                }}
-              >
-                {label}
-              </div>
-            );
-          })}
+          {months.map((m, i) => (
+            <div
+              key={`${m.year}-${m.month}-l`}
+              style={{
+                fontSize: 8.5,
+                color: 'var(--text-dim)',
+                textAlign: 'center',
+                fontWeight: 500,
+                letterSpacing: '0.02em',
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                opacity: showAllLabels || (i - nowIndex) % 2 === 0 ? 1 : 0,
+              }}
+            >
+              {MONTH_SHORT[m.month]}
+            </div>
+          ))}
         </div>
       )}
     </div>

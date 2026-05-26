@@ -146,18 +146,16 @@ export default async function DashboardScreen() {
     ? Math.ceil(Math.log(incomeTarget / summary.forwardAnnualIncome) / Math.log(1 + growth))
     : 0;
 
-  // Compose props for the mobile dashboard view. Mobile renders only the most
-  // recent 12 past + 6 future months — 18 bars fit comfortably on a phone.
+  // Compose props for the mobile dashboard view. Mobile renders the same
+  // IncomeRhythmChart as desktop — pass the FULL MonthOverview (incl.
+  // byTicker) through so the chart's hover/tap-to-open detail modal
+  // works identically on phone. The 12+6 mobile window is still kept
+  // (matches what the chart's default range selector lands on).
   const MOBILE_PAST = 12;
   const MOBILE_FUTURE = 6;
   const mobileRhythmStart = Math.max(0, nowIndex + 1 - MOBILE_PAST);
   const mobileRhythmEnd = Math.min(rhythm.length, nowIndex + 1 + MOBILE_FUTURE);
-  const mobileRhythm = rhythm.slice(mobileRhythmStart, mobileRhythmEnd).map((r) => ({
-    month: r.month,
-    year: r.year,
-    received: r.received,
-    expected: r.expected,
-  }));
+  const mobileRhythm = rhythm.slice(mobileRhythmStart, mobileRhythmEnd);
   const mobileNowIndex = nowIndex - mobileRhythmStart;
   const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
 
