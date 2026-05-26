@@ -446,6 +446,15 @@ function CapitalGainsSection({
           <div style={{ padding: '12px 4px', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.55 }}>
             Once you record sales, Cadence applies {residenceName}&rsquo;s capital-gains
             regime and shows the tax owed on the year&rsquo;s realized profit here.
+            {summary.carryForwardAvailableEur > 0 && (
+              <>
+                {' '}You have{' '}
+                <b style={{ color: 'oklch(0.36 0.08 165)' }}>
+                  €{fmtMoney(summary.carryForwardAvailableEur, 2)}
+                </b>{' '}
+                of prior-year losses available to offset future gains.
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -469,6 +478,19 @@ function CapitalGainsSection({
                     {gainPositive ? '+' : '−'}€{fmtMoney(Math.abs(summary.totalRealizedGainEur), 2)}
                   </td>
                 </tr>
+                {breakdown.carryForwardUsedEur > 0 && (
+                  <tr>
+                    <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+                      Prior-year losses applied{' '}
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        ({oldestCarryYearLabel(summary)})
+                      </span>
+                    </td>
+                    <td className="r num" style={{ fontSize: 12, color: 'oklch(0.36 0.08 165)' }}>
+                      −€{fmtMoney(breakdown.carryForwardUsedEur, 2)}
+                    </td>
+                  </tr>
+                )}
                 {breakdown.allowanceUsedEur > 0 && (
                   <tr>
                     <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
@@ -520,14 +542,35 @@ function CapitalGainsSection({
                 {breakdown.netAfterTaxEur >= 0 ? '+' : '−'}€{fmtMoney(Math.abs(breakdown.netAfterTaxEur), 0)}
               </span>
             </div>
-            {breakdown.note && (
+            {(breakdown.carryForwardRemainingEur > 0.5 || summary.carryForwardExpiredEur > 0.5 || breakdown.note) && (
               <div
                 style={{
                   marginTop: 10, fontSize: 11, color: 'var(--text-muted)',
                   lineHeight: 1.5, borderTop: '1px solid var(--border)', paddingTop: 8,
+                  display: 'flex', flexDirection: 'column', gap: 6,
                 }}
               >
-                {breakdown.note}
+                {breakdown.carryForwardRemainingEur > 0.5 && (
+                  <div>
+                    <b style={{ color: 'var(--text)' }}>
+                      €{fmtMoney(breakdown.carryForwardRemainingEur, 2)}
+                    </b>{' '}
+                    of losses carry forward into {fiscalYear + 1}
+                    {(breakdown.model.kind === 'flat' || breakdown.model.kind === 'progressive') && breakdown.model.lossCarryYears != null && (
+                      <> · {breakdown.model.lossCarryYears === Infinity
+                        ? 'indefinite window'
+                        : `${breakdown.model.lossCarryYears}-year window`}</>
+                    )}
+                    .
+                  </div>
+                )}
+                {summary.carryForwardExpiredEur > 0.5 && (
+                  <div style={{ color: 'oklch(0.46 0.10 25)' }}>
+                    ⚠ €{fmtMoney(summary.carryForwardExpiredEur, 2)} of prior losses expired
+                    un-used (outside the carry-forward window).
+                  </div>
+                )}
+                {breakdown.note && <div>{breakdown.note}</div>}
               </div>
             )}
           </>
@@ -535,6 +578,14 @@ function CapitalGainsSection({
       </div>
     </div>
   );
+}
+
+function oldestCarryYearLabel(summary: CapitalGainsSummary): string {
+  const years = summary.carryForwardEntries.map((e) => e.year);
+  if (years.length === 0) return '';
+  const oldest = Math.min(...years);
+  const newest = Math.max(...years);
+  return oldest === newest ? `from ${oldest}` : `from ${oldest}–${newest}`;
 }
 
 function cgtModelTag(model: CGTModel): string {
