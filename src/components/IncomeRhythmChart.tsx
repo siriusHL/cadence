@@ -268,14 +268,25 @@ export function IncomeRhythmChart({
               narrow mobile columns where the cell itself is only
               ~12px wide. With stride 2 the labels are ~24-50px apart,
               plenty of room for them to overlap their gap without
-              colliding. */}
+              colliding.
+
+              Smart skip: when the force-shown LAST label is closer
+              than `stride` columns to the previous stride-shown
+              label, drop the previous one. Without this, n=18 with
+              stride=2 puts labels at both i=16 (Oct) AND i=17 (Nov)
+              one column apart, which collides on narrow mobile
+              widths. */}
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
             display: 'flex', gap: 3, height: 18,
           }}>
             {slice.map((m, i) => {
               const labelEvery = labelStride(slice.length);
-              const show = i % labelEvery === 0 || i === slice.length - 1;
+              const isStride = i % labelEvery === 0;
+              const isLast = i === slice.length - 1;
+              const conflictsWithLast =
+                isStride && !isLast && (slice.length - 1 - i) < labelEvery;
+              const show = (isStride && !conflictsWithLast) || isLast;
               return (
                 <div key={`${m.year}-${m.month}-l`} style={{
                   flex: 1, textAlign: 'center', minWidth: 4,
