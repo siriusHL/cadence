@@ -681,6 +681,16 @@ export interface CapitalGainsSummary {
    *  — usually means the user has buys missing for an inherited holding.
    *  Cost basis for the un-matched portion is treated as zero (worst case). */
   hasUnmatchedSells: boolean;
+  /** Unused prior-year losses still available to offset this year's gains,
+   *  per the residence's carry-forward window. Empty when the residence
+   *  doesn't allow carry-forward (AT) or doesn't tax CGT (BE/NL). Sorted
+   *  oldest-first — entries expire when fiscalYear − year > windowYears. */
+  carryForwardEntries: { year: number; remainingEur: number; expiresAfterYear: number }[];
+  /** Sum of carryForwardEntries — the amount available to offset this year. */
+  carryForwardAvailableEur: number;
+  /** Losses from prior years that have already expired un-used (sum, EUR).
+   *  Surfaced so the UI can flag the lost deduction. */
+  carryForwardExpiredEur: number;
 }
 
 interface TradeRow {
@@ -742,6 +752,9 @@ export async function getCapitalGainsSummary(
 
   const sales: RealizedSale[] = [];
   let hasUnmatchedSells = false;
+  // Per-year net realized gain across ALL sells (every year, not just
+  // fiscal). Used downstream to compute carry-forward balance.
+  const priorYearNets = new Map<number, number>();
 
   for (const [ticker, rows] of byTicker) {
     const lots: FifoLot[] = [];
@@ -793,12 +806,17 @@ export async function getCapitalGainsSummary(
         hasUnmatchedSells = true;
       }
 
-      // Only emit a row when the sale is in the requested fiscal year.
-      if (tx.occurred_on < yearStart || tx.occurred_on > yearEnd) continue;
-
       const proceedsLocal = qty * price - fee;
       const proceedsEur = proceedsLocal * fx;
       const realizedGainEur = proceedsEur - costEur;
+
+      // Track every sale's year-level net so carry-forward can be built.
+      const sellYear = Number(tx.occurred_on.slice(0, 4));
+      priorYearNets.set(sellYear, (priorYearNets.get(sellYear) ?? 0) + realizedGainEur);
+
+      // Only emit a per-sale row when the sale is in the requested fiscal year.
+      if (tx.occurred_on < yearStart || tx.occurred_on > yearEnd) continue;
+
       const holdingDays = matchedQty > 0 ? weightedHoldingDays / matchedQty : 0;
 
       sales.push({
@@ -847,6 +865,13 @@ export async function getCapitalGainsSummary(
   );
   const salesSorted = [...sales].sort((a, b) => b.saleDate.localeCompare(a.saleDate));
 
+  // Build the carry-forward pool from every prior-year net the FIFO walk
+  // recorded. The current fiscal year is excluded — its losses become
+  // tomorrow's carry-forward, not today's.
+  const lossCarryYears = getLossCarryYears(RESIDENCE_CGT_MODELS[residence]);
+  const { entries, expiredEur } = buildCarryForwardPool(priorYearNets, fiscalYear, lossCarryYears);
+  const carryForwardAvailableEur = entries.reduce((s, e) => s + e.remainingEur, 0);
+
   return {
     residence,
     fiscalYear,
@@ -858,6 +883,9 @@ export async function getCapitalGainsSummary(
     totalGainsEur:        totalGains,
     totalLossesEur:       totalLosses,
     hasUnmatchedSells,
+    carryForwardEntries:       entries,
+    carryForwardAvailableEur,
+    carryForwardExpiredEur:    expiredEur,
   };
 }
 
@@ -868,6 +896,85 @@ function emptyCapitalGains(residence: TaxResidence, fiscalYear: number): Capital
     totalProceedsEur: 0, totalCostBasisEur: 0,
     totalRealizedGainEur: 0, totalGainsEur: 0, totalLossesEur: 0,
     hasUnmatchedSells: false,
+    carryForwardEntries: [], carryForwardAvailableEur: 0, carryForwardExpiredEur: 0,
+  };
+}
+
+/** Pulls the carry-forward window from a residence model, defaulting to 0
+ *  (no carry-forward) for regimes that don't allow it. */
+function getLossCarryYears(model: CGTModel): number {
+  if (model.kind === 'flat' || model.kind === 'progressive') {
+    return model.lossCarryYears ?? 0;
+  }
+  return 0;
+}
+
+/**
+ * Walks per-year nets chronologically and produces the remaining unused-loss
+ * pool at the start of `fiscalYear`:
+ *
+ *   - a year with net loss adds an entry to the pool;
+ *   - a year with net gain consumes from the pool, oldest-first, within the
+ *     residence's carry-forward window;
+ *   - entries age out once `fiscalYear − entry.year > windowYears`.
+ *
+ * The current fiscal year is intentionally excluded — its net is handled in
+ * `computeCapitalGainsTax`, not added to the historical pool.
+ */
+function buildCarryForwardPool(
+  perYearNets: Map<number, number>,
+  fiscalYear: number,
+  windowYears: number,
+): {
+  entries: { year: number; remainingEur: number; expiresAfterYear: number }[];
+  expiredEur: number;
+} {
+  if (windowYears <= 0) return { entries: [], expiredEur: 0 };
+
+  const priorYears = [...perYearNets.keys()]
+    .filter((y) => y < fiscalYear)
+    .sort((a, b) => a - b);
+
+  const pool: { year: number; remaining: number; expiresAfterYear: number }[] = [];
+  let expiredEur = 0;
+
+  const expireAt = (currentYear: number) => {
+    for (const e of pool) {
+      if (e.remaining > 0 && e.expiresAfterYear < currentYear) {
+        expiredEur += e.remaining;
+        e.remaining = 0;
+      }
+    }
+  };
+
+  for (const y of priorYears) {
+    expireAt(y);
+    const net = perYearNets.get(y) ?? 0;
+    if (net >= 0) {
+      // Consume from oldest live entries first.
+      let g = net;
+      for (const e of pool) {
+        if (g <= 0) break;
+        if (e.remaining <= 0) continue;
+        const take = Math.min(e.remaining, g);
+        e.remaining -= take;
+        g -= take;
+      }
+    } else {
+      const expiresAfterYear = Number.isFinite(windowYears) ? y + windowYears : Infinity;
+      pool.push({ year: y, remaining: -net, expiresAfterYear });
+    }
+  }
+
+  // Final expiry pass against the fiscal year itself — losses whose window
+  // closed before the start of fiscalYear are gone before they can offset.
+  expireAt(fiscalYear);
+
+  return {
+    entries: pool
+      .filter((e) => e.remaining > 0)
+      .map((e) => ({ year: e.year, remainingEur: e.remaining, expiresAfterYear: e.expiresAfterYear })),
+    expiredEur,
   };
 }
 
@@ -891,12 +998,17 @@ export type CGTModel =
       allowance?: number;
       allowanceLabel?: string;
       surchargeLabel?: string;
+      /** Years a net loss can be carried forward to offset future gains.
+       *  Use `Infinity` for indefinite, omit (or 0) when no carry-forward
+       *  is allowed for private-investor capital losses. */
+      lossCarryYears?: number;
     }
   | {
       kind: 'progressive';
       bands: { upTo: number; rate: number }[];
       allowance?: number;
       allowanceLabel?: string;
+      lossCarryYears?: number;
     }
   | {
       kind: 'box3';
@@ -910,31 +1022,37 @@ export type CGTModel =
     };
 
 export const RESIDENCE_CGT_MODELS: Record<TaxResidence, CGTModel> = {
-  IE: { kind: 'flat', rate: 33, allowance: 1270, allowanceLabel: 'Personal CGT exemption' },
+  IE: { kind: 'flat', rate: 33, allowance: 1270, allowanceLabel: 'Personal CGT exemption', lossCarryYears: Infinity },
   NL: { kind: 'box3' },
-  DE: { kind: 'flat', rate: 26.375, allowance: 1000, allowanceLabel: 'Sparer-Pauschbetrag', surchargeLabel: 'incl. Soli' },
-  FR: { kind: 'flat', rate: 30, surchargeLabel: 'PFU · 12.8 IT + 17.2 social' },
+  DE: { kind: 'flat', rate: 26.375, allowance: 1000, allowanceLabel: 'Sparer-Pauschbetrag', surchargeLabel: 'incl. Soli', lossCarryYears: Infinity },
+  FR: { kind: 'flat', rate: 30, surchargeLabel: 'PFU · 12.8 IT + 17.2 social', lossCarryYears: 10 },
   ES: { kind: 'progressive', bands: [
     { upTo: 6000,   rate: 19 },
     { upTo: 50000,  rate: 21 },
     { upTo: 200000, rate: 23 },
     { upTo: 300000, rate: 27 },
     { upTo: Infinity, rate: 28 },
-  ]},
-  IT: { kind: 'flat', rate: 26 },
+  ], lossCarryYears: 4 },
+  IT: { kind: 'flat', rate: 26, lossCarryYears: 4 },
   BE: { kind: 'none', note: 'Belgium does not tax capital gains on listed shares for individual investors managing private assets.' },
-  PT: { kind: 'flat', rate: 28 },
+  PT: { kind: 'flat', rate: 28, lossCarryYears: 5 },
   AT: { kind: 'flat', rate: 27.5, surchargeLabel: 'KESt' },
-  GB: { kind: 'flat', rate: 24, allowance: 3000, allowanceLabel: 'Annual exempt amount (£3,000)' },
+  GB: { kind: 'flat', rate: 24, allowance: 3000, allowanceLabel: 'Annual exempt amount (£3,000)', lossCarryYears: Infinity },
 };
 
 export interface CGTBreakdown {
   model: CGTModel;
-  /** Net realized gain before allowance & tax. Equal to summary.totalRealizedGainEur. */
+  /** Net realized gain before carry-forward, allowance & tax.
+   *  Equal to summary.totalRealizedGainEur. */
   netGainEur: number;
-  /** Allowance applied this year. */
+  /** Prior-year carried losses consumed this year (applied BEFORE allowance). */
+  carryForwardUsedEur: number;
+  /** Carry-forward balance projected to next year:
+   *  (available − used this year) + (this year's net loss, if any). */
+  carryForwardRemainingEur: number;
+  /** Allowance applied this year (after carry-forward). */
   allowanceUsedEur: number;
-  /** Gain after allowance (the part actually subject to tax). */
+  /** Gain after carry-forward and allowance — the part subject to tax. */
   taxableGainEur: number;
   /** Estimated CGT owed at residence. */
   taxDueEur: number;
@@ -947,55 +1065,92 @@ export interface CGTBreakdown {
 }
 
 /**
- * Apply the residence-country CGT to a capital-gains summary. Losses
- * (net gain < 0) yield zero tax — loss carry-forward is intentionally
- * out of scope for v1.
+ * Apply the residence-country CGT to a capital-gains summary.
+ *
+ * Order of operations (matches how most EU authorities compute it):
+ *
+ *   1. Net gains/losses within the year (already done by getCapitalGainsSummary).
+ *   2. Offset remaining net gain with carried-forward losses from prior years,
+ *      consumed oldest-first within the residence's carry-forward window.
+ *   3. Apply the annual allowance/exemption to what's left.
+ *   4. Tax the remainder at the residence rate (flat or progressive).
+ *
+ * A net loss for the year (after step 2 still ≤ 0) yields zero tax and
+ * flows into `carryForwardRemainingEur` for next year — provided the
+ * residence permits carry-forward.
  */
 export function computeCapitalGainsTax(summary: CapitalGainsSummary): CGTBreakdown {
   const model = RESIDENCE_CGT_MODELS[summary.residence];
   const net = summary.totalRealizedGainEur;
+  const carryAvailable = summary.carryForwardAvailableEur;
 
   if (model.kind === 'box3') {
     return {
       model,
-      netGainEur:       net,
-      allowanceUsedEur: 0,
-      taxableGainEur:   0,
-      taxDueEur:        0,
-      netAfterTaxEur:   net,
-      effectiveRatePct: 0,
+      netGainEur:               net,
+      carryForwardUsedEur:      0,
+      carryForwardRemainingEur: 0,
+      allowanceUsedEur:         0,
+      taxableGainEur:           0,
+      taxDueEur:                0,
+      netAfterTaxEur:           net,
+      effectiveRatePct:         0,
       note: 'Listed-share gains aren’t taxed per sale in NL — wealth sits in Box 3 alongside dividends.',
     };
   }
   if (model.kind === 'none') {
     return {
       model,
-      netGainEur:       net,
-      allowanceUsedEur: 0,
-      taxableGainEur:   0,
-      taxDueEur:        0,
-      netAfterTaxEur:   net,
-      effectiveRatePct: 0,
+      netGainEur:               net,
+      carryForwardUsedEur:      0,
+      carryForwardRemainingEur: 0,
+      allowanceUsedEur:         0,
+      taxableGainEur:           0,
+      taxDueEur:                0,
+      netAfterTaxEur:           net,
+      effectiveRatePct:         0,
       note: model.note,
     };
   }
 
-  if (net <= 0) {
+  // Carry-forward: consume against current year's net gain (oldest-first
+  // already enforced by the pool order in the summary). Cannot reduce
+  // a positive number below zero, and a negative net doesn't consume.
+  const carryUsed = net > 0 ? Math.min(carryAvailable, net) : 0;
+  const afterCarry = net - carryUsed;
+
+  // Net loss this year (after carry-forward usage) feeds the next year's pool.
+  const newLossThisYear = afterCarry < 0 ? -afterCarry : 0;
+  const carryRemaining = (carryAvailable - carryUsed) + newLossThisYear;
+
+  if (afterCarry <= 0) {
+    let note: string | undefined;
+    if (carryUsed > 0 && net > 0) {
+      note = `Carry-forward fully absorbed this year's gain — no CGT due.`;
+    } else if (net < 0) {
+      note = (model.lossCarryYears ?? 0) > 0
+        ? `Net loss for the year. ${(model.lossCarryYears === Infinity)
+            ? 'Loss carries forward indefinitely until used.'
+            : `Loss carries forward up to ${model.lossCarryYears} years.`}`
+        : 'Net loss for the year — no CGT owed.';
+    }
     return {
       model,
-      netGainEur:       net,
-      allowanceUsedEur: 0,
-      taxableGainEur:   0,
-      taxDueEur:        0,
-      netAfterTaxEur:   net,
-      effectiveRatePct: 0,
-      note: net < 0 ? 'Net loss for the year — no CGT owed. Loss carry-forward isn’t modelled in this estimate.' : undefined,
+      netGainEur:               net,
+      carryForwardUsedEur:      carryUsed,
+      carryForwardRemainingEur: carryRemaining,
+      allowanceUsedEur:         0,
+      taxableGainEur:           0,
+      taxDueEur:                0,
+      netAfterTaxEur:           net,
+      effectiveRatePct:         0,
+      note,
     };
   }
 
   const allowance = model.allowance ?? 0;
-  const allowanceUsed = Math.min(allowance, net);
-  const taxable = Math.max(0, net - allowanceUsed);
+  const allowanceUsed = Math.min(allowance, afterCarry);
+  const taxable = Math.max(0, afterCarry - allowanceUsed);
   let tax = 0;
 
   if (model.kind === 'flat') {
@@ -1015,11 +1170,13 @@ export function computeCapitalGainsTax(summary: CapitalGainsSummary): CGTBreakdo
 
   return {
     model,
-    netGainEur:       net,
-    allowanceUsedEur: allowanceUsed,
-    taxableGainEur:   taxable,
-    taxDueEur:        tax,
-    netAfterTaxEur:   net - tax,
-    effectiveRatePct: net > 0 ? (tax / net) * 100 : 0,
+    netGainEur:               net,
+    carryForwardUsedEur:      carryUsed,
+    carryForwardRemainingEur: carryRemaining,
+    allowanceUsedEur:         allowanceUsed,
+    taxableGainEur:           taxable,
+    taxDueEur:                tax,
+    netAfterTaxEur:           net - tax,
+    effectiveRatePct:         net > 0 ? (tax / net) * 100 : 0,
   };
 }
