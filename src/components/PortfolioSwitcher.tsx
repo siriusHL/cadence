@@ -56,7 +56,7 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
+          gap: 8,
           padding: '6px 10px',
           background: 'var(--surface)',
           border: '1px solid var(--border-strong)',
@@ -64,11 +64,45 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
           fontSize: 12,
           color: 'var(--text)',
           cursor: 'pointer',
-          maxWidth: 200,
+          maxWidth: 240,
         }}
-        title={active.name}
+        title={`Switch portfolio · current: ${active.name}`}
+        aria-label={`Switch portfolio. Current portfolio: ${active.name}`}
       >
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }}>
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+          style={{ color: 'var(--text-dim)', flexShrink: 0 }}
+        >
+          <path d="M3 7h18v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+          <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+        </svg>
+        <span
+          style={{
+            color: 'var(--text-dim)',
+            fontWeight: 500,
+            letterSpacing: '0.02em',
+          }}
+        >
+          Portfolio
+        </span>
+        <span style={{ color: 'var(--border-strong)' }}>·</span>
+        <span
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            maxWidth: 140,
+            fontWeight: 500,
+          }}
+        >
           {active.name}
         </span>
         <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>▾</span>
@@ -79,7 +113,7 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
             position: 'absolute',
             top: 'calc(100% + 6px)',
             right: 0,
-            minWidth: 220,
+            minWidth: 240,
             background: 'var(--surface)',
             border: '1px solid var(--border-strong)',
             borderRadius: 10,
@@ -87,7 +121,21 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
             padding: 4,
             zIndex: 50,
           }}
+          role="menu"
+          aria-label="Switch portfolio"
         >
+          <div
+            style={{
+              padding: '8px 10px 6px',
+              fontSize: 10.5,
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              color: 'var(--text-dim)',
+            }}
+          >
+            Switch portfolio
+          </div>
           {items.map((it) => (
             <button
               key={it.id}
