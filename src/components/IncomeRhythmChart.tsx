@@ -23,6 +23,10 @@ interface Props {
   months: MonthOverview[];
   /** Index of the current month inside `months`. */
   nowIndex: number;
+  /** Hide the 6M/1Y/18M/3Y range selector — used by the mobile
+   *  dashboard where the chart is locked to its 18M default and
+   *  the toolbar would otherwise crowd a 360px column. */
+  hideRangeSelector?: boolean;
 }
 
 function fmt(n: number, digits = 0): string {
@@ -31,7 +35,11 @@ function fmt(n: number, digits = 0): string {
 
 interface HoverState { idx: number; x: number; y: number; }
 
-export function IncomeRhythmChart({ months, nowIndex }: Props) {
+export function IncomeRhythmChart({
+  months,
+  nowIndex,
+  hideRangeSelector = false,
+}: Props) {
   const [range, setRange] = useState<RangeKey>('18M');
   const [hover, setHover] = useState<HoverState | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -75,18 +83,20 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175 / 0.22)' }} /> Expected
           </span>
         </div>
-        <div className="seg">
-          {(Object.keys(RANGES) as RangeKey[]).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRange(r)}
-              className={range === r ? 'on' : ''}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
+        {!hideRangeSelector && (
+          <div className="seg">
+            {(Object.keys(RANGES) as RangeKey[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRange(r)}
+                className={range === r ? 'on' : ''}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Chart with y-axis + grid + bars */}

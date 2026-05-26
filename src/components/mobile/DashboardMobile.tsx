@@ -191,13 +191,16 @@ export function DashboardMobile({
 
       {/* Income rhythm — using the desktop IncomeRhythmChart directly so
           mobile and desktop are visually identical (y-axis ticks, legend,
-          range selector, hover/tap-to-open detail modal, Now marker). */}
+          hover/tap-to-open detail modal, Now marker). Range selector
+          hidden on mobile — chart stays locked at its 18M default
+          since the toolbar would otherwise crowd a 360px column. */}
       {rhythm.length > 0 && (
         <div className="pcard cdn-anim" style={{ '--i': 2 } as React.CSSProperties}>
           <div className="pcard-h">
             <div className="t">Income rhythm</div>
+            <span className="more">18M</span>
           </div>
-          <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} />
+          <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} hideRangeSelector />
         </div>
       )}
 
