@@ -171,17 +171,26 @@ export function CsvImportClient({ onDone }: Props = {}) {
     });
   }
 
+  function handleUploaded(text: string) {
+    // If the user pre-picked a broker, honor it. Otherwise auto-detect.
+    if (broker) {
+      void rerunWithBroker(broker, text);
+    } else {
+      void runAutoDetect(text);
+    }
+  }
+
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    void loadFile(file).then(runAutoDetect);
+    void loadFile(file).then(handleUploaded);
   }
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) void loadFile(file).then(runAutoDetect);
+    if (file) void loadFile(file).then(handleUploaded);
   }
 
   function changeBroker(next: BrokerId) {
@@ -277,27 +286,28 @@ export function CsvImportClient({ onDone }: Props = {}) {
             />
           </div>
 
-          {(detected || rows.length > 0 || broker === 'other') && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Broker:</span>
-              <select
-                value={broker || ''}
-                onChange={(e) => changeBroker(e.target.value as BrokerId)}
-                disabled={pending}
-                style={brokerSelect}
-              >
-                {BROKERS.map((b) => (
-                  <option key={b.id} value={b.id}>{b.label}</option>
-                ))}
-              </select>
-              {detected && broker === detected && (
-                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>auto-detected</span>
-              )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Broker:</span>
+            <select
+              value={broker || ''}
+              onChange={(e) => changeBroker(e.target.value as BrokerId)}
+              disabled={pending}
+              style={brokerSelect}
+            >
+              <option value="">Auto-detect from CSV</option>
+              {BROKERS.map((b) => (
+                <option key={b.id} value={b.id}>{b.label}</option>
+              ))}
+            </select>
+            {detected && broker === detected && (
+              <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>auto-detected</span>
+            )}
+            {(filename || rows.length > 0) && (
               <button type="button" onClick={reset} disabled={pending} style={btnGhost}>
                 Clear
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
