@@ -6,6 +6,7 @@ import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { type Tier } from '@/lib/tiers';
+import { FreeNextMobile } from '@/components/mobile/FreeMobile';
 
 export default async function NextScreen() {
   const supabase = await getSupabaseServer();
@@ -49,8 +50,33 @@ export default async function NextScreen() {
   const dateLabel = (s: string) =>
     new Date(s).toLocaleDateString('en', { month: 'short', day: '2-digit' });
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
     <>
+      <div className="cdn-mobile-only">
+        <FreeNextMobile
+          nextPayment={{
+            ticker: next.ticker,
+            name: next.name,
+            estimatedTotalLocal: next.estimatedTotalLocal,
+            daysUntil: next.daysUntil,
+            exDate: next.exDate,
+            isProjected: next.isProjected,
+          }}
+          more={upcoming.slice(1, 8).map((p) => ({
+            ticker: p.ticker,
+            name: p.name,
+            exDate: p.exDate,
+            estimatedTotalLocal: p.estimatedTotalLocal,
+            daysUntil: p.daysUntil,
+            isProjected: p.isProjected,
+          }))}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+      <div className="cdn-desktop-only">
       <div className="hero" style={{ paddingBottom: 16 }}>
         <div className="eyebrow">Coming up</div>
         <div className="big">
@@ -142,6 +168,7 @@ export default async function NextScreen() {
           </div>
         </div>
       )}
+      </div>
     </>
   );
 }

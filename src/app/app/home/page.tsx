@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { FreeHomeMobile } from '@/components/mobile/FreeMobile';
 import {
   
   getHoldingsView,
@@ -94,8 +95,35 @@ export default async function HomeScreen() {
   const next = upcoming[0] ?? null;
   const totalValue = holdings.reduce((s, h) => s + (h.price ?? 0) * h.quantity, 0);
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
     <>
+      <div className="cdn-mobile-only">
+        <FreeHomeMobile
+          thisMonth={thisMonthBest}
+          lastMonth={lastMonthBest}
+          ytdReceived={ytdReceived}
+          fwdAnnual={forwardAnnual}
+          holdings={holdings.slice(0, 6).map((h) => ({
+            ticker: h.ticker,
+            name: h.name,
+            qty: h.quantity,
+            price: h.price,
+            currency: h.currency,
+            fwdDivLocal: h.fwdDivAnnualLocal,
+          }))}
+          nextPayment={next ? {
+            ticker: next.ticker,
+            name: next.name,
+            estimatedTotalLocal: next.estimatedTotalLocal,
+            daysUntil: next.daysUntil,
+          } : null}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+      <div className="cdn-desktop-only">
       <div className="hero">
         <div className="eyebrow">
           This month, {MONTH_NAMES_LONG[currentMonth]} {year}
@@ -242,6 +270,7 @@ export default async function HomeScreen() {
           </div>
         </div>
       )}
+      </div>
     </>
   );
 }

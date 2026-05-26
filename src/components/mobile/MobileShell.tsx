@@ -25,12 +25,22 @@ interface BottomTab {
   href?: string;
 }
 
-const BOTTOM_TABS: BottomTab[] = [
+/** Pro/Elite tier tab set — paid screens at the bottom. */
+const PRO_BOTTOM_TABS: BottomTab[] = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/app/dashboard' },
   { id: 'holdings',  label: 'Holdings',  icon: 'holdings',  href: '/app/holdings' },
   { id: 'dividends', label: 'Dividends', icon: 'dividends', href: '/app/dividends' },
   { id: 'perf',      label: 'Perf',      icon: 'perf',      href: '/app/performance' },
   { id: 'more',      label: 'More',      icon: 'more' /* opens drawer */ },
+];
+
+/** Free tier tab set — beginner-friendly destinations. */
+const FREE_BOTTOM_TABS: BottomTab[] = [
+  { id: 'home',   label: 'Home',      icon: 'dashboard', href: '/app/home' },
+  { id: 'next',   label: 'Coming up', icon: 'dividends', href: '/app/next' },
+  { id: 'stocks', label: 'Stocks',    icon: 'holdings',  href: '/app/stocks' },
+  { id: 'year',   label: 'Year',      icon: 'perf',      href: '/app/year' },
+  { id: 'more',   label: 'More',      icon: 'more' /* opens drawer */ },
 ];
 
 interface DrawerGroup {
@@ -77,6 +87,8 @@ export interface MobileShellProps {
   density?: 'compact' | 'regular' | 'comfy';
   /** Chassis variant. "v2b" = breathing layout used by every tier. */
   chassis?: 'default' | 'v2b';
+  /** Which set of bottom tabs to render — Pro (default) or Free tier. */
+  tabSet?: 'pro' | 'free';
   children: React.ReactNode;
 }
 
@@ -86,8 +98,10 @@ export function MobileShell({
   avatarInitials = 'U',
   density = 'regular',
   chassis = 'default',
+  tabSet = 'pro',
   children,
 }: MobileShellProps) {
+  const BOTTOM_TABS = tabSet === 'free' ? FREE_BOTTOM_TABS : PRO_BOTTOM_TABS;
   const pathname = usePathname();
   const router = useRouter();
 
@@ -104,11 +118,17 @@ export function MobileShell({
 
   // Derive active tab from pathname if caller didn't provide one
   const activeTab = currentTab ?? (
-    pathname.startsWith('/app/dashboard') ? 'dashboard'
-    : pathname.startsWith('/app/holdings') ? 'holdings'
-    : pathname.startsWith('/app/dividends') ? 'dividends'
-    : pathname.startsWith('/app/performance') ? 'perf'
-    : 'more'
+    tabSet === 'free'
+      ? (pathname.startsWith('/app/home')   ? 'home'
+        : pathname.startsWith('/app/next')   ? 'next'
+        : pathname.startsWith('/app/stocks') ? 'stocks'
+        : pathname.startsWith('/app/year')   ? 'year'
+        : 'more')
+      : (pathname.startsWith('/app/dashboard')   ? 'dashboard'
+        : pathname.startsWith('/app/holdings')   ? 'holdings'
+        : pathname.startsWith('/app/dividends')  ? 'dividends'
+        : pathname.startsWith('/app/performance') ? 'perf'
+        : 'more')
   );
 
   return (

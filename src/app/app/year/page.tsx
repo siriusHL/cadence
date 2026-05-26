@@ -6,6 +6,7 @@ import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { YearChart } from '@/components/YearChart';
 import { type Tier } from '@/lib/tiers';
+import { FreeYearMobile } from '@/components/mobile/FreeMobile';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -67,8 +68,25 @@ export default async function YearScreen() {
     if (v > biggestValue) { biggestValue = v; biggestMonth = i; }
   });
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
     <>
+      <div className="cdn-mobile-only">
+        <FreeYearMobile
+          year={year}
+          months={months.map((m) => ({
+            month: m.month,
+            year: m.year,
+            received: m.received,
+            expected: m.expected,
+          }))}
+          nowIndex={currentMonth}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+      <div className="cdn-desktop-only">
       <div className="hero">
         <div className="eyebrow">Your {year} so far</div>
         <div className="big">
@@ -146,6 +164,7 @@ export default async function YearScreen() {
           </div>
         </div>
       )}
+      </div>
     </>
   );
 }

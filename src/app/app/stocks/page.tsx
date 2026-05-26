@@ -7,6 +7,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { StockCardMenu } from '@/components/StockCardMenu';
 import { type Tier } from '@/lib/tiers';
+import { FreeStocksMobile } from '@/components/mobile/FreeMobile';
 
 function safetyForYield(yieldPct: number | null): { label: string; cls: string } {
   if (yieldPct == null) return { label: 'New', cls: '' };
@@ -140,8 +141,25 @@ export default async function StocksScreen() {
     0,
   );
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
     <>
+      <div className="cdn-mobile-only">
+        <FreeStocksMobile
+          holdings={holdings.map((h) => ({
+            ticker: h.ticker,
+            qty: h.quantity,
+            price: h.price,
+            currency: h.currency,
+            fwdDivLocal: h.fwdDivAnnualLocal,
+            fwdYieldPct: h.fwdYieldPct,
+          }))}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+      <div className="cdn-desktop-only">
       <div style={{
         paddingTop: 36, paddingBottom: 24,
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 24,
@@ -180,6 +198,7 @@ export default async function StocksScreen() {
           </div>
         </div>
       )}
+      </div>
     </>
   );
 }
