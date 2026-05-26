@@ -17,6 +17,11 @@ const PatchBody = z.object({
   bg_tone:         z.enum(['cream', 'neutral', 'cool']).optional(),
   default_screen:  z.enum(ALLOWED_SCREENS).nullable().optional(),
   income_target:   z.coerce.number().positive().max(10_000_000).optional(),
+  notify_dividend_events:    z.boolean().optional(),
+  notify_concentration:      z.boolean().optional(),
+  notify_tax_opportunities:  z.boolean().optional(),
+  notify_drawdown:           z.boolean().optional(),
+  notify_email_frequency:    z.enum(['off', 'daily', 'weekly']).optional(),
 });
 
 export const PATCH = withAuth({}, async ({ userId, req }) => {
@@ -34,6 +39,11 @@ export const PATCH = withAuth({}, async ({ userId, req }) => {
   if ('bg_tone'        in parsed.data) patch.bg_tone        = parsed.data.bg_tone;
   if ('default_screen' in parsed.data) patch.default_screen = parsed.data.default_screen;
   if ('income_target'  in parsed.data) patch.income_target  = parsed.data.income_target;
+  if ('notify_dividend_events'   in parsed.data) patch.notify_dividend_events   = parsed.data.notify_dividend_events;
+  if ('notify_concentration'     in parsed.data) patch.notify_concentration     = parsed.data.notify_concentration;
+  if ('notify_tax_opportunities' in parsed.data) patch.notify_tax_opportunities = parsed.data.notify_tax_opportunities;
+  if ('notify_drawdown'          in parsed.data) patch.notify_drawdown          = parsed.data.notify_drawdown;
+  if ('notify_email_frequency'   in parsed.data) patch.notify_email_frequency   = parsed.data.notify_email_frequency;
   if (Object.keys(patch).length === 0) return json({ ok: true });
 
   const supabase = await getSupabaseServer();

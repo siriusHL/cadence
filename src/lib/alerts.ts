@@ -40,6 +40,37 @@ export type AlertKind =
 
 export type AlertSeverity = 'info' | 'positive' | 'warning' | 'negative';
 
+// Grouping for the Notifications form on /app/profile. Each kind belongs
+// to exactly one category; users toggle categories, which filter both the
+// in-app Alerts page and the nav-badge count.
+export type AlertCategory =
+  | 'dividend_events'
+  | 'concentration'
+  | 'tax_opportunities'
+  | 'drawdown';
+
+export const ALERT_CATEGORY: Record<AlertKind, AlertCategory> = {
+  ex_date_soon:           'dividend_events',
+  payment_today:          'dividend_events',
+  dividend_cut:           'dividend_events',
+  dividend_raise:         'dividend_events',
+  concentration_position: 'concentration',
+  concentration_hhi:      'concentration',
+  reclaim_threshold:      'tax_opportunities',
+  drawdown:               'drawdown',
+};
+
+export interface NotificationPrefs {
+  dividend_events:   boolean;
+  concentration:     boolean;
+  tax_opportunities: boolean;
+  drawdown:          boolean;
+}
+
+export function filterAlertsByPrefs(alerts: AlertCard[], prefs: NotificationPrefs): AlertCard[] {
+  return alerts.filter((a) => prefs[ALERT_CATEGORY[a.kind]]);
+}
+
 export interface AlertCard {
   /** Stable key — React needs it stable across renders. */
   id: string;

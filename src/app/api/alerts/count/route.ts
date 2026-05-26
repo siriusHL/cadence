@@ -3,7 +3,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getHoldingsView, getPerformanceSeries } from '@/lib/portfolio';
 import { getTaxSummary, DEFAULT_RESIDENCE, type TaxResidence } from '@/lib/tax';
-import { getActiveAlerts } from '@/lib/alerts';
+import { getActiveAlerts, filterAlertsByPrefs } from '@/lib/alerts';
 
 /**
  * Lightweight count endpoint for the nav badge. Re-uses the same engine the
@@ -22,7 +22,11 @@ export async function GET() {
   }
 
   const [{ data: profile }, portfolio] = await Promise.all([
-    supabase.from('profiles').select('tax_country').eq('id', user.id).maybeSingle(),
+    supabase
+      .from('profiles')
+      .select('tax_country, notify_dividend_events, notify_concentration, notify_tax_opportunities, notify_drawdown')
+      .eq('id', user.id)
+      .maybeSingle(),
     getActivePortfolio(supabase, user.id),
   ]);
   if (!portfolio) {
@@ -43,12 +47,18 @@ export async function GET() {
     getPerformanceSeries(supabase, portfolio.id, 104),
   ]);
 
-  const alerts = await getActiveAlerts({
+  const allAlerts = await getActiveAlerts({
     supabase,
     portfolioId: portfolio.id,
     holdings,
     taxSummary,
     performanceSeries,
+  });
+  const alerts = filterAlertsByPrefs(allAlerts, {
+    dividend_events:   profile?.notify_dividend_events   ?? true,
+    concentration:     profile?.notify_concentration     ?? true,
+    tax_opportunities: profile?.notify_tax_opportunities ?? true,
+    drawdown:          profile?.notify_drawdown          ?? true,
   });
 
   const negative = alerts.filter(

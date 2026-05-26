@@ -4,7 +4,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 import { getHoldingsView, getPerformanceSeries } from '@/lib/portfolio';
 import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich';
 import { getTaxSummary, DEFAULT_RESIDENCE, type TaxResidence } from '@/lib/tax';
-import { getActiveAlerts, type AlertCard, type AlertSeverity } from '@/lib/alerts';
+import { getActiveAlerts, filterAlertsByPrefs, type AlertCard, type AlertSeverity } from '@/lib/alerts';
 import { EmptyState } from '@/components/EmptyState';
 import { AlertsMobile } from '@/components/mobile/AlertsMobile';
 
@@ -27,7 +27,11 @@ export default async function AlertsScreen() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const [{ data: profile }, portfolio] = await Promise.all([
-    supabase.from('profiles').select('tax_country').eq('id', user!.id).maybeSingle(),
+    supabase
+      .from('profiles')
+      .select('tax_country, notify_dividend_events, notify_concentration, notify_tax_opportunities, notify_drawdown')
+      .eq('id', user!.id)
+      .maybeSingle(),
     getActivePortfolio(supabase, user!.id),
   ]);
 
@@ -73,12 +77,18 @@ export default async function AlertsScreen() {
     getPerformanceSeries(supabase, portfolio.id, 52),
   ]);
 
-  const alerts = await getActiveAlerts({
+  const allAlerts = await getActiveAlerts({
     supabase,
     portfolioId: portfolio.id,
     holdings,
     taxSummary,
     performanceSeries,
+  });
+  const alerts = filterAlertsByPrefs(allAlerts, {
+    dividend_events:   profile?.notify_dividend_events   ?? true,
+    concentration:     profile?.notify_concentration     ?? true,
+    tax_opportunities: profile?.notify_tax_opportunities ?? true,
+    drawdown:          profile?.notify_drawdown          ?? true,
   });
 
   // Group counts by severity for the hero meta.
