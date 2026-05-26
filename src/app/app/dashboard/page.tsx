@@ -234,33 +234,30 @@ export default async function DashboardScreen() {
           <div
             className="v"
             style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 10,
+              display: 'inline-flex',
+              alignItems: 'flex-start',
+              gap: 4,
               color: safetyColor,
+              lineHeight: 1,
             }}
           >
             <span
               aria-hidden
               style={{
-                fontSize: 40,
+                fontSize: 48,
                 fontWeight: 700,
                 letterSpacing: '-0.04em',
-                lineHeight: 0.95,
               }}
             >
               {safetyLetter}
             </span>
             {avgSafety == null ? (
-              <span style={{ color: 'var(--text-dim)', fontSize: 16, fontWeight: 400 }}>
+              <span style={{ color: 'var(--text-dim)', fontSize: 11, fontWeight: 500, marginTop: 4 }}>
                 no data
               </span>
             ) : (
-              <span>
-                {avgSafety}
-                <span style={{ fontSize: 14, color: 'var(--text-dim)', fontWeight: 400 }}>
-                  /100
-                </span>
+              <span style={{ color: 'var(--text-dim)', fontSize: 11, fontWeight: 500, marginTop: 4 }}>
+                {avgSafety}/100
               </span>
             )}
           </div>
