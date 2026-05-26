@@ -280,11 +280,11 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
           ×
         </button>
 
-        {/* Header */}
+        {/* Header — right padding clears the absolute-positioned close × */}
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 14,
-            padding: '20px 22px 14px',
+            padding: '20px 56px 14px 22px',
             borderBottom: '1px solid var(--border)',
           }}
           id="cdn-holding-edit-title"
