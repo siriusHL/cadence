@@ -585,6 +585,48 @@ a.cdn-free .fnav .right .plan,
 .cdn-mobile-only  { display: none; }
 .cdn-desktop-only { display: contents; }
 
+/* Create-a-portfolio form — shared base for the input + button so
+   both have the same exact height + box-sizing. Stacked into a
+   single column on mobile via the media query below; side-by-side
+   on desktop. */
+.portfolio-create-form {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  align-items: center;
+}
+.portfolio-create-form .portfolio-create-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  font-family: inherit;
+  color: var(--text);
+}
+.portfolio-create-form .portfolio-create-btn {
+  height: 36px;
+  padding: 0 14px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border: 1px solid var(--btn-primary-bg);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.portfolio-create-form .portfolio-create-btn.is-disabled {
+  background: var(--border-strong);
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   .cdn-mobile-only  { display: block; }
   .cdn-desktop-only { display: none !important; }
@@ -601,6 +643,19 @@ a.cdn-free .fnav .right .plan,
   .portfolio-row .portfolio-row-actions {
     flex: 0 0 100%;
     justify-content: flex-end;
+  }
+
+  /* Create-portfolio form: stack the input above the button on mobile
+     so they don't have to share a single row at all. Eliminates every
+     possible height-alignment edge case (intrinsic input height vs
+     button text metrics, padding rounding, box-shadow leakage…) by
+     just not putting them side-by-side. */
+  .portfolio-create-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .portfolio-create-form .portfolio-create-btn {
+    align-self: flex-end;
   }
 
   /* Settings 3-col option grids (Contrast: Soft/Standard/Sharp +

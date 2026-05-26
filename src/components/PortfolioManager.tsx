@@ -235,12 +235,7 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
         </div>
         <form
           onSubmit={createPortfolio}
-          style={{
-            display: 'flex',
-            gap: 8,
-            padding: 16,
-            alignItems: 'stretch',
-          }}
+          className="portfolio-create-form"
         >
           <input
             type="text"
@@ -249,21 +244,15 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
             placeholder={atCap ? `Plan limit reached (${cap})` : 'e.g. Retirement IRA'}
             maxLength={80}
             disabled={atCap || pending}
+            className="portfolio-create-input"
             style={{
-              flex: 1,
-              height: 36,
-              padding: '0 12px',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 8,
-              fontSize: 14,
               background: atCap ? "var(--input-disabled-bg)" : "var(--input-bg)",
-              boxSizing: 'border-box',
             }}
           />
           <button
             type="submit"
             disabled={atCap || pending || !newName.trim()}
-            style={atCap ? btnDisabled : btnPrimary}
+            className={atCap ? 'portfolio-create-btn is-disabled' : 'portfolio-create-btn'}
           >
             {atCap ? 'Upgrade to add more' : 'Create'}
           </button>
