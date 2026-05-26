@@ -3,21 +3,38 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './DialogProvider';
-import type { BrokerId, ImportedRow, ParseResult } from '@/lib/import';
+import type { BrokerId, GenericMapping, ImportedRow, KindMapping, ParseResult } from '@/lib/import';
 import { BROKER_LABEL } from '@/lib/import';
 
 type EditableRow = ImportedRow & { include: boolean };
 
-const BROKERS: { id: BrokerId; label: string }[] = [
-  { id: 'degiro',         label: BROKER_LABEL['degiro'] },
-  { id: 'ibkr',           label: BROKER_LABEL['ibkr'] },
-  { id: 'trade-republic', label: BROKER_LABEL['trade-republic'] },
-];
+const BROKERS: { id: BrokerId; label: string }[] = (
+  ['degiro', 'ibkr', 'trade-republic', 'trading-212', 'scalable', 'etoro', 'xtb', 'saxo', 'other'] as BrokerId[]
+).map((id) => ({ id, label: BROKER_LABEL[id] }));
 
 interface Props {
   /** Called after a successful commit so a parent modal can close itself. */
   onDone?: () => void;
 }
+
+interface MappingDraft {
+  date: string;
+  ticker: string;
+  isin: string;
+  kindMode: 'column' | 'fixed';
+  kindColumn: string;
+  kindFixed: 'buy' | 'sell' | 'dividend';
+  quantity: string;
+  price: string;
+  currency: string;
+  fee: string;
+}
+
+const EMPTY_MAPPING: MappingDraft = {
+  date: '', ticker: '', isin: '',
+  kindMode: 'fixed', kindColumn: '', kindFixed: 'buy',
+  quantity: '', price: '', currency: '', fee: '',
+};
 
 export function CsvImportClient({ onDone }: Props = {}) {
   const router = useRouter();
@@ -29,6 +46,9 @@ export function CsvImportClient({ onDone }: Props = {}) {
   const [skipped, setSkipped] = useState<ParseResult['skipped']>([]);
   const [rows, setRows] = useState<EditableRow[]>([]);
   const [filename, setFilename] = useState<string | null>(null);
+  const [csvText, setCsvText] = useState<string>('');
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [mapping, setMapping] = useState<MappingDraft>(EMPTY_MAPPING);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function reset() {
@@ -37,21 +57,35 @@ export function CsvImportClient({ onDone }: Props = {}) {
     setDetected(null);
     setBroker('');
     setFilename(null);
+    setCsvText('');
+    setHeaders([]);
+    setMapping(EMPTY_MAPPING);
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  async function readAndParse(file: File, overrideBroker?: BrokerId) {
+  async function loadFile(file: File) {
     const text = await file.text();
+    setCsvText(text);
     setFilename(file.name);
+    setRows([]);
+    setSkipped([]);
+    setMapping(EMPTY_MAPPING);
+    return text;
+  }
+
+  async function runAutoDetect(text: string) {
     start(async () => {
       const res = await fetch('/api/import/preview', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ csv: text, broker: overrideBroker }),
+        body: JSON.stringify({ csv: text }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(j.error ?? 'Could not parse CSV.', 'error');
+        // Detection failed — switch to manual mode and load headers.
+        setBroker('other');
+        void loadHeaders(text);
+        toast(j.error ?? 'Auto-detect failed — pick columns manually.', 'error');
         return;
       }
       const data = j.data as ParseResult;
@@ -62,23 +96,98 @@ export function CsvImportClient({ onDone }: Props = {}) {
     });
   }
 
+  async function loadHeaders(text: string) {
+    const res = await fetch('/api/import/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ csv: text, headersOnly: true }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (res.ok) setHeaders(j.data.headers as string[]);
+  }
+
+  async function rerunWithBroker(next: BrokerId, text: string) {
+    if (next === 'other') {
+      await loadHeaders(text);
+      setRows([]);
+      setSkipped([]);
+      return;
+    }
+    start(async () => {
+      const res = await fetch('/api/import/preview', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ csv: text, broker: next }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(j.error ?? 'Could not parse with that broker.', 'error');
+        return;
+      }
+      const data = j.data as ParseResult;
+      setSkipped(data.skipped);
+      setRows(data.rows.map((r) => ({ ...r, include: true })));
+    });
+  }
+
+  async function applyMapping() {
+    if (!mapping.date || !mapping.quantity || !mapping.price) {
+      toast('Date, Quantity, and Price are required.', 'error');
+      return;
+    }
+    if (mapping.kindMode === 'column' && !mapping.kindColumn) {
+      toast('Pick the kind column or switch to fixed kind.', 'error');
+      return;
+    }
+    const kind: KindMapping = mapping.kindMode === 'fixed'
+      ? { type: 'fixed', value: mapping.kindFixed }
+      : { type: 'column', header: mapping.kindColumn };
+
+    const payload: GenericMapping = {
+      date:     mapping.date,
+      kind,
+      quantity: mapping.quantity,
+      price:    mapping.price,
+      ticker:   mapping.ticker || undefined,
+      isin:     mapping.isin   || undefined,
+      currency: mapping.currency || undefined,
+      fee:      mapping.fee || undefined,
+    };
+
+    start(async () => {
+      const res = await fetch('/api/import/preview', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ csv: csvText, broker: 'other', mapping: payload }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(j.error ?? 'Could not parse with that mapping.', 'error');
+        return;
+      }
+      const data = j.data as ParseResult;
+      setSkipped(data.skipped);
+      setRows(data.rows.map((r) => ({ ...r, include: true })));
+    });
+  }
+
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    void readAndParse(file);
+    void loadFile(file).then(runAutoDetect);
   }
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) void readAndParse(file);
+    if (file) void loadFile(file).then(runAutoDetect);
   }
 
   function changeBroker(next: BrokerId) {
     setBroker(next);
-    if (!fileRef.current?.files?.[0]) return;
-    void readAndParse(fileRef.current.files[0], next);
+    if (!csvText) return;
+    void rerunWithBroker(next, csvText);
   }
 
   function updateRow(uid: string, patch: Partial<EditableRow>) {
@@ -127,6 +236,7 @@ export function CsvImportClient({ onDone }: Props = {}) {
   }
 
   const includedCount = rows.filter((r) => r.include && r.ticker.trim().length > 0).length;
+  const showMapping = broker === 'other' && headers.length > 0 && rows.length === 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -155,7 +265,8 @@ export function CsvImportClient({ onDone }: Props = {}) {
               Drop your CSV here or click to choose
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              We auto-detect DEGIRO, Interactive Brokers, and Trade Republic exports.
+              Auto-detects DEGIRO, Interactive Brokers, Trade Republic, Trading 212, Scalable Capital,
+              eToro, XTB, and Saxo Bank. Other brokers — pick &quot;Other&quot; and map columns yourself.
             </div>
             <input
               ref={fileRef}
@@ -166,30 +277,21 @@ export function CsvImportClient({ onDone }: Props = {}) {
             />
           </div>
 
-          {(detected || rows.length > 0) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
+          {(detected || rows.length > 0 || broker === 'other') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Broker:</span>
               <select
                 value={broker || ''}
                 onChange={(e) => changeBroker(e.target.value as BrokerId)}
                 disabled={pending}
-                style={{
-                  padding: '6px 10px',
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 8,
-                  fontSize: 13,
-                  color: 'var(--text)',
-                }}
+                style={brokerSelect}
               >
                 {BROKERS.map((b) => (
                   <option key={b.id} value={b.id}>{b.label}</option>
                 ))}
               </select>
               {detected && broker === detected && (
-                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-                  auto-detected
-                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>auto-detected</span>
               )}
               <button type="button" onClick={reset} disabled={pending} style={btnGhost}>
                 Clear
@@ -198,6 +300,16 @@ export function CsvImportClient({ onDone }: Props = {}) {
           )}
         </div>
       </div>
+
+      {showMapping && (
+        <MappingPanel
+          headers={headers}
+          mapping={mapping}
+          onChange={setMapping}
+          onApply={applyMapping}
+          pending={pending}
+        />
+      )}
 
       {rows.length > 0 && (
         <div className="pcard flush">
@@ -282,6 +394,119 @@ export function CsvImportClient({ onDone }: Props = {}) {
   );
 }
 
+// ─── Mapping panel (Other broker) ──────────────────────────────────────
+
+interface MappingProps {
+  headers: string[];
+  mapping: MappingDraft;
+  onChange: (next: MappingDraft) => void;
+  onApply: () => void;
+  pending: boolean;
+}
+
+function MappingPanel({ headers, mapping, onChange, onApply, pending }: MappingProps) {
+  function set<K extends keyof MappingDraft>(k: K, v: MappingDraft[K]) {
+    onChange({ ...mapping, [k]: v });
+  }
+
+  return (
+    <div className="pcard">
+      <div className="pcard-h">
+        <div>
+          <div className="t">Map columns</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+            Tell Cadence which column in your CSV holds each field. Required: Date, Quantity, Price.
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: 16, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+        <Mapper label="Date *"     value={mapping.date}     onChange={(v) => set('date', v)}     options={headers} />
+        <Mapper label="Quantity *" value={mapping.quantity} onChange={(v) => set('quantity', v)} options={headers} />
+        <Mapper label="Price *"    value={mapping.price}    onChange={(v) => set('price', v)}    options={headers} />
+        <Mapper label="Ticker"     value={mapping.ticker}   onChange={(v) => set('ticker', v)}   options={headers} />
+        <Mapper label="ISIN"       value={mapping.isin}     onChange={(v) => set('isin', v)}     options={headers} />
+        <Mapper label="Currency"   value={mapping.currency} onChange={(v) => set('currency', v)} options={headers} />
+        <Mapper label="Fee"        value={mapping.fee}      onChange={(v) => set('fee', v)}      options={headers} />
+
+        <div>
+          <Label>Kind</Label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+            <select
+              value={mapping.kindMode}
+              onChange={(e) => set('kindMode', e.target.value as 'fixed' | 'column')}
+              style={brokerSelect}
+            >
+              <option value="fixed">All rows are…</option>
+              <option value="column">Read from column…</option>
+            </select>
+            {mapping.kindMode === 'fixed' ? (
+              <select
+                value={mapping.kindFixed}
+                onChange={(e) => set('kindFixed', e.target.value as 'buy' | 'sell' | 'dividend')}
+                style={brokerSelect}
+              >
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+                <option value="dividend">Dividend</option>
+              </select>
+            ) : (
+              <select
+                value={mapping.kindColumn}
+                onChange={(e) => set('kindColumn', e.target.value)}
+                style={brokerSelect}
+              >
+                <option value="">— pick column —</option>
+                {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            )}
+          </div>
+        </div>
+      </div>
+      <div style={{ padding: '0 16px 16px', display: 'flex', justifyContent: 'flex-end' }}>
+        <button type="button" onClick={onApply} disabled={pending} style={btnPrimary}>
+          {pending ? 'Parsing…' : 'Parse with this mapping'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Mapper({
+  label, value, onChange, options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ ...brokerSelect, marginTop: 4, width: '100%' }}
+      >
+        <option value="">— none —</option>
+        {options.map((h) => <option key={h} value={h}>{h}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+      textTransform: 'uppercase', letterSpacing: '0.06em',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Helpers + styles ──────────────────────────────────────────────────
+
 function truncate(s: string | undefined, n: number): string {
   if (!s) return '';
   return s.length > n ? `${s.slice(0, n - 1)}…` : s;
@@ -300,6 +525,15 @@ function tickerInput(highlight: boolean): React.CSSProperties {
     textTransform: 'uppercase',
   };
 }
+
+const brokerSelect: React.CSSProperties = {
+  padding: '6px 10px',
+  background: 'var(--input-bg)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 8,
+  fontSize: 13,
+  color: 'var(--text)',
+};
 
 const btnPrimary: React.CSSProperties = {
   padding: '8px 16px',

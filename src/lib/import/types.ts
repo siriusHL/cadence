@@ -1,11 +1,26 @@
 // Shared types for the broker CSV import pipeline.
 
-export type BrokerId = 'degiro' | 'ibkr' | 'trade-republic';
+export type BrokerId =
+  | 'degiro'
+  | 'ibkr'
+  | 'trade-republic'
+  | 'trading-212'
+  | 'scalable'
+  | 'etoro'
+  | 'xtb'
+  | 'saxo'
+  | 'other';                       // generic / user-mapped
 
 export const BROKER_LABEL: Record<BrokerId, string> = {
   'degiro':         'DEGIRO',
   'ibkr':           'Interactive Brokers',
   'trade-republic': 'Trade Republic',
+  'trading-212':    'Trading 212',
+  'scalable':       'Scalable Capital',
+  'etoro':          'eToro',
+  'xtb':            'XTB',
+  'saxo':           'Saxo Bank',
+  'other':          'Other (map columns manually)',
 };
 
 /** Subset of transaction kinds importable today — splits/fees come later. */
