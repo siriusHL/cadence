@@ -53,15 +53,17 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={pending}
+        className="portfolio-switcher-trigger"
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '6px 10px',
-          background: 'var(--surface)',
+          padding: '5px 12px',
+          background: 'transparent',
           border: '1px solid var(--border-strong)',
-          borderRadius: 8,
-          fontSize: 12,
+          borderRadius: 999,
+          fontSize: 11.5,
+          fontWeight: 500,
           color: 'var(--text)',
           cursor: 'pointer',
           maxWidth: 240,
