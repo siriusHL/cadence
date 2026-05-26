@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { TickerLogo } from '@/components/TickerLogo';
+import { HoldingEditModal } from '@/components/HoldingEditModal';
 
 export interface HoldingRow {
   ticker: string;
@@ -60,6 +61,8 @@ export function HoldingsTable({ rows }: Props) {
   const [sortField, setSortField] = useState<SortField>('value');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupBy, setGroupBy] = useState<GroupKey>('none');
+  // Quick-edit modal: ticker of the row being inspected, or null if closed.
+  const [editingTicker, setEditingTicker] = useState<string | null>(null);
 
   // Compute derived columns per row
   const enriched = useMemo(() => {
@@ -182,7 +185,13 @@ export function HoldingsTable({ rows }: Props) {
             </thead>
             <tbody>
               {groups.map((g) => (
-                <Group key={g.key || 'all'} group={g} totalValue={totalValue} router={router} />
+                <Group
+                  key={g.key || 'all'}
+                  group={g}
+                  totalValue={totalValue}
+                  router={router}
+                  onPick={setEditingTicker}
+                />
               ))}
             </tbody>
             <tfoot>
@@ -214,6 +223,13 @@ export function HoldingsTable({ rows }: Props) {
         <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
           No holdings match &ldquo;{search}&rdquo;.
         </div>
+      )}
+
+      {editingTicker && (
+        <HoldingEditModal
+          ticker={editingTicker}
+          onClose={() => setEditingTicker(null)}
+        />
       )}
     </div>
   );
@@ -249,7 +265,13 @@ interface Group {
     value: number; cost: number; pl: number; plPct: number; fwdIncome: number;
   })[];
 }
-function Group({ group, totalValue, router }: { group: Group; totalValue: number; router: ReturnType<typeof useRouter> }) {
+function Group({ group, totalValue, router, onPick }: {
+  group: Group;
+  totalValue: number;
+  router: ReturnType<typeof useRouter>;
+  /** Open the quick-edit modal for this ticker. */
+  onPick: (ticker: string) => void;
+}) {
   return (
     <>
       {group.key && (
@@ -266,8 +288,9 @@ function Group({ group, totalValue, router }: { group: Group; totalValue: number
         return (
           <tr
             key={r.ticker}
-            onClick={() => router.push(`/app/stocks/${encodeURIComponent(r.ticker)}/edit`)}
+            onClick={() => onPick(r.ticker)}
             style={{ cursor: 'pointer' }}
+            title="Click to modify or delete"
           >
             <td className="ticker">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -313,8 +336,8 @@ function Group({ group, totalValue, router }: { group: Group; totalValue: number
                   e.stopPropagation();
                   router.push(`/app/stocks/${encodeURIComponent(r.ticker)}/edit`);
                 }}
-                aria-label="Edit"
-                title="Edit"
+                aria-label="Open full edit page"
+                title="Open full edit page"
                 style={{
                   display: 'inline-block', width: 22, height: 22, lineHeight: '22px',
                   textAlign: 'center', borderRadius: 6, color: 'var(--text-dim)',
