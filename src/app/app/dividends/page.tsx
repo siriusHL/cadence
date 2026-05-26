@@ -13,6 +13,7 @@ import { TickerLogo } from '@/components/TickerLogo';
 import { YearHeatmap } from '@/components/YearHeatmap';
 import { ForecastChart, type ForecastMonth } from '@/components/ForecastChart';
 import { IncomeSimulator } from '@/components/IncomeSimulator';
+import { DividendsMobile, type DividendsMobileUpcomingEvent } from '@/components/mobile/DividendsMobile';
 import {
   estimateDividendTaxRate, RESIDENCE_MODELS,
   type TaxResidence,
@@ -77,7 +78,11 @@ export default async function DividendsScreen({ searchParams }: PageProps) {
   const params = await searchParams;
   const tab: Tab = VALID_TABS.includes(params.tab as Tab) ? (params.tab as Tab) : 'upcoming';
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
+    <>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro">
       <DividendsTabs active={tab} />
       {tab === 'upcoming'  && <UpcomingTab  portfolioId={portfolio.id} heldCount={held.length} />}
@@ -85,6 +90,76 @@ export default async function DividendsScreen({ searchParams }: PageProps) {
       {tab === 'simulator' && <SimulatorTab portfolioId={portfolio.id} userId={user!.id} />}
       {tab === 'year'      && <YearTab      portfolioId={portfolio.id} heldCount={held.length} />}
     </div>
+      </div>
+      <div className="cdn-mobile-only">
+        {tab === 'upcoming' ? (
+          <MobileUpcomingLoader
+            portfolioId={portfolio.id}
+            heldCount={held.length}
+            portfolioName={portfolio.name}
+            avatarInitials={avatarInitials}
+          />
+        ) : (
+          <DividendsMobile
+            tab={tab}
+            portfolioName={portfolio.name}
+            avatarInitials={avatarInitials}
+          />
+        )}
+      </div>
+    </>
+  );
+}
+
+// Mobile-specific upcoming data loader. Runs the same getYearEvents query as
+// the desktop UpcomingTab but feeds the data into <DividendsMobile> instead
+// of the desktop table.
+async function MobileUpcomingLoader({
+  portfolioId, heldCount, portfolioName, avatarInitials,
+}: {
+  portfolioId: string;
+  heldCount: number;
+  portfolioName: string;
+  avatarInitials: string;
+}) {
+  const supabase = await getSupabaseServer();
+  const today = new Date();
+  const year = today.getFullYear();
+  const events = await getYearEvents(supabase, portfolioId, year);
+  const todayStr = today.toISOString().slice(0, 10);
+  const horizon = new Date(today); horizon.setDate(today.getDate() + 40);
+  const horizonStr = horizon.toISOString().slice(0, 10);
+  const next40 = events.filter((e) => e.exDate >= todayStr && e.exDate <= horizonStr);
+
+  // Join in instrument countries for the withholding rate
+  const tickers = Array.from(new Set(next40.map((e) => e.ticker)));
+  const { data: instRows } = await supabase
+    .from('instruments')
+    .select('ticker, country')
+    .in('ticker', tickers);
+  const countryByT = new Map(
+    (instRows as { ticker: string; country: string | null }[] ?? [])
+      .map((r) => [r.ticker, r.country]),
+  );
+
+  const upcomingEvents: DividendsMobileUpcomingEvent[] = next40.map((e) => ({
+    ticker: e.ticker,
+    name: e.name,
+    exDate: e.exDate,
+    grossLocal: e.grossLocal,
+    daysUntil: Math.max(0, Math.ceil((new Date(e.exDate).getTime() - today.getTime()) / 86_400_000)),
+    isProjected: e.isProjected,
+    withholdingRate: withholdingByCountry(countryByT.get(e.ticker) ?? null),
+  }));
+
+  return (
+    <DividendsMobile
+      tab="upcoming"
+      portfolioName={portfolioName}
+      avatarInitials={avatarInitials}
+      upcomingEvents={upcomingEvents}
+      heldCount={heldCount}
+    />
   );
 }
 
