@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { COUNTRY_NAMES, type TaxResidence } from '@/lib/tax';
 
 interface Props {
   baseValue: number;
@@ -9,11 +10,17 @@ interface Props {
   /** Saved target from profiles.income_target — seeds the slider but the user
    * can drag it for what-if exploration without saving. */
   incomeTarget: number;
+  /** ISO-2 of the user's tax residence, if Cadence has a tax model for it.
+   * null when the user hasn't set a residence or it's outside our coverage. */
+  taxResidence: TaxResidence | null;
+  /** Effective dividend tax rate (0–1) for the user's residence. */
+  dividendTaxRate: number;
 }
 
 interface Snapshot {
   year: number;
   value: number;
+  /** Annual NET dividend income — gross minus dividend tax. */
   income: number;
   monthly: number;
 }
@@ -25,9 +32,15 @@ function fmt(n: number, digits = 0): string {
 }
 
 /**
- * Project annual portfolio value + dividend income for `years` years under three
- * scenarios. Each scenario applies the same 4.5% appreciation but differs in
- * whether dividends are reinvested and/or monthly contributions are added.
+ * Project annual portfolio value + NET dividend income for `years` years under
+ * three scenarios. NET means after the residence's dividend tax — reinvestment
+ * uses post-tax cash because that's what's actually available to put back into
+ * the market.
+ *
+ * Maths in net space: each year the company raises its gross dividend by
+ * growthPct (so net rises by the same proportion since the tax rate is
+ * constant). When `reinvested` cash is put into new shares, those produce
+ * gross at yieldPct, which becomes net at × (1 - taxRate).
  */
 function project(
   years: number,
@@ -35,24 +48,29 @@ function project(
   growthPct: number,
   monthlyContrib: number,
   startValue: number,
-  startIncome: number,
+  startGrossIncome: number,
+  taxRate: number,
   reinvestDividends: boolean,
   addContributions: boolean,
 ): Snapshot[] {
-  const out: Snapshot[] = [{ year: 0, value: startValue, income: startIncome, monthly: startIncome / 12 }];
+  const startNet = startGrossIncome * (1 - taxRate);
+  const out: Snapshot[] = [{ year: 0, value: startValue, income: startNet, monthly: startNet / 12 }];
   let v = startValue;
-  let inc = startIncome;
+  let inc = startNet;
   for (let i = 1; i <= years; i++) {
     inc *= 1 + growthPct / 100;
     const reinvested = (reinvestDividends ? inc : 0) + (addContributions ? monthlyContrib * 12 : 0);
     v = v * (1 + APPRECIATION) + reinvested;
-    if (reinvested > 0) inc += reinvested * (yieldPct / 100);
+    if (reinvested > 0) inc += reinvested * (yieldPct / 100) * (1 - taxRate);
     out.push({ year: i, value: v, income: inc, monthly: inc / 12 });
   }
   return out;
 }
 
-export function IncomeSimulator({ baseValue, baseIncome, baseCost, incomeTarget }: Props) {
+export function IncomeSimulator({
+  baseValue, baseIncome, baseCost, incomeTarget,
+  taxResidence, dividendTaxRate,
+}: Props) {
   const [years, setYears] = useState(25);
   const [yieldPct, setYieldPct] = useState(() => Math.min(9, Math.max(1, (baseIncome / baseValue) * 100)));
   const [growthPct, setGrowthPct] = useState(7.8);
@@ -60,10 +78,10 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost, incomeTarget 
   const [target, setTarget] = useState(incomeTarget);
 
   const series = useMemo(() => ({
-    noReinvest:   project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, false, false),
-    reinvest:     project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, true,  false),
-    reinvestPlus: project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, true,  true),
-  }), [years, yieldPct, growthPct, contrib, baseValue, baseIncome]);
+    noReinvest:   project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate, false, false),
+    reinvest:     project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate, true,  false),
+    reinvestPlus: project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate, true,  true),
+  }), [years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate]);
 
   const breakdown = useMemo<Snapshot[]>(() => {
     const checkpoints = new Set([1, 3, 5, 10, 15, 20, 25, 30, years]);
@@ -72,6 +90,9 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost, incomeTarget 
 
   const finalIncome = series.reinvestPlus[series.reinvestPlus.length - 1].income;
   const targetYear = series.reinvestPlus.findIndex((p) => p.income >= target);
+  const startNet = baseIncome * (1 - dividendTaxRate);
+  const taxPct = dividendTaxRate * 100;
+  const residenceName = taxResidence ? COUNTRY_NAMES[taxResidence] ?? taxResidence : null;
 
   return (
     <div className="cdn-pro">
@@ -79,21 +100,32 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost, incomeTarget 
         <div>
           <div className="eyebrow">Income simulator · Compounding scenarios</div>
           <h1>
-            Hit €{fmt(target)}/yr in{' '}
+            Hit €{fmt(target)}/yr net in{' '}
             <span className="num" style={{ color: 'var(--accent-soft)' }}>
               {targetYear > 0 ? `${targetYear}y` : '—'}
             </span>
           </h1>
           <div className="sub">
             Reinvest dividends and add €{fmt(contrib)}/mo to turn today&rsquo;s{' '}
-            €{fmt(baseIncome, 0)} into <b style={{ color: 'var(--text)' }}>€{fmt(finalIncome, 0)}</b>{' '}
-            in {years} years.
+            €{fmt(startNet, 0)} net into <b style={{ color: 'var(--text)' }}>€{fmt(finalIncome, 0)}</b>{' '}
+            in {years} years.{' '}
+            {residenceName ? (
+              <span style={{ color: 'var(--text-muted)' }}>
+                Net of {taxPct.toFixed(1)}% dividend tax in {residenceName}.
+              </span>
+            ) : (
+              <a href="/app/profile" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                Set tax residence to factor in dividend tax →
+              </a>
+            )}
           </div>
         </div>
         <div className="right-meta">
           <span className="live">Appreciation +{(APPRECIATION * 100).toFixed(1)}%</span>
-          <span>Target €{fmt(target)}/yr {target !== incomeTarget && '· override'}</span>
-          <span>Monte-Carlo off</span>
+          <span>Target €{fmt(target)}/yr net {target !== incomeTarget && '· override'}</span>
+          {residenceName
+            ? <span>Tax · {taxResidence} {taxPct.toFixed(1)}%</span>
+            : <span>Tax · not set</span>}
         </div>
       </div>
 
@@ -108,9 +140,12 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost, incomeTarget 
       <div className="pcard" style={{ marginBottom: 14 }}>
         <div className="pcard-h">
           <div>
-            <div className="t">Annual dividend income · snowball</div>
+            <div className="t">
+              Annual dividend income <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>· net of tax</span>
+            </div>
             <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
               Compare three paths over {years} years.
+              {dividendTaxRate > 0 && <> Reinvestment uses post-tax cash.</>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
@@ -162,7 +197,7 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost, incomeTarget 
               <tr>
                 <th style={{ width: 60 }}>Year</th>
                 <th className="r">Portfolio</th>
-                <th className="r">Annual income</th>
+                <th className="r">Annual income (net)</th>
                 <th className="r">Monthly</th>
                 <th className="r">YoC</th>
                 <th>Goal progress</th>
