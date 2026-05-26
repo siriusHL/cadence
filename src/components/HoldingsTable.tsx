@@ -66,8 +66,14 @@ export function HoldingsTable({ rows }: Props) {
   const [groupBy, setGroupBy] = useState<GroupKey>('none');
   // Quick-edit modal: ticker of the row being inspected, or null if closed.
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
-  // Bulk-select state — set of tickers currently checked.
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  // Bulk-select state. `selectedRaw` is what the user has toggled — it may
+  // contain stale tickers after a holding gets deleted (from the quick-edit
+  // modal, the full edit page, or quantity hitting 0). `selected` below is
+  // the live-pruned view derived from `rows`; everything in the UI reads
+  // `selected`. Stale entries in the raw set are harmless — they're invisible
+  // to every consumer and get filtered out the next time the user mutates
+  // the selection.
+  const [selectedRaw, setSelectedRaw] = useState<Set<string>>(() => new Set());
   // Disables row interaction while a bulk delete is in flight.
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -155,6 +161,24 @@ export function HoldingsTable({ rows }: Props) {
   }
 
   // ─── Selection helpers ───────────────────────────────────
+  // Live ticker set — used to prune stale entries from `selectedRaw` and to
+  // scope "all visible".
+  const liveTickers = useMemo(() => new Set(rows.map((r) => r.ticker)), [rows]);
+
+  // Pruned, live view of the user's selection. Stale entries (deleted
+  // holdings) drop out automatically here without ever touching state.
+  const selected = useMemo(() => {
+    if (selectedRaw.size === 0) return selectedRaw;
+    let hasStale = false;
+    for (const t of selectedRaw) {
+      if (!liveTickers.has(t)) { hasStale = true; break; }
+    }
+    if (!hasStale) return selectedRaw;
+    const next = new Set<string>();
+    for (const t of selectedRaw) if (liveTickers.has(t)) next.add(t);
+    return next;
+  }, [selectedRaw, liveTickers]);
+
   // "All" / "none" / "some" is scoped to the currently-visible (filtered) rows,
   // not the full portfolio — matches the GitHub/Gmail mental model.
   const visibleTickers = useMemo(() => filtered.map((r) => r.ticker), [filtered]);
@@ -167,7 +191,7 @@ export function HoldingsTable({ rows }: Props) {
   const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
 
   function toggleOne(ticker: string) {
-    setSelected((cur) => {
+    setSelectedRaw((cur) => {
       const next = new Set(cur);
       if (next.has(ticker)) next.delete(ticker);
       else next.add(ticker);
@@ -176,7 +200,7 @@ export function HoldingsTable({ rows }: Props) {
   }
 
   function toggleAllVisible() {
-    setSelected((cur) => {
+    setSelectedRaw((cur) => {
       if (allVisibleSelected) {
         // Deselect all visible — keep selection of any tickers filtered out of view.
         const next = new Set(cur);
@@ -191,7 +215,7 @@ export function HoldingsTable({ rows }: Props) {
   }
 
   function clearSelection() {
-    setSelected(new Set());
+    setSelectedRaw(new Set());
   }
 
   // ─── Bulk delete ──────────────────────────────────────────
@@ -231,8 +255,10 @@ export function HoldingsTable({ rows }: Props) {
       });
 
       // Drop only the successfully-deleted tickers from selection; keep failed
-      // ones checked so the user can retry without re-selecting.
-      setSelected((cur) => {
+      // ones checked so the user can retry without re-selecting. The derived
+      // `selected` view will also drop them once `rows` refreshes — this
+      // setState just keeps the raw set tidy.
+      setSelectedRaw((cur) => {
         const next = new Set(cur);
         for (const t of succeeded) next.delete(t);
         return next;
