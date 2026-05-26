@@ -1,0 +1,364 @@
+/* ─────────────────────────────────────────────────────────
+   home-v2.css — bespoke styles for the marketing landing.
+   Animations, ticker scroll, gradients, mock browser chrome.
+   Layout/typography is mostly Tailwind utility classes.
+   ───────────────────────────────────────────────────────── */
+
+/* ─── Scroll-reveal ─────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.revealed { opacity: 1; transform: none; }
+.reveal-d1 { transition-delay: 0.07s; }
+.reveal-d2 { transition-delay: 0.15s; }
+.reveal-d3 { transition-delay: 0.23s; }
+.reveal-d4 { transition-delay: 0.31s; }
+.reveal-d5 { transition-delay: 0.39s; }
+
+/* ─── Hero entrance (no scroll trigger, fires on mount) ── */
+@keyframes cdn-rise {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes cdn-hero-vis-in {
+  from { opacity: 0; transform: translateX(20px) perspective(2200px) rotateY(-4deg) rotateX(2deg); }
+  to   { opacity: 1; transform: translateX(0)    perspective(2200px) rotateY(-4deg) rotateX(2deg); }
+}
+.hero-rise   { animation: cdn-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero-rise-1 { animation: cdn-rise 0.7s 0.05s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero-rise-2 { animation: cdn-rise 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero-rise-3 { animation: cdn-rise 0.7s 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero-rise-4 { animation: cdn-rise 0.7s 0.48s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero-rise-5 { animation: cdn-rise 0.7s 0.62s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.hero-visual {
+  perspective: 2200px;
+  animation: cdn-hero-vis-in 0.85s 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.hero-visual .mock {
+  transform-style: preserve-3d;
+  transform: perspective(2200px) rotateY(-4deg) rotateX(2deg);
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.hero-visual:hover .mock {
+  transform: perspective(2200px) rotateY(-2deg) rotateX(1deg);
+}
+
+/* Soft radial glow behind the hero mock */
+.hero-visual::after {
+  content: "";
+  position: absolute;
+  inset: -10% -5% -5% 10%;
+  background: radial-gradient(ellipse at 30% 50%, oklch(0.88 0.06 175 / 0.4), transparent 60%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Hero "live" ping next to the eyebrow */
+.ping {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: oklch(0.55 0.10 175);
+  margin-right: 8px;
+  position: relative;
+  vertical-align: middle;
+  animation: cdn-ping 2s ease-out infinite;
+}
+@keyframes cdn-ping {
+  0%   { box-shadow: 0 0 0 0 oklch(0.55 0.10 175 / 0.5); }
+  70%  { box-shadow: 0 0 0 8px oklch(0.55 0.10 175 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.55 0.10 175 / 0); }
+}
+
+/* ─── Live ticker strip ─────────────────────────────────── */
+.ticker-strip {
+  position: relative;
+  height: 32px;
+  background: #1d1d1f;
+  color: rgba(245, 241, 230, 0.7);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.ticker-strip::before,
+.ticker-strip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  pointer-events: none;
+  z-index: 2;
+}
+.ticker-strip::before { left: 0;  background: linear-gradient(to right, #1d1d1f, transparent); }
+.ticker-strip::after  { right: 0; background: linear-gradient(to left,  #1d1d1f, transparent); }
+.ticker-track {
+  display: flex;
+  gap: 36px;
+  white-space: nowrap;
+  animation: cdn-ticker-scroll 50s linear infinite;
+  will-change: transform;
+}
+@keyframes cdn-ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.tk-time { color: rgba(245, 241, 230, 0.45); font-size: 11px; }
+.tk-from { color: rgba(245, 241, 230, 0.85); font-size: 12px; font-weight: 500; }
+.tk-amt  { color: oklch(0.7 0.10 175); font-size: 12px; font-weight: 600; }
+.tk-dot  { display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: rgba(245, 241, 230, 0.18); }
+
+/* ─── Mock browser chrome (used inside hero dashboard mock) ── */
+.mock-browser-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #f5f1e6;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+.mock-browser-chrome .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* ─── Underline-on-hover (nav + footer links) ─────────── */
+.hover-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition:
+    background-size 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.2s;
+}
+.hover-underline:hover { background-size: 100% 1px; }
+
+/* ─── Bento grid ───────────────────────────────────────── */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-auto-rows: 220px;
+  gap: 12px;
+}
+.bento-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s, box-shadow 0.3s;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: cdn-rise 0.7s var(--d, 0.05s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.bento-cell:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.16);
+}
+.bento-cell.dark {
+  background: #1d1d1f;
+  color: #f5f1e6;
+  border-color: rgba(245, 241, 230, 0.08);
+}
+.b-dashboard { grid-column: span 4; grid-row: span 2; }
+.b-safety    { grid-column: span 2; }
+.b-currency  { grid-column: span 2; }
+.b-calendar  { grid-column: span 3; }
+.b-cadence   { grid-column: span 3; }
+
+.b-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: oklch(0.48 0.08 175);
+  margin-bottom: 12px;
+}
+.bento-cell.dark .b-label { color: oklch(0.68 0.12 175); }
+
+@media (max-width: 1023px) {
+  .bento { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 200px; }
+  .b-dashboard, .b-safety, .b-currency, .b-calendar, .b-cadence { grid-column: span 2; grid-row: auto; }
+}
+
+/* ─── Tax full-bleed gradient ──────────────────────────── */
+.tax-bleed {
+  background: linear-gradient(135deg, oklch(0.36 0.06 175), oklch(0.28 0.05 178));
+  color: #f5f1e6;
+}
+
+/* ─── Tax calculator sliders ───────────────────────────── */
+.tax-calc input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  margin: 6px 0;
+  cursor: pointer;
+}
+.tax-calc input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.tax-calc input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 0 0 4px oklch(0.55 0.10 175), 0 2px 6px rgba(0, 0, 0, 0.25);
+  border: 0;
+}
+.tax-calc input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 0;
+}
+.tax-calc input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 0 0 4px oklch(0.55 0.10 175), 0 2px 6px rgba(0, 0, 0, 0.25);
+  border: 0;
+}
+
+/* ─── Plan cards ───────────────────────────────────────── */
+.plan-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s;
+}
+.plan-col:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.16);
+}
+.plan-col.featured {
+  background: #1d1d1f;
+  color: #f5f1e6;
+  transform: translateY(-16px);
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.3);
+  border-color: transparent;
+}
+.plan-col.featured:hover { transform: translateY(-18px); }
+
+/* ─── FAQ ──────────────────────────────────────────────── */
+.faq-item {
+  border-bottom: 1px solid var(--border);
+  padding: 22px 0;
+  cursor: pointer;
+}
+.faq-item .q {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.faq-item .icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-muted);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s, color 0.2s, border-color 0.2s;
+}
+.faq-item.open .icon {
+  transform: rotate(45deg);
+  background: var(--text);
+  color: white;
+  border-color: var(--text);
+}
+.faq-item .a {
+  max-height: 0;
+  overflow: hidden;
+  font-size: 14.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  padding-right: 60px;
+  transition: max-height 0.4s cubic-bezier(0.22, 1, 0.36, 1), padding-top 0.4s, opacity 0.4s;
+  opacity: 0;
+  padding-top: 0;
+}
+.faq-item.open .a {
+  max-height: 320px;
+  padding-top: 14px;
+  opacity: 1;
+}
+
+/* ─── Plan check icons ─────────────────────────────────── */
+.ck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.plan-col.featured .ck {
+  background: rgba(245, 241, 230, 0.08);
+  color: rgba(245, 241, 230, 0.85);
+}
+.ck.star {
+  background: oklch(0.48 0.08 175);
+  color: white;
+}
+.plan-col.featured .ck.star {
+  background: oklch(0.55 0.10 175);
+  color: white;
+}
+
+/* ─── Big quote mark ───────────────────────────────────── */
+.q-mark {
+  font-size: 80px;
+  line-height: 0.5;
+  color: oklch(0.48 0.08 175);
+  font-weight: 700;
+}
+
+/* ─── Reduced motion ───────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .hero-rise, .hero-rise-1, .hero-rise-2, .hero-rise-3, .hero-rise-4, .hero-rise-5,
+  .hero-visual, .ticker-track, .ping, .bento-cell {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero-visual .mock {
+    transform: perspective(2200px) rotateY(-4deg) rotateX(2deg);
+  }
+}
