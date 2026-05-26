@@ -138,6 +138,7 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
           {portfolios.map((p, i) => (
             <div key={p.id}>
               <div
+                className="portfolio-row"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -191,7 +192,7 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
                     </>
                   )}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="portfolio-row-actions" style={{ display: 'flex', gap: 8 }}>
                   {editingId === p.id ? (
                     <>
                       <button

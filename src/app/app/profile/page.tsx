@@ -49,7 +49,16 @@ export default async function ProfilePage() {
           portfolioName={portfolioName}
           avatarInitials={avatarInitials}
         >
-          {formContent}
+          {/* ProfileForm has no internal `.pcard` so wrap it here to
+              pick up the V2b card chrome — Settings and Portfolios
+              don't need this because their forms ship with their own
+              cards inside. */}
+          <div className="pcard">
+            <div className="pcard-h">
+              <div className="t">Personal details</div>
+            </div>
+            {formContent}
+          </div>
         </AccountMobile>
       </div>
       <div className="cdn-desktop-only">

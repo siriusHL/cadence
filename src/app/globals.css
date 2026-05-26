@@ -589,6 +589,20 @@ a.cdn-free .fnav .right .plan,
   .cdn-mobile-only  { display: block; }
   .cdn-desktop-only { display: none !important; }
 
+  /* Portfolio rows on the Portfolios page get cramped at phone width —
+     [radio] [name + date] [Rename] [Delete] in a single flex line
+     squeezes the date column to 3-line wrapping. Wrap the actions
+     onto a second row, right-aligned, so the name + date can use the
+     full width above. */
+  .portfolio-row {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .portfolio-row .portfolio-row-actions {
+    flex: 0 0 100%;
+    justify-content: flex-end;
+  }
+
   /* The .cdn-free chrome (.fnav + .scroll padding) gets out of the
      way at phone size — the mobile shell owns the entire viewport. */
   .cdn-free .fnav { display: none !important; }
