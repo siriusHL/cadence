@@ -644,20 +644,17 @@ a.cdn-free .fnav .right .plan,
     overflow: visible !important;
     min-height: 0;
   }
-  /* Drawer + scrim and FAB switch to position: fixed so they stay
-     anchored to the viewport regardless of `.mob`'s scroll position
-     (otherwise they'd scroll along with content as it slides). */
+  /* Drawer + scrim switch to position: fixed so they stay anchored to
+     the viewport regardless of `.mob`'s scroll position (otherwise
+     they'd scroll along with content as it slides). The FAB has its
+     own `position: fixed` rule further down the file — no need to
+     override here. */
   .mob .drawer-scrim,
-  .mob .drawer,
-  .mob.v2b .fab {
+  .mob .drawer {
     position: fixed !important;
   }
   .mob .drawer-scrim { inset: 0; }
   .mob .drawer { top: 0; bottom: 0; left: 0; }
-  .mob.v2b .fab {
-    right: 18px;
-    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
-  }
 }
 
 /* ────────── .mob shell ────────── */
@@ -1464,18 +1461,22 @@ a.cdn-free .fnav .right .plan,
 
 /* Floating action button */
 .mob.v2b .fab {
-  /* Absolute relative to `.mob` (which has `position: relative` + is now
-     exactly viewport-tall via the chassis fix), so the FAB floats at the
-     screen-bottom corner regardless of how deep the content has scrolled
-     — the inner `.mob .scroll` is what scrolls, not `.mob` itself. */
-  position: absolute; right: 18px; bottom: 78px;
+  /* Fixed to the viewport so the FAB stays glued to the bottom-right
+     corner regardless of how deep `.mob` is scrolled. With `.mob` now
+     being the scroll container itself (height: 100dvh + overflow-y:
+     auto), a `position: absolute` here would scroll with the content
+     instead of sticking. z-index has to clear the sticky tabbar (z=10)
+     so the FAB stays visible above it. */
+  position: fixed;
+  right: 18px;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   width: 52px; height: 52px;
   border-radius: 50%;
   background: var(--text); color: var(--surface);
   border: 0; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  z-index: 5;
+  z-index: 21;
   text-decoration: none;
 }
 
