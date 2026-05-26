@@ -7,13 +7,14 @@ import {
   getIncomeRhythm, getPortfolioSummary,
 } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
-import { canAccessScreen, type Tier } from '@/lib/tiers';
+import { can, canAccessScreen, type Tier } from '@/lib/tiers';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { YearHeatmap } from '@/components/YearHeatmap';
 import { ForecastChart, type ForecastMonth } from '@/components/ForecastChart';
 import { IncomeSimulator } from '@/components/IncomeSimulator';
 import { DividendsMobile, type DividendsMobileUpcomingEvent } from '@/components/mobile/DividendsMobile';
+import { GoogleCalendarSyncButton } from '@/components/GoogleCalendarSyncButton';
 import {
   estimateDividendTaxRate, RESIDENCE_MODELS,
   type TaxResidence,
@@ -85,7 +86,7 @@ export default async function DividendsScreen({ searchParams }: PageProps) {
       <div className="cdn-desktop-only">
     <div className="cdn-pro">
       <DividendsTabs active={tab} />
-      {tab === 'upcoming'  && <UpcomingTab  portfolioId={portfolio.id} heldCount={held.length} />}
+      {tab === 'upcoming'  && <UpcomingTab  portfolioId={portfolio.id} heldCount={held.length} tier={tier} />}
       {tab === 'forecast'  && <ForecastTab  portfolioId={portfolio.id} userId={user!.id} />}
       {tab === 'simulator' && <SimulatorTab portfolioId={portfolio.id} userId={user!.id} />}
       {tab === 'year'      && <YearTab      portfolioId={portfolio.id} heldCount={held.length} />}
@@ -426,7 +427,7 @@ function DividendsTabs({ active }: { active: Tab }) {
 
 interface InstrumentCountry { ticker: string; country: string | null; }
 
-async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; heldCount: number }) {
+async function UpcomingTab({ portfolioId, heldCount, tier }: { portfolioId: string; heldCount: number; tier: Tier }) {
   const supabase = await getSupabaseServer();
   const today = new Date();
   const year = today.getFullYear();
@@ -469,6 +470,11 @@ async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; he
           <span>
             {new Date(today).toLocaleDateString('en', { day: '2-digit', month: 'short' })} → {new Date(horizon).toLocaleDateString('en', { day: '2-digit', month: 'short' })}
           </span>
+          {can(tier, 'googleCalendarSync') && (
+            <div style={{ marginTop: 8 }}>
+              <GoogleCalendarSyncButton />
+            </div>
+          )}
         </div>
       </div>
 

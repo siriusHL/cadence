@@ -62,6 +62,7 @@ supabase/
 | Quote freshness | 24 h (EOD) | 10 min | 1 min |
 | Screens | 4 (Home, Next, Stocks, Year) | + 8 Pro screens | + Tax, Alerts |
 | Export | — | CSV | CSV + PDF |
+| Google Calendar sync | — | yes | yes |
 | API access | — | — | yes |
 
 ## Defense in depth

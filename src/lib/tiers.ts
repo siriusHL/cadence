@@ -12,7 +12,8 @@ export type Feature =
   | 'csvImport'
   | 'exportCsv'
   | 'exportPdf'
-  | 'apiAccess';
+  | 'apiAccess'
+  | 'googleCalendarSync';
 
 export type Screen =
   | 'home' | 'next' | 'stocks' | 'year'
@@ -49,6 +50,7 @@ export const TIERS: Record<Tier, TierConfig> = {
       multiCurrency: false, drip: false, calendar: false, forecast: false,
       performance: false, diversification: false, taxReport: false,
       alerts: false, csvImport: false, exportCsv: false, exportPdf: false, apiAccess: false,
+      googleCalendarSync: false,
     },
   },
   premium: {
@@ -72,6 +74,7 @@ export const TIERS: Record<Tier, TierConfig> = {
       multiCurrency: true, drip: true, calendar: true, forecast: true,
       performance: true, diversification: true, taxReport: false,
       alerts: false, csvImport: true, exportCsv: true, exportPdf: false, apiAccess: false,
+      googleCalendarSync: true,
     },
   },
   elite: {
@@ -94,6 +97,7 @@ export const TIERS: Record<Tier, TierConfig> = {
       multiCurrency: true, drip: true, calendar: true, forecast: true,
       performance: true, diversification: true, taxReport: true,
       alerts: true, csvImport: true, exportCsv: true, exportPdf: true, apiAccess: true,
+      googleCalendarSync: true,
     },
   },
 };

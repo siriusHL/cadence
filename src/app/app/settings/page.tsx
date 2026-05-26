@@ -1,6 +1,7 @@
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
+import { can, canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
 import { SettingsForm } from '@/components/SettingsForm';
+import { GoogleCalendarConnect } from '@/components/GoogleCalendarConnect';
 import { getActivePortfolio } from '@/lib/activePortfolio';
 import { AccountMobile } from '@/components/mobile/AccountMobile';
 
@@ -37,16 +38,21 @@ export default async function SettingsPage() {
   const portfolioName = activePortfolio?.name ?? 'Main portfolio';
   const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
 
+  const showGcal = can(tier, 'googleCalendarSync');
+
   const formContent = (
-    <SettingsForm
-      initial={{
-        contrast: (profile?.contrast as 'soft' | 'standard' | 'sharp' | undefined) ?? 'standard',
-        bgTone:   (profile?.bg_tone  as 'cream' | 'neutral' | 'cool' | undefined) ?? 'cream',
-        defaultScreen: (profile?.default_screen as Screen | null | undefined) ?? null,
-        incomeTarget:  Number(profile?.income_target ?? 30000),
-      }}
-      screenOptions={screenOptions}
-    />
+    <>
+      <SettingsForm
+        initial={{
+          contrast: (profile?.contrast as 'soft' | 'standard' | 'sharp' | undefined) ?? 'standard',
+          bgTone:   (profile?.bg_tone  as 'cream' | 'neutral' | 'cool' | undefined) ?? 'cream',
+          defaultScreen: (profile?.default_screen as Screen | null | undefined) ?? null,
+          incomeTarget:  Number(profile?.income_target ?? 30000),
+        }}
+        screenOptions={screenOptions}
+      />
+      {showGcal ? <GoogleCalendarConnect /> : null}
+    </>
   );
 
   return (
