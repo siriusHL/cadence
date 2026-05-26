@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabaseBrowser } from '@/lib/supabase/browser';
+import { AuthMobileLayout } from '@/components/mobile/PublicMobile';
 
 function LoginForm() {
   const router = useRouter();
@@ -31,7 +32,7 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full max-w-sm flex flex-col gap-3">
+    <form onSubmit={onSubmit} className="w-full max-w-sm flex flex-col gap-3 mx-auto">
       <label className="text-sm font-medium">
         Email
         <input
@@ -53,23 +54,45 @@ function LoginForm() {
       >
         {busy ? 'Signing in…' : 'Sign in'}
       </button>
-      <p className="text-sm text-ink-soft text-center mt-3">
-        No account? <Link href="/signup" className="text-ink underline underline-offset-2">Sign up</Link>
-      </p>
     </form>
   );
 }
 
 export default function LoginPage() {
-  return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-16">
-      <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[0.06em] uppercase mb-10">
-        <span className="w-2 h-2 rounded-full bg-accent-soft" /> Cadence
+  const formContent = (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+  const footer = (
+    <>
+      No account?{' '}
+      <Link href="/signup" style={{ color: 'var(--text)', fontWeight: 500, textDecoration: 'none' }}>
+        Sign up
       </Link>
-      <h1 className="text-3xl font-semibold tracking-[-0.025em] mb-8">Welcome back</h1>
-      <Suspense fallback={null}>
-        <LoginForm />
-      </Suspense>
-    </main>
+    </>
+  );
+
+  return (
+    <>
+      <div className="cdn-mobile-only">
+        <AuthMobileLayout
+          title="Welcome back"
+          sub="Log in to your account"
+          form={formContent}
+          footer={footer}
+        />
+      </div>
+      <main className="cdn-desktop-only min-h-screen flex flex-col items-center justify-center px-6 py-16">
+        <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[0.06em] uppercase mb-10">
+          <span className="w-2 h-2 rounded-full bg-accent-soft" /> Cadence
+        </Link>
+        <h1 className="text-3xl font-semibold tracking-[-0.025em] mb-8">Welcome back</h1>
+        {formContent}
+        <p className="text-sm text-ink-soft text-center mt-3">
+          No account? <Link href="/signup" className="text-ink underline underline-offset-2">Sign up</Link>
+        </p>
+      </main>
+    </>
   );
 }
