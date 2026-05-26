@@ -12,6 +12,11 @@ import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { YearHeatmap } from '@/components/YearHeatmap';
 import { ForecastChart, type ForecastMonth } from '@/components/ForecastChart';
+import { IncomeSimulator } from '@/components/IncomeSimulator';
+import {
+  estimateDividendTaxRate, RESIDENCE_MODELS,
+  type TaxResidence,
+} from '@/lib/tax';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_LONG = [
@@ -19,8 +24,8 @@ const MONTH_LONG = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-type Tab = 'upcoming' | 'forecast' | 'year';
-const VALID_TABS: Tab[] = ['upcoming', 'forecast', 'year'];
+type Tab = 'upcoming' | 'forecast' | 'simulator' | 'year';
+const VALID_TABS: Tab[] = ['upcoming', 'forecast', 'simulator', 'year'];
 
 function fmt(n: number, digits = 0): string {
   return n.toLocaleString('en-IE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -75,9 +80,10 @@ export default async function DividendsScreen({ searchParams }: PageProps) {
   return (
     <div className="cdn-pro">
       <DividendsTabs active={tab} />
-      {tab === 'upcoming' && <UpcomingTab portfolioId={portfolio.id} heldCount={held.length} />}
-      {tab === 'forecast' && <ForecastTab portfolioId={portfolio.id} userId={user!.id} />}
-      {tab === 'year'     && <YearTab     portfolioId={portfolio.id} heldCount={held.length} />}
+      {tab === 'upcoming'  && <UpcomingTab  portfolioId={portfolio.id} heldCount={held.length} />}
+      {tab === 'forecast'  && <ForecastTab  portfolioId={portfolio.id} userId={user!.id} />}
+      {tab === 'simulator' && <SimulatorTab portfolioId={portfolio.id} userId={user!.id} />}
+      {tab === 'year'      && <YearTab      portfolioId={portfolio.id} heldCount={held.length} />}
     </div>
   );
 }
@@ -86,9 +92,10 @@ export default async function DividendsScreen({ searchParams }: PageProps) {
 
 function DividendsTabs({ active }: { active: Tab }) {
   const TABS: { id: Tab; label: string }[] = [
-    { id: 'upcoming', label: 'Upcoming' },
-    { id: 'forecast', label: 'Forecast' },
-    { id: 'year',     label: 'Year view' },
+    { id: 'upcoming',  label: 'Upcoming' },
+    { id: 'forecast',  label: 'Forecast' },
+    { id: 'simulator', label: 'Simulator' },
+    { id: 'year',      label: 'Year view' },
   ];
   return (
     <div style={{ marginBottom: 16 }}>
@@ -488,6 +495,50 @@ function CashRow({ label, value, hint, emphasized }: {
         {value}
       </div>
     </div>
+  );
+}
+
+// ─── Simulator tab ─────────────────────────────────────────────────────
+
+async function SimulatorTab({ portfolioId, userId }: { portfolioId: string; userId: string }) {
+  const supabase = await getSupabaseServer();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('income_target, tax_country')
+    .eq('id', userId)
+    .maybeSingle();
+
+  const summary = await getPortfolioSummary(supabase, portfolioId);
+  if (summary.totalValue <= 0 || summary.forwardAnnualIncome <= 0) {
+    return (
+      <EmptyState
+        icon="📈"
+        title="Not enough data yet"
+        body="The simulator needs at least one dividend-paying holding with a market value to project compounding."
+        ctaLabel="Add a holding"
+        ctaHref="/app/add"
+      />
+    );
+  }
+
+  const incomeTarget = Number(profile?.income_target ?? 30000);
+  const residenceCode = (profile?.tax_country ?? null) as string | null;
+  const residence: TaxResidence | null = residenceCode && residenceCode in RESIDENCE_MODELS
+    ? (residenceCode as TaxResidence)
+    : null;
+  const dividendTaxRate = residence
+    ? estimateDividendTaxRate(residence, summary.forwardAnnualIncome, summary.totalValue)
+    : 0;
+
+  return (
+    <IncomeSimulator
+      baseValue={summary.totalValue}
+      baseIncome={summary.forwardAnnualIncome}
+      baseCost={summary.costBasis || summary.totalValue}
+      incomeTarget={incomeTarget}
+      taxResidence={residence}
+      dividendTaxRate={dividendTaxRate}
+    />
   );
 }
 

@@ -61,11 +61,11 @@ export const TIERS: Record<Tier, TierConfig> = {
     fxFreshnessMin: 15,
     // Premium swaps the four beginner-oriented screens (home / next / stocks /
      // year) for the data-dense pro versions (dashboard / holdings / dividends /
-     // simulator / performance / diversification).
+     // performance / diversification). Simulator lives inside Dividends as a tab.
     screens: [
       'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
-      'dividends', 'simulator',
+      'dividends',
       'performance', 'diversification',
     ],
     features: {
@@ -86,7 +86,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     screens: [
       'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
-      'dividends', 'simulator',
+      'dividends',
       'performance', 'diversification',
       'tax', 'alerts',
     ],

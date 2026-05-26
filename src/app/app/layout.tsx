@@ -21,7 +21,6 @@ const PRO_TABS: NavTab[] = [
   { label: 'Dashboard',     href: '/app/dashboard',       screen: 'dashboard' },
   { label: 'Holdings',      href: '/app/holdings',        screen: 'holdings' },
   { label: 'Dividends',     href: '/app/dividends',       screen: 'dividends' },
-  { label: 'Simulator',     href: '/app/simulator',       screen: 'simulator' },
   { label: 'Performance',   href: '/app/performance',     screen: 'performance' },
   { label: 'Diversification', href: '/app/diversification', screen: 'diversification' },
 ];
