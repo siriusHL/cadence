@@ -261,7 +261,7 @@
   padding: 6px 10px;
 }
 
-/* Range slider — used on the DRIP screen. The track gradient is set on
+/* Range slider — used on the Simulator screen. The track gradient is set on
    the browser-specific track pseudo-elements (the input's own background
    sits below the track and never shows). The fill stops at --progress,
    which the React component sets inline per slider. */
@@ -329,10 +329,10 @@
   box-shadow: 0 0 0 4px oklch(0.55 0.10 175 / 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-/* DRIP curves — left-to-right reveal matches PerformanceChart. The wipe
-   rect inside the clipPath scales from 0 → 1 on mount; endpoint dots and
-   the FIRE marker fade in after the line completes. Slider edits update
-   path geometry but don't replay the animation (same DOM nodes). */
+/* Income-simulator curves — left-to-right reveal matches PerformanceChart.
+   The wipe rect inside the clipPath scales from 0 → 1 on mount; endpoint
+   dots and the goal marker fade in after the line completes. Slider edits
+   update path geometry but don't replay the animation (same DOM nodes). */
 .cdn-pro .drip-clip-rect {
   transform-box: fill-box;
   transform-origin: left center;
@@ -347,7 +347,7 @@
   animation: cdn-fade-up 0.5s 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Progress bar (table FIRE column) */
+/* Progress bar (table goal-progress column) */
 .cdn-pro .pbar {
   position: relative;
   height: 6px;
@@ -1175,7 +1175,7 @@
   transform: translateX(1px);
 }
 
-/* ─── FIRE progress bar ─── */
+/* ─── Passive-income progress bar ─── */
 .cdn-pro .fire-fill {
   transform-origin: left center;
   animation: cdn-bench-grow 1.1s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;

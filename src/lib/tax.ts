@@ -314,6 +314,72 @@ function emptyDomesticTax(model: ResidenceModel | undefined): DomesticTaxBreakdo
   };
 }
 
+/**
+ * Single representative effective dividend-tax rate (0–1) for the user's
+ * residence, given an annual dividend total and a portfolio value (the
+ * latter only matters for box3-style regimes). This is a flat-rate
+ * approximation for use in the income simulator — it intentionally
+ * ignores foreign withholding credits and per-asset nuance.
+ */
+export function estimateDividendTaxRate(
+  residence: TaxResidence,
+  annualGrossEur: number,
+  portfolioValueEur: number,
+  inputs: DomesticTaxInputs = {},
+): number {
+  const model = RESIDENCE_MODELS[residence];
+  if (!model || annualGrossEur <= 0) return 0;
+
+  if (model.kind === 'flat') {
+    const allowance = model.allowance ?? 0;
+    const taxable = Math.max(0, annualGrossEur - allowance);
+    const owed = (taxable * model.rate) / 100;
+    return clampRate(owed / annualGrossEur);
+  }
+
+  if (model.kind === 'progressive') {
+    const allowance = model.allowance ?? 0;
+    const taxable = Math.max(0, annualGrossEur - allowance);
+    let owed = 0;
+    let prev = 0;
+    let remaining = taxable;
+    for (const band of model.bands) {
+      const slice = Math.min(band.upTo, remaining + prev) - prev;
+      if (slice <= 0) break;
+      owed += (slice * band.rate) / 100;
+      prev += slice;
+      remaining -= slice;
+      if (remaining <= 0) break;
+    }
+    return clampRate(owed / annualGrossEur);
+  }
+
+  if (model.kind === 'marginal-passthrough') {
+    const margin = inputs.marginalPct ?? model.defaultMarginal;
+    const surcharge = model.socialSurchargePct ?? 0;
+    return clampRate((margin + surcharge) / 100);
+  }
+
+  if (model.kind === 'box3') {
+    // Box 3 taxes a notional return on portfolio value, not the dividend
+    // itself. Express it as an "effective rate on dividends" for the sim by
+    // dividing the notional tax bill by gross dividend income.
+    const base = Math.max(0, portfolioValueEur - model.threshold);
+    if (base <= 0) return 0;
+    const notionalReturn = (base * model.forfaitairPct) / 100;
+    const owed = (notionalReturn * model.rate) / 100;
+    return clampRate(owed / annualGrossEur);
+  }
+
+  return 0;
+}
+
+function clampRate(r: number): number {
+  if (!Number.isFinite(r) || r < 0) return 0;
+  if (r > 0.75) return 0.75;  // sanity ceiling — protects the simulator from box3 edge cases
+  return r;
+}
+
 interface DivTxRow {
   ticker: string;
   occurred_on: string;

@@ -1,21 +1,30 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { COUNTRY_NAMES, type TaxResidence } from '@/lib/tax';
 
 interface Props {
   baseValue: number;
   baseIncome: number;
   baseCost: number;
+  /** Saved target from profiles.income_target — seeds the slider but the user
+   * can drag it for what-if exploration without saving. */
+  incomeTarget: number;
+  /** ISO-2 of the user's tax residence, if Cadence has a tax model for it.
+   * null when the user hasn't set a residence or it's outside our coverage. */
+  taxResidence: TaxResidence | null;
+  /** Effective dividend tax rate (0–1) for the user's residence. */
+  dividendTaxRate: number;
 }
 
 interface Snapshot {
   year: number;
   value: number;
+  /** Annual NET dividend income — gross minus dividend tax. */
   income: number;
   monthly: number;
 }
 
-const FIRE_THRESHOLD_EUR = 30_000;
 const APPRECIATION = 0.045;
 
 function fmt(n: number, digits = 0): string {
@@ -23,9 +32,15 @@ function fmt(n: number, digits = 0): string {
 }
 
 /**
- * Project annual portfolio value + dividend income for `years` years under three
- * scenarios. Each scenario applies the same 4.5% appreciation but differs in
- * whether dividends are reinvested and/or monthly contributions are added.
+ * Project annual portfolio value + NET dividend income for `years` years under
+ * three scenarios. NET means after the residence's dividend tax — reinvestment
+ * uses post-tax cash because that's what's actually available to put back into
+ * the market.
+ *
+ * Maths in net space: each year the company raises its gross dividend by
+ * growthPct (so net rises by the same proportion since the tax rate is
+ * constant). When `reinvested` cash is put into new shares, those produce
+ * gross at yieldPct, which becomes net at × (1 - taxRate).
  */
 function project(
   years: number,
@@ -33,87 +48,111 @@ function project(
   growthPct: number,
   monthlyContrib: number,
   startValue: number,
-  startIncome: number,
-  drip: boolean,
-  contrib: boolean,
+  startGrossIncome: number,
+  taxRate: number,
+  reinvestDividends: boolean,
+  addContributions: boolean,
 ): Snapshot[] {
-  const out: Snapshot[] = [{ year: 0, value: startValue, income: startIncome, monthly: startIncome / 12 }];
+  const startNet = startGrossIncome * (1 - taxRate);
+  const out: Snapshot[] = [{ year: 0, value: startValue, income: startNet, monthly: startNet / 12 }];
   let v = startValue;
-  let inc = startIncome;
+  let inc = startNet;
   for (let i = 1; i <= years; i++) {
     inc *= 1 + growthPct / 100;
-    const reinvested = (drip ? inc : 0) + (contrib ? monthlyContrib * 12 : 0);
+    const reinvested = (reinvestDividends ? inc : 0) + (addContributions ? monthlyContrib * 12 : 0);
     v = v * (1 + APPRECIATION) + reinvested;
-    if (reinvested > 0) inc += reinvested * (yieldPct / 100);
+    if (reinvested > 0) inc += reinvested * (yieldPct / 100) * (1 - taxRate);
     out.push({ year: i, value: v, income: inc, monthly: inc / 12 });
   }
   return out;
 }
 
-export function DripSimulator({ baseValue, baseIncome, baseCost }: Props) {
+export function IncomeSimulator({
+  baseValue, baseIncome, baseCost, incomeTarget,
+  taxResidence, dividendTaxRate,
+}: Props) {
   const [years, setYears] = useState(25);
   const [yieldPct, setYieldPct] = useState(() => Math.min(9, Math.max(1, (baseIncome / baseValue) * 100)));
   const [growthPct, setGrowthPct] = useState(7.8);
   const [contrib, setContrib] = useState(500);
+  const [target, setTarget] = useState(incomeTarget);
 
   const series = useMemo(() => ({
-    noDrip:   project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, false, false),
-    drip:     project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, true,  false),
-    dripPlus: project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, true,  true),
-  }), [years, yieldPct, growthPct, contrib, baseValue, baseIncome]);
+    noReinvest:   project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate, false, false),
+    reinvest:     project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate, true,  false),
+    reinvestPlus: project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate, true,  true),
+  }), [years, yieldPct, growthPct, contrib, baseValue, baseIncome, dividendTaxRate]);
 
   const breakdown = useMemo<Snapshot[]>(() => {
     const checkpoints = new Set([1, 3, 5, 10, 15, 20, 25, 30, years]);
-    return series.dripPlus.filter((s) => checkpoints.has(s.year));
-  }, [series.dripPlus, years]);
+    return series.reinvestPlus.filter((s) => checkpoints.has(s.year));
+  }, [series.reinvestPlus, years]);
 
-  const finalIncome = series.dripPlus[series.dripPlus.length - 1].income;
-  const fireYear = series.dripPlus.findIndex((p) => p.income >= FIRE_THRESHOLD_EUR);
+  const finalIncome = series.reinvestPlus[series.reinvestPlus.length - 1].income;
+  const targetYear = series.reinvestPlus.findIndex((p) => p.income >= target);
+  const startNet = baseIncome * (1 - dividendTaxRate);
+  const taxPct = dividendTaxRate * 100;
+  const residenceName = taxResidence ? COUNTRY_NAMES[taxResidence] ?? taxResidence : null;
 
   return (
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
-          <div className="eyebrow">DRIP simulator · Compounding scenarios</div>
+          <div className="eyebrow">Income simulator · Compounding scenarios</div>
           <h1>
-            Reach FIRE in{' '}
+            Hit €{fmt(target)}/yr net in{' '}
             <span className="num" style={{ color: 'var(--accent-soft)' }}>
-              {fireYear > 0 ? `${fireYear}y` : '—'}
+              {targetYear > 0 ? `${targetYear}y` : '—'}
             </span>
           </h1>
           <div className="sub">
-            Reinvest dividends and add €{fmt(contrib)}/mo to turn today's{' '}
-            €{fmt(baseIncome, 0)} into <b style={{ color: 'var(--text)' }}>€{fmt(finalIncome, 0)}</b>{' '}
-            in {years} years.
+            Reinvest dividends and add €{fmt(contrib)}/mo to turn today&rsquo;s{' '}
+            €{fmt(startNet, 0)} net into <b style={{ color: 'var(--text)' }}>€{fmt(finalIncome, 0)}</b>{' '}
+            in {years} years.{' '}
+            {residenceName ? (
+              <span style={{ color: 'var(--text-muted)' }}>
+                Net of {taxPct.toFixed(1)}% dividend tax in {residenceName}.
+              </span>
+            ) : (
+              <a href="/app/profile" style={{ color: 'var(--accent)', textDecoration: 'none' }}>
+                Set tax residence to factor in dividend tax →
+              </a>
+            )}
           </div>
         </div>
         <div className="right-meta">
           <span className="live">Appreciation +{(APPRECIATION * 100).toFixed(1)}%</span>
-          <span>FIRE target €{fmt(FIRE_THRESHOLD_EUR)}/yr</span>
-          <span>Monte-Carlo off</span>
+          <span>Target €{fmt(target)}/yr net {target !== incomeTarget && '· override'}</span>
+          {residenceName
+            ? <span>Tax · {taxResidence} {taxPct.toFixed(1)}%</span>
+            : <span>Tax · not set</span>}
         </div>
       </div>
 
-      <div className="row-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 14 }}>
         <Slider label="Horizon"          value={years}     display={`${years} years`}                  min={5} max={40} step={1}   onChange={setYears}     hint="5 — 40 years" />
         <Slider label="Forward yield"    value={yieldPct}  display={`${yieldPct.toFixed(2)} %`}        min={1} max={9}  step={0.1} onChange={setYieldPct}  hint="Weighted blended" />
         <Slider label="Div growth"       value={growthPct} display={`${growthPct.toFixed(1)} %`}       min={0} max={15} step={0.1} onChange={setGrowthPct} hint="Annual CAGR" />
         <Slider label="Monthly contrib." value={contrib}   display={`€${fmt(contrib)}`}                min={0} max={3000} step={50} onChange={setContrib}   hint="Added each month" />
+        <Slider label="Income target"    value={target}    display={`€${fmt(target)}`}                 min={5000} max={150000} step={1000} onChange={setTarget} hint={target === incomeTarget ? 'From Settings' : 'Override (not saved)'} />
       </div>
 
       <div className="pcard" style={{ marginBottom: 14 }}>
         <div className="pcard-h">
           <div>
-            <div className="t">Annual dividend income · snowball</div>
+            <div className="t">
+              Annual dividend income <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>· net of tax</span>
+            </div>
             <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
               Compare three paths over {years} years.
+              {dividendTaxRate > 0 && <> Reinvestment uses post-tax cash.</>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 14 }}>
             {[
-              { c: 'rgba(0,0,0,0.3)',      l: 'No DRIP', dashed: true },
-              { c: 'oklch(0.40 0.06 235)', l: 'DRIP on' },
-              { c: 'var(--accent-soft)',   l: `DRIP + €${fmt(contrib)}/mo` },
+              { c: 'rgba(0,0,0,0.3)',      l: 'No reinvestment', dashed: true },
+              { c: 'oklch(0.40 0.06 235)', l: 'Reinvest dividends' },
+              { c: 'var(--accent-soft)',   l: `Reinvest + €${fmt(contrib)}/mo` },
             ].map((g, i) => (
               <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
                 {g.dashed ? (
@@ -144,13 +183,13 @@ export function DripSimulator({ baseValue, baseIncome, baseCost }: Props) {
             ))}
           </div>
         </div>
-        <DripCurves series={series} years={years} fireYear={fireYear} />
+        <IncomeCurves series={series} years={years} targetYear={targetYear} target={target} />
       </div>
 
       <div className="pcard flush">
         <div className="pcard-h">
           <div className="t">Year-by-year breakdown</div>
-          <span className="tag">DRIP + contrib scenario</span>
+          <span className="tag">Reinvest + contributions scenario</span>
         </div>
         <div style={{ overflow: 'auto' }}>
           <table className="pt">
@@ -158,17 +197,17 @@ export function DripSimulator({ baseValue, baseIncome, baseCost }: Props) {
               <tr>
                 <th style={{ width: 60 }}>Year</th>
                 <th className="r">Portfolio</th>
-                <th className="r">Annual income</th>
+                <th className="r">Annual income (net)</th>
                 <th className="r">Monthly</th>
                 <th className="r">YoC</th>
-                <th>FIRE progress</th>
+                <th>Goal progress</th>
               </tr>
             </thead>
             <tbody>
               {breakdown.map((r) => {
                 const investedSoFar = baseCost + r.year * contrib * 12;
                 const yoc = investedSoFar > 0 ? (r.income / investedSoFar) * 100 : 0;
-                const firePct = Math.min(100, (r.income / FIRE_THRESHOLD_EUR) * 100);
+                const goalPct = Math.min(100, (r.income / target) * 100);
                 return (
                   <tr key={r.year}>
                     <td className="b" style={{ color: 'var(--accent-soft)' }}>+{r.year}y</td>
@@ -180,12 +219,12 @@ export function DripSimulator({ baseValue, baseIncome, baseCost }: Props) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div className="pbar" style={{ flex: 1 }}>
                           <i style={{
-                            width: `${firePct}%`,
-                            background: firePct >= 100 ? 'oklch(0.48 0.08 165)' : 'var(--accent-soft)',
+                            width: `${goalPct}%`,
+                            background: goalPct >= 100 ? 'oklch(0.48 0.08 165)' : 'var(--accent-soft)',
                           }} />
                         </div>
                         <span className="num" style={{ minWidth: 42, textAlign: 'right', fontSize: 11.5, fontWeight: 500 }}>
-                          {firePct.toFixed(0)}%
+                          {goalPct.toFixed(0)}%
                         </span>
                       </div>
                     </td>
@@ -235,22 +274,26 @@ function Slider({ label, display, value, min, max, step, onChange, hint }: Slide
   );
 }
 
-function DripCurves({
+function IncomeCurves({
   series,
   years,
-  fireYear,
+  targetYear,
+  target,
 }: {
-  series: { noDrip: Snapshot[]; drip: Snapshot[]; dripPlus: Snapshot[] };
+  series: { noReinvest: Snapshot[]; reinvest: Snapshot[]; reinvestPlus: Snapshot[] };
   years: number;
-  fireYear: number;
+  targetYear: number;
+  target: number;
 }) {
   const W = 1180;
   const H = 240;
-  const pad = { t: 16, r: 80, b: 26, l: 50 };
+  // r is small now — endpoint labels render inside the plot, to the left of each dot,
+  // so we don't need to reserve any margin for them.
+  const pad = { t: 16, r: 24, b: 26, l: 44 };
   const iw = W - pad.l - pad.r;
   const ih = H - pad.t - pad.b;
 
-  const incMax = Math.max(...series.dripPlus.map((p) => p.income)) * 1.08;
+  const incMax = Math.max(...series.reinvestPlus.map((p) => p.income)) * 1.08;
   const xs = (y: number) => pad.l + (y / years) * iw;
   const ys = (v: number) => pad.t + ih - (v / incMax) * ih;
   const pathFor = (pts: Snapshot[]) =>
@@ -258,7 +301,7 @@ function DripCurves({
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
   const yearMarks = [0, Math.round(years / 4), Math.round(years / 2), Math.round((years * 3) / 4), years];
-  const fireY = ys(FIRE_THRESHOLD_EUR);
+  const targetY = ys(target);
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
@@ -300,48 +343,77 @@ function DripCurves({
         </text>
       ))}
 
-      <line x1={pad.l} x2={W - pad.r} y1={fireY} y2={fireY}
+      <line x1={pad.l} x2={W - pad.r} y1={targetY} y2={targetY}
             stroke="var(--border-strong)" strokeDasharray="4 3" strokeWidth="1" />
-      <text x={W - pad.r - 4} y={fireY - 4} textAnchor="end"
-            style={{ fontSize: 10.5, fill: 'var(--text-dim)', fontWeight: 500 }}>
-        FIRE €{(FIRE_THRESHOLD_EUR / 1000).toFixed(0)}k
+      <text
+        x={W - pad.r - 4}
+        y={targetY - 4}
+        textAnchor="end"
+        style={{
+          fontSize: 10.5,
+          fill: 'var(--text-dim)',
+          fontWeight: 500,
+          paintOrder: 'stroke',
+          stroke: 'var(--surface)',
+          strokeWidth: 4,
+          strokeLinejoin: 'round',
+        }}
+      >
+        Goal €{(target / 1000).toFixed(0)}k
       </text>
 
       {/* Animated layer — wiped left-to-right via the clipPath. */}
       <g clipPath="url(#drip-clip)">
-        <path d={`${pathFor(series.dripPlus)} L ${xs(years)} ${pad.t + ih} L ${xs(0)} ${pad.t + ih} Z`}
+        <path d={`${pathFor(series.reinvestPlus)} L ${xs(years)} ${pad.t + ih} L ${xs(0)} ${pad.t + ih} Z`}
               fill="url(#g-drip)" />
-        <path d={pathFor(series.noDrip)}   fill="none" stroke="rgba(0,0,0,0.3)"        strokeWidth="1.5" strokeDasharray="4 4" />
-        <path d={pathFor(series.drip)}     fill="none" stroke="oklch(0.40 0.06 235)" strokeWidth="1.8" />
-        <path d={pathFor(series.dripPlus)} fill="none" stroke="oklch(0.55 0.10 175)" strokeWidth="2.4" strokeLinecap="round" />
+        <path d={pathFor(series.noReinvest)}   fill="none" stroke="rgba(0,0,0,0.3)"        strokeWidth="1.5" strokeDasharray="4 4" />
+        <path d={pathFor(series.reinvest)}     fill="none" stroke="oklch(0.40 0.06 235)" strokeWidth="1.8" />
+        <path d={pathFor(series.reinvestPlus)} fill="none" stroke="oklch(0.55 0.10 175)" strokeWidth="2.4" strokeLinecap="round" />
       </g>
 
-      {/* Endpoint dots — pop in once the line reaches them. */}
+      {/* Endpoint dots — pop in once the line reaches them. Labels sit
+          inside the plot just left of each dot so the chart can use the
+          full container width. A surface-coloured stroke painted UNDER
+          the fill (paint-order: stroke) gives each label a halo so the
+          chart lines never bleed through the text. */}
       <g className="drip-endpoints">
         {[
-          { p: series.noDrip[years],   c: 'rgba(0,0,0,0.5)' },
-          { p: series.drip[years],     c: 'oklch(0.40 0.06 235)' },
-          { p: series.dripPlus[years], c: 'oklch(0.55 0.10 175)' },
+          { p: series.noReinvest[years],   c: 'rgba(0,0,0,0.5)' },
+          { p: series.reinvest[years],     c: 'oklch(0.40 0.06 235)' },
+          { p: series.reinvestPlus[years], c: 'oklch(0.55 0.10 175)' },
         ].map((s, i) => (
           <g key={i}>
             <circle cx={xs(s.p.year)} cy={ys(s.p.income)} r="4" fill="var(--surface)" stroke={s.c} strokeWidth="2" />
-            <text x={xs(s.p.year) + 8} y={ys(s.p.income) + 4}
-                  style={{ fontSize: 11, fill: s.c, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+            <text
+              x={xs(s.p.year) - 8}
+              y={ys(s.p.income) + 4}
+              textAnchor="end"
+              style={{
+                fontSize: 11,
+                fill: s.c,
+                fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
+                paintOrder: 'stroke',
+                stroke: 'var(--surface)',
+                strokeWidth: 4,
+                strokeLinejoin: 'round',
+              }}
+            >
               €{(s.p.income / 1000).toFixed(1)}k
             </text>
           </g>
         ))}
       </g>
 
-      {fireYear > 0 && (
+      {targetYear > 0 && (
         <g className="drip-fire-marker">
-          <line x1={xs(fireYear)} x2={xs(fireYear)} y1={pad.t} y2={pad.t + ih}
+          <line x1={xs(targetYear)} x2={xs(targetYear)} y1={pad.t} y2={pad.t + ih}
                 stroke="oklch(0.55 0.10 175)" strokeOpacity="0.4" />
-          <rect x={xs(fireYear) - 30} y={pad.t + 4} width="60" height="18" rx="9"
+          <rect x={xs(targetYear) - 30} y={pad.t + 4} width="60" height="18" rx="9"
                 fill="oklch(0.55 0.10 175)" />
-          <text x={xs(fireYear)} y={pad.t + 16} textAnchor="middle"
+          <text x={xs(targetYear)} y={pad.t + 16} textAnchor="middle"
                 style={{ fontSize: 10.5, fill: '#fff', fontWeight: 600 }}>
-            FIRE +{fireYear}y
+            Goal +{targetYear}y
           </text>
         </g>
       )}

@@ -5,7 +5,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 
 const ALLOWED_SCREENS = [
   'home', 'next', 'stocks', 'year', 'dashboard', 'holdings',
-  'calendar', 'forecast', 'drip', 'performance', 'diversification', 'tax', 'alerts',
+  'calendar', 'forecast', 'simulator', 'performance', 'diversification', 'tax', 'alerts',
 ] as const;
 
 const PatchBody = z.object({
@@ -16,6 +16,7 @@ const PatchBody = z.object({
   contrast:        z.enum(['soft', 'standard', 'sharp']).optional(),
   bg_tone:         z.enum(['cream', 'neutral', 'cool']).optional(),
   default_screen:  z.enum(ALLOWED_SCREENS).nullable().optional(),
+  income_target:   z.coerce.number().positive().max(10_000_000).optional(),
 });
 
 export const PATCH = withAuth({}, async ({ userId, req }) => {
@@ -32,6 +33,7 @@ export const PATCH = withAuth({}, async ({ userId, req }) => {
   if ('contrast'       in parsed.data) patch.contrast       = parsed.data.contrast;
   if ('bg_tone'        in parsed.data) patch.bg_tone        = parsed.data.bg_tone;
   if ('default_screen' in parsed.data) patch.default_screen = parsed.data.default_screen;
+  if ('income_target'  in parsed.data) patch.income_target  = parsed.data.income_target;
   if (Object.keys(patch).length === 0) return json({ ok: true });
 
   const supabase = await getSupabaseServer();
@@ -58,7 +60,7 @@ export const GET = withAuth({}, async ({ userId, tier }) => {
     { count: portfolioCount },
     { data: holdingRows },
   ] = await Promise.all([
-    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen').eq('id', userId).single(),
+    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen, income_target').eq('id', userId).single(),
     supabase.from('portfolios').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     // RLS already scopes to caller's portfolios; selecting holdings.id is enough to count.
     supabase.from('holdings').select('id'),

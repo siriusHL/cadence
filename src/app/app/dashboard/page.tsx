@@ -36,6 +36,12 @@ export default async function DashboardScreen() {
     );
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('income_target')
+    .eq('id', user!.id)
+    .maybeSingle();
+
   const held = (await getHoldingsView(supabase, portfolio.id)).filter((h) => h.quantity > 0);
   if (held.length === 0) {
     return (
@@ -73,13 +79,13 @@ export default async function DashboardScreen() {
   const topContribMax = contributors[0]?.forwardAnnualLocal ?? 0;
   const next5 = upcoming.slice(0, 5);
 
-  // FIRE target placeholder — €30k/year is a common European FIRE benchmark
-  const fireTarget = 30_000;
-  const firePct = Math.min(100, (summary.forwardAnnualIncome / fireTarget) * 100);
+  // Passive-income target from profile (Settings → Passive income target).
+  const incomeTarget = Number(profile?.income_target ?? 30_000);
+  const targetPct = Math.min(100, (summary.forwardAnnualIncome / incomeTarget) * 100);
   // Naive years-to-target at assumed 8%/yr income growth
   const growth = 0.08;
-  const yearsToFire = summary.forwardAnnualIncome > 0 && summary.forwardAnnualIncome < fireTarget
-    ? Math.ceil(Math.log(fireTarget / summary.forwardAnnualIncome) / Math.log(1 + growth))
+  const yearsToTarget = summary.forwardAnnualIncome > 0 && summary.forwardAnnualIncome < incomeTarget
+    ? Math.ceil(Math.log(incomeTarget / summary.forwardAnnualIncome) / Math.log(1 + growth))
     : 0;
 
   return (
@@ -241,19 +247,19 @@ export default async function DashboardScreen() {
           )}
         </div>
 
-        {/* FIRE progress */}
+        {/* Passive-income progress */}
         <div className="pcard cdn-anim interactive fire-card" style={{ ['--i' as never]: 4 }}>
           <div className="pcard-h">
-            <div className="t">FIRE progress</div>
-            <span className="tag">€{(fireTarget / 1000).toFixed(0)}k / yr target</span>
+            <div className="t">Passive income progress</div>
+            <span className="tag">€{(incomeTarget / 1000).toFixed(0)}k / yr target</span>
           </div>
           <div className="num" style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1.05 }}>
             <span style={{ fontSize: 17, color: 'var(--text-dim)', fontWeight: 400 }}>€</span>{fmt(summary.forwardAnnualIncome)}
-            <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 400, marginLeft: 8 }}>/ €{fmt(fireTarget)}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-dim)', fontWeight: 400, marginLeft: 8 }}>/ €{fmt(incomeTarget)}</span>
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>
-            {firePct.toFixed(1)}% of FIRE
-            {yearsToFire > 0 && <> · est. <b style={{ color: 'var(--text)' }}>~{yearsToFire} years</b> at {(growth * 100).toFixed(0)}% growth</>}
+            {targetPct.toFixed(1)}% of target
+            {yearsToTarget > 0 && <> · est. <b style={{ color: 'var(--text)' }}>~{yearsToTarget} years</b> at {(growth * 100).toFixed(0)}% growth</>}
           </div>
 
           <div
@@ -265,7 +271,7 @@ export default async function DashboardScreen() {
           >
             <div
               className="fire-fill"
-              style={{ position: 'absolute', inset: 0, width: `${firePct}%`, background: 'oklch(0.55 0.10 175)', borderRadius: 4 }}
+              style={{ position: 'absolute', inset: 0, width: `${targetPct}%`, background: 'oklch(0.55 0.10 175)', borderRadius: 4 }}
             />
             {[0.25, 0.5, 0.75].map((p, i) => (
               <div key={i} style={{ position: 'absolute', top: -2, bottom: -2, left: `${p * 100}%`, width: 1, background: 'var(--surface)' }} />
