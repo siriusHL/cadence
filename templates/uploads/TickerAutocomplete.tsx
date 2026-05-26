@@ -1,0 +1,1242 @@
+/* ─────────────────────────────────────────────────────────
+   .cdn-pro overlay — denser layout for Pro/Premium screens
+   Applied via a `<div className="cdn-pro">` wrapper on each Pro page.
+   Lives in its own stylesheet (imported from layout.tsx) so the
+   main globals.css stays small and Turbopack HMR keeps up reliably.
+   ───────────────────────────────────────────────────────── */
+.cdn-pro {
+  --row-h: 28px;
+  --cell-x: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-top: 8px;
+}
+
+/* Compact hero with eyebrow + h1 + sub + right meta */
+.cdn-pro .pro-hero {
+  padding: 8px 4px 4px;
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 24px;
+}
+.cdn-pro .pro-hero .eyebrow {
+  font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-bottom: 6px;
+}
+.cdn-pro .pro-hero h1 {
+  margin: 0; font-size: 32px; font-weight: 600; letter-spacing: -0.025em;
+  line-height: 1.1; font-variant-numeric: tabular-nums;
+}
+.cdn-pro .pro-hero h1 .light { font-weight: 300; color: var(--text-dim); }
+.cdn-pro .pro-hero .sub {
+  font-size: 13.5px; color: var(--text-muted); margin-top: 8px;
+  max-width: 720px; line-height: 1.5;
+}
+.cdn-pro .pro-hero .right-meta {
+  text-align: right; display: flex; flex-direction: column; gap: 3px;
+  font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums;
+}
+.cdn-pro .pro-hero .right-meta .live {
+  display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end;
+  color: var(--text); font-weight: 500;
+}
+.cdn-pro .pro-hero .right-meta .live::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: oklch(0.55 0.10 165);
+  box-shadow: 0 0 0 3px oklch(0.92 0.04 165);
+}
+
+/* Stat strip */
+.cdn-pro .hero-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--surface-2); border-radius: 14px; overflow: hidden;
+  margin-bottom: 0;
+}
+.cdn-pro .hero-stats .tile {
+  background: var(--surface); padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.cdn-pro .hero-stats .tile .l { font-size: 11px; color: var(--text-dim); font-weight: 500; }
+.cdn-pro .hero-stats .tile .v {
+  font-size: 24px; font-weight: 600; letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+  margin-top: 2px;
+}
+.cdn-pro .hero-stats .tile .v .cur { font-size: 14px; color: var(--text-dim); font-weight: 400; vertical-align: top; margin-right: 1px; line-height: 1.5; }
+.cdn-pro .hero-stats .tile .v.sm { font-size: 18px; }
+.cdn-pro .hero-stats .tile .d { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.cdn-pro .hero-stats .tile .up { color: oklch(0.48 0.08 165); }
+.cdn-pro .hero-stats .tile .down { color: oklch(0.50 0.16 25); }
+
+/* Compact Pro card */
+.cdn-pro .pcard {
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.03), 0 4px 14px rgba(0,0,0,.035);
+  padding: 20px 22px;
+  display: flex; flex-direction: column;
+  min-height: 0; min-width: 0;
+}
+.cdn-pro .pcard.flush { padding: 0; }
+.cdn-pro .pcard-h {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 16px;
+}
+.cdn-pro .pcard-h .t {
+  font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.01em;
+}
+.cdn-pro .pcard-h .tag {
+  font-size: 11px; color: var(--text-dim); font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pro pills */
+.cdn-pro .ppill {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 18px; padding: 0 8px;
+  font-size: 10.5px; font-weight: 500;
+  border-radius: 999px;
+  background: var(--surface-2); color: var(--text);
+}
+.cdn-pro .ppill.up   { background: oklch(0.94 0.04 165); color: oklch(0.36 0.08 165); }
+.cdn-pro .ppill.down { background: oklch(0.95 0.04 25);  color: oklch(0.42 0.12 25);  }
+
+/* Inline info tip — small ⓘ with CSS-only popover on hover/focus. */
+.cdn-pro .info {
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 9px; font-weight: 700; font-style: normal;
+  cursor: help;
+  vertical-align: middle;
+  transition: background 120ms, color 120ms;
+}
+.cdn-pro .info:hover { background: var(--surface-hover); color: var(--text); }
+.cdn-pro .info:focus-visible { outline: 2px solid oklch(0.55 0.10 175); outline-offset: 2px; }
+.cdn-pro .info .pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  padding: 10px 12px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  border-radius: 8px;
+  font-size: 11.5px; font-weight: 400; line-height: 1.5;
+  letter-spacing: 0;
+  text-align: left;
+  opacity: 0; pointer-events: none;
+  transition: opacity 140ms;
+  z-index: 10;
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+}
+.cdn-pro .info .pop::after {
+  content: '';
+  position: absolute; top: 100%; left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--text);
+}
+.cdn-pro .info:hover .pop,
+.cdn-pro .info:focus .pop,
+.cdn-pro .info:focus-within .pop { opacity: 1; }
+.cdn-pro .info .pop b { color: var(--btn-primary-text); font-weight: 600; }
+.cdn-pro .info .pop .mono {
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+  font-size: 11px;
+  background: rgba(255,255,255,0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* Subtle progress bar */
+.cdn-pro .pbar {
+  position: relative; height: 4px; border-radius: 2px;
+  background: var(--surface-2); overflow: hidden;
+}
+.cdn-pro .pbar > i {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: oklch(0.55 0.10 175); border-radius: 2px;
+}
+
+/* Layout helpers */
+.cdn-pro .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cdn-pro .row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.cdn-pro .row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+/* Pro tables */
+.cdn-pro table.pt {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.cdn-pro table.pt th {
+  text-align: left; font-weight: 500;
+  color: var(--text-dim); font-size: 10.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky; top: 0; background: var(--surface);
+  user-select: none;
+}
+.cdn-pro table.pt th.sortable { cursor: pointer; transition: color 120ms; }
+.cdn-pro table.pt th.sortable:hover { color: var(--text); }
+.cdn-pro table.pt th.sorted { color: var(--text); }
+.cdn-pro table.pt td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  color: var(--text);
+}
+.cdn-pro table.pt tr:last-child td { border-bottom: 0; }
+.cdn-pro table.pt tr:hover td { background: var(--surface-2); }
+.cdn-pro table.pt td.r, .cdn-pro table.pt th.r { text-align: right; }
+.cdn-pro table.pt td.c, .cdn-pro table.pt th.c { text-align: center; }
+.cdn-pro table.pt td.muted, .cdn-pro table.pt .muted { color: var(--text-dim); }
+.cdn-pro table.pt td.up,   .cdn-pro table.pt .up   { color: oklch(0.48 0.08 165); }
+.cdn-pro table.pt td.down, .cdn-pro table.pt .down { color: oklch(0.50 0.16 25); }
+.cdn-pro table.pt td.b, .cdn-pro table.pt .b { font-weight: 600; }
+.cdn-pro table.pt td.ticker {
+  font-weight: 600; letter-spacing: -0.01em;
+}
+.cdn-pro table.pt td.ticker .name {
+  display: block; font-size: 11px; font-weight: 400; color: var(--text-dim); margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; max-width: 220px;
+}
+.cdn-pro table.pt tfoot td {
+  font-weight: 600;
+  /* Solid colour so the sticky footer doesn't show rows bleeding through. */
+  background: #f5f4f0;
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 0;
+  position: sticky; bottom: 0;
+  /* Sit above the previous row's border */
+  box-shadow: 0 -1px 0 rgba(0,0,0,0.10);
+}
+
+/* Filter chip bar */
+.cdn-pro .filterbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 4px 14px;
+  flex-wrap: wrap;
+}
+.cdn-pro .filterbar .chip {
+  height: 30px; padding: 0 14px;
+  border-radius: 999px; font-size: 12px; font-weight: 500;
+  background: var(--surface-2); color: var(--text);
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.cdn-pro .filterbar .chip:hover { background: var(--surface-2); }
+.cdn-pro .filterbar .chip.active { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+.cdn-pro .filterbar .chip.active:hover { background: #000; }
+.cdn-pro .filterbar .spacer { flex: 1; }
+.cdn-pro .filterbar input.search {
+  height: 30px; padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface-2); color: var(--text);
+  border: 0; outline: 0;
+  font-size: 12px; font-family: inherit;
+  width: 220px;
+  transition: background 120ms, width 200ms;
+}
+.cdn-pro .filterbar input.search:focus {
+  background: var(--surface-2);
+  width: 280px;
+}
+.cdn-pro .filterbar input.search::placeholder { color: var(--text-dim); }
+
+/* Group header inside tables */
+.cdn-pro table.pt tr.group-header td {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+/* Range slider — used on the Simulator screen. The track gradient is set on
+   the browser-specific track pseudo-elements (the input's own background
+   sits below the track and never shows). The fill stops at --progress,
+   which the React component sets inline per slider. */
+.cdn-pro .drip-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;       /* room for the 18px thumb */
+  margin: 8px 0 4px;
+  padding: 0;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+.cdn-pro .drip-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    oklch(0.55 0.10 175) 0%,
+    oklch(0.55 0.10 175) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) 100%
+  );
+}
+.cdn-pro .drip-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;     /* center on the 6px track */
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.08);
+  cursor: grab;
+  transition: transform 100ms ease;
+}
+.cdn-pro .drip-slider:active::-webkit-slider-thumb { transform: scale(1.08); cursor: grabbing; }
+.cdn-pro .drip-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    oklch(0.55 0.10 175) 0%,
+    oklch(0.55 0.10 175) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) var(--progress, 0%),
+    rgba(0, 0, 0, 0.18) 100%
+  );
+  border: 0;
+}
+.cdn-pro .drip-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.08);
+  cursor: grab;
+}
+.cdn-pro .drip-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px oklch(0.55 0.10 175 / 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.cdn-pro .drip-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px oklch(0.55 0.10 175 / 0.25), 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Income-simulator curves — left-to-right reveal matches PerformanceChart.
+   The wipe rect inside the clipPath scales from 0 → 1 on mount; endpoint
+   dots and the goal marker fade in after the line completes. Slider edits
+   update path geometry but don't replay the animation (same DOM nodes). */
+.cdn-pro .drip-clip-rect {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: cdn-clip-wipe 1.2s cubic-bezier(0.32, 0, 0.16, 1) both;
+}
+.cdn-pro .drip-endpoints > g {
+  animation: cdn-dot-pop 0.45s 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cdn-pro .drip-fire-marker {
+  animation: cdn-fade-up 0.5s 1.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Progress bar (table goal-progress column) */
+.cdn-pro .pbar {
+  position: relative;
+  height: 6px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.cdn-pro .pbar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Segmented range control */
+.cdn-pro .seg {
+  display: inline-flex; padding: 3px;
+  background: var(--surface-2); border-radius: 999px;
+}
+.cdn-pro .seg button {
+  appearance: none; border: 0; background: transparent;
+  font: inherit; font-size: 11.5px; font-weight: 500;
+  color: var(--text-muted); padding: 4px 10px; border-radius: 999px;
+  cursor: pointer; min-height: 22px;
+  transition: background 120ms, color 120ms;
+}
+.cdn-pro .seg button:hover { color: var(--text); }
+.cdn-pro .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+/* ─────────────────────────────────────────────────────────
+   Calendar heatmap — click-to-open + onboarding pulse
+   ───────────────────────────────────────────────────────── */
+
+/* Reset native button look + tactile hover for cells that have payments. */
+.cdn-pro .heatmap-cell {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  outline: 0;
+  transition:
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 160ms ease;
+}
+.cdn-pro .heatmap-cell.has-events:hover {
+  transform: scale(1.4);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 2px 6px rgba(0,0,0,0.12);
+  z-index: 1;
+}
+.cdn-pro .heatmap-cell.has-events:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px oklch(0.55 0.10 175);
+}
+
+/* Onboarding pulse — radiating ring that fires three times, then stops.
+   Triggered only on the highest-paying cell of the year, only on the
+   user's first visit (gated by localStorage). */
+.cdn-pro .heatmap-cell.is-pulsing {
+  animation: cdn-heatmap-pulse 1.6s cubic-bezier(0.22, 1, 0.36, 1) 3;
+  /* Bump into its own stacking context so the radiating ring isn't clipped
+     by neighbouring cells. */
+  position: relative;
+  z-index: 2;
+}
+@keyframes cdn-heatmap-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 oklch(0.55 0.10 175 / 0.55),
+      0 0 0 0 oklch(0.55 0.10 175 / 0.0);
+  }
+  60% {
+    box-shadow:
+      0 0 0 10px oklch(0.55 0.10 175 / 0),
+      0 0 0 14px oklch(0.55 0.10 175 / 0);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 oklch(0.55 0.10 175 / 0),
+      0 0 0 0 oklch(0.55 0.10 175 / 0);
+  }
+}
+
+/* ─── Day-detail modal ─── */
+.cdn-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 20, 22, 0.40);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+  animation: cdn-backdrop-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cdn-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  width: min(520px, 100%);
+  max-height: min(80vh, 720px);
+  padding: 22px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 22px 60px rgba(0,0,0,0.22);
+  animation: cdn-modal-pop 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  min-height: 0;
+}
+@keyframes cdn-modal-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Add-holding modal — wider than the calendar variant (the form needs room
+   for the lots editor's 4-column grid). The body scrolls internally if the
+   user adds many lots. */
+.cdn-modal.add-holding-modal {
+  width: min(680px, 100%);
+  max-height: min(86vh, 820px);
+}
+.add-holding-modal-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 4px -8px 0;
+  padding: 4px 8px;
+}
+
+.cdn-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(0,0,0,0.04);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  line-height: 1;
+  color: #6e6e73;
+  transition: background 160ms ease, color 160ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-modal-close:hover {
+  background: rgba(0,0,0,0.08);
+  color: #1d1d1f;
+}
+.cdn-modal-close:active { transform: scale(0.95); }
+
+.cdn-modal-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding-right: 38px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: #1d1d1f;
+}
+.cdn-modal-h .num {
+  font-variant-numeric: tabular-nums;
+  color: oklch(0.36 0.08 165);
+}
+
+.cdn-modal-meta {
+  font-size: 12px;
+  color: #86868b;
+  font-weight: 500;
+}
+
+.cdn-modal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+  min-height: 0;
+  margin: 6px -10px 0;
+  padding: 0 2px;
+}
+
+.cdn-modal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  transition: background 160ms ease;
+}
+.cdn-modal-row + .cdn-modal-row {
+  border-top: 1px solid rgba(0,0,0,0.04);
+}
+.cdn-modal-row:hover {
+  background: rgba(0,0,0,0.025);
+}
+.cdn-modal-row .left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+.cdn-modal-row .left .t {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #1d1d1f;
+}
+.cdn-modal-row .left .n {
+  font-size: 11px;
+  color: #86868b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+  margin-top: 1px;
+}
+.cdn-modal-row .right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.cdn-modal-row .right .amt {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #1d1d1f;
+}
+.cdn-modal-row .right .proj {
+  font-size: 9.5px;
+  color: #86868b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 1px;
+}
+
+/* Slim hover hint — shown when the user hovers a payment cell, calls
+   out the click affordance ("Click to see all →") so option-5's pulse
+   isn't the only discovery signal. Portal'd to <body>. */
+.cdn-hover-hint {
+  background: #1d1d1f;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+  font-size: 12px;
+  font-feature-settings: "tnum";
+  animation: cdn-hint-in 160ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-hover-hint .t {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 2px;
+  letter-spacing: -0.01em;
+}
+.cdn-hover-hint .meta {
+  color: rgba(255,255,255,0.65);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+.cdn-hover-hint .cta {
+  font-size: 10.5px;
+  color: oklch(0.78 0.10 175);
+  font-weight: 500;
+  border-top: 1px solid rgba(255,255,255,0.10);
+  padding-top: 5px;
+  letter-spacing: 0.01em;
+}
+@keyframes cdn-hint-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Respect reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .heatmap-cell.is-pulsing,
+  .cdn-modal-backdrop,
+  .cdn-modal,
+  .cdn-hover-hint {
+    animation: none !important;
+  }
+  .cdn-pro .heatmap-cell {
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Diversification — entrance + interaction polish
+   ───────────────────────────────────────────────────────── */
+
+/* Hero entrance — fades up once on first paint. */
+.cdn-pro .pro-hero {
+  animation: cdn-fade-up 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .pro-hero h1 { animation: cdn-fade-up 0.8s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cdn-pro .pro-hero .sub { animation: cdn-fade-up 0.8s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cdn-pro .pro-hero .right-meta { animation: cdn-fade-up 0.8s 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Card entrance — set --i on the wrapper to stagger neighbours. */
+.cdn-pro .cdn-anim {
+  animation: cdn-fade-up 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 110ms + 120ms);
+}
+
+@keyframes cdn-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Hover lift — gentle drop shadow + 1px translateY on interactive cards. */
+.cdn-pro .pcard {
+  transition:
+    box-shadow 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.cdn-pro .pcard.interactive:hover {
+  box-shadow: 0 2px 5px rgba(0,0,0,.045), 0 10px 26px rgba(0,0,0,.06);
+  transform: translateY(-1px);
+}
+
+/* ─── Donut card ─── */
+.cdn-pro .donut-card .donut-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.cdn-pro .donut-card .donut-svg-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.cdn-pro .donut-card .donut-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* Mask sweep — reveals the entire donut clockwise from 12 o'clock. */
+.cdn-pro .donut-card .donut-reveal {
+  animation-name: cdn-donut-draw;
+  animation-timing-function: cubic-bezier(0.32, 0, 0.16, 1);
+  animation-fill-mode: both;
+}
+@keyframes cdn-donut-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* Slice visuals — entry is handled by the mask sweep above; here we only
+   define resting + hover state so slices are crisp + interactive. */
+.cdn-pro .donut-card .slice {
+  transform-box: view-box;
+  transform-origin: 65px 65px;
+  transition:
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  cursor: pointer;
+}
+.cdn-pro .donut-card .slice.is-hovered {
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,0.18));
+  transform: scale(1.045);
+}
+.cdn-pro .donut-card .slice.is-dim {
+  opacity: 0.22;
+  filter: saturate(0.6);
+}
+
+/* Centre label fades in after the donut sweep finishes, then cross-fades on hover. */
+.cdn-pro .donut-card .donut-center {
+  pointer-events: none;
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: cdn-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--center-delay, 800ms);
+  transform-box: view-box;
+  transform-origin: 65px 65px;
+}
+.cdn-pro .donut-card .donut-center text {
+  transition: font-size 220ms ease, fill 220ms ease, letter-spacing 220ms ease;
+}
+.cdn-pro .donut-card .donut-center .cv {
+  font-size: 24px; font-weight: 600;
+  fill: var(--text);
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.cdn-pro .donut-card .donut-center.is-hovered .cv {
+  font-size: 20px;
+}
+.cdn-pro .donut-card .donut-center .cl {
+  font-size: 10.5px;
+  fill: var(--text-dim);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cdn-pro .donut-card .donut-center.is-hovered .cl {
+  fill: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Legend — staggered entry + hover-sync with slices. */
+.cdn-pro .donut-card .donut-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cdn-pro .donut-card .legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: 6px;
+  cursor: default;
+  animation: cdn-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    background 220ms ease,
+    opacity 220ms ease,
+    color 220ms ease,
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .donut-card .legend-row .dot {
+  width: 8px; height: 8px; border-radius: 2px;
+  flex-shrink: 0;
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease;
+}
+.cdn-pro .donut-card .legend-row .label {
+  flex: 1;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+.cdn-pro .donut-card .legend-row .value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: right;
+  color: var(--text);
+  transition: font-weight 200ms ease, color 200ms ease;
+}
+.cdn-pro .donut-card .legend-row.is-hovered {
+  background: var(--surface-2);
+  transform: translateX(1px);
+}
+.cdn-pro .donut-card .legend-row.is-hovered .dot {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+.cdn-pro .donut-card .legend-row.is-hovered .value { font-weight: 600; }
+.cdn-pro .donut-card .legend-row.is-dim { opacity: 0.42; }
+.cdn-pro .donut-card .legend-row.is-dim .label,
+.cdn-pro .donut-card .legend-row.is-dim .value { color: var(--text-dim); }
+.cdn-pro .donut-card .legend-tail {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  padding-left: 6px;
+  animation: cdn-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: opacity 220ms ease;
+}
+.cdn-pro .donut-card .donut-row.is-dimming .legend-tail { opacity: 0.4; }
+
+/* ─── Sector detail table ─── */
+.cdn-pro .sector-detail-table tr.sector-row {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: opacity 220ms ease;
+}
+.cdn-pro .sector-detail-table tr.sector-row td {
+  transition: background 200ms ease, color 200ms ease;
+}
+/* Suppress the default global "tr:hover" rule so only React-driven hover wins. */
+.cdn-pro .sector-detail-table tr:hover td { background: transparent; }
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered td {
+  background: var(--surface-2);
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered td:first-child {
+  box-shadow: inset 2px 0 0 oklch(0.55 0.10 175);
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-dim { opacity: 0.5; }
+.cdn-pro .sector-detail-table tr.sector-row.is-dim td { color: var(--text-dim); }
+.cdn-pro .sector-detail-table tr.sector-row.is-dim .row-dot { filter: saturate(0.4); }
+.cdn-pro .sector-detail-table tr.sector-row .row-dot {
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease,
+    filter 240ms ease;
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered .row-dot {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+}
+
+/* Bench bar — grows from centre, glows when its row is hovered. */
+.cdn-pro .bench-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+.cdn-pro .bench-track {
+  flex: 1;
+  position: relative;
+  height: 12px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  overflow: visible;
+}
+.cdn-pro .bench-mid {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  background: var(--surface-hover);
+}
+.cdn-pro .bench-fill {
+  position: absolute;
+  top: 2px; bottom: 2px;
+  border-radius: 4px;
+  transition: filter 240ms ease, box-shadow 240ms ease;
+}
+.cdn-pro .bench-fill.pos {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .bench-fill.neg {
+  transform-origin: right center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-bench-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered .bench-fill {
+  filter: brightness(1.06) saturate(1.15);
+  box-shadow: 0 1px 5px rgba(0,0,0,0.10);
+}
+.cdn-pro .bench-num {
+  font-size: 11px;
+  font-weight: 500;
+  min-width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .sector-detail-table tr.sector-row.is-hovered .bench-num {
+  transform: translateX(-1px) scale(1.04);
+}
+
+/* ─── Concentration metric bars ─── */
+.cdn-pro .concentration-card .metric-row {
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  transition: background 200ms ease;
+}
+.cdn-pro .concentration-card .metric-row:hover {
+  background: var(--surface-2);
+}
+.cdn-pro .concentration-card .metric-row .metric-value {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .concentration-card .metric-row:hover .metric-value {
+  transform: translateY(-1px);
+}
+.cdn-pro .concentration-card .pbar {
+  overflow: hidden;
+}
+.cdn-pro .concentration-card .pbar > i {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 200ms ease;
+}
+.cdn-pro .concentration-card .metric-row:hover .pbar > i {
+  filter: brightness(1.05) saturate(1.1);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Performance + Forecast — chart wipes, line draws, dot fades
+   ───────────────────────────────────────────────────────── */
+
+/* PerformanceChart — clipPath rect wipes left-to-right to reveal lines + area. */
+.cdn-pro .perf-clip-rect {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: cdn-clip-wipe 1.4s cubic-bezier(0.32, 0, 0.16, 1) both;
+}
+@keyframes cdn-clip-wipe {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* Endpoint dots arrive once the line has reached its terminus. */
+.cdn-pro .perf-endpoints > div {
+  animation: cdn-dot-pop 0.45s 1.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-dot-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Range segment buttons — gentle press feedback. */
+.cdn-pro .seg button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+/* ─── ForecastChart ─── */
+.cdn-pro .fc-bar {
+  transform-origin: bottom center;
+  animation: cdn-bar-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 220ms ease;
+  will-change: transform;
+}
+.cdn-pro .fc-value-label {
+  animation: cdn-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .fc-clip-rect {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: cdn-clip-wipe 1s 0.6s cubic-bezier(0.32, 0, 0.16, 1) both;
+}
+.cdn-pro .fc-dot {
+  animation: cdn-dot-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Performance + Forecast — table row stagger ─── */
+.cdn-pro .period-returns-card tbody tr,
+.cdn-pro .winners-card tbody tr,
+.cdn-pro .losers-card tbody tr,
+.cdn-pro .risk-card tbody tr,
+.cdn-pro .forecast-holdings-card tbody tr {
+  animation: cdn-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: background 220ms ease;
+}
+/* Up to 12 rows of stagger per table — beyond that we just reuse the last delay. */
+.cdn-pro .period-returns-card tbody tr:nth-child(1),
+.cdn-pro .winners-card tbody tr:nth-child(1),
+.cdn-pro .losers-card tbody tr:nth-child(1),
+.cdn-pro .risk-card tbody tr:nth-child(1) { animation-delay: 320ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(2),
+.cdn-pro .winners-card tbody tr:nth-child(2),
+.cdn-pro .losers-card tbody tr:nth-child(2),
+.cdn-pro .risk-card tbody tr:nth-child(2) { animation-delay: 370ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(3),
+.cdn-pro .winners-card tbody tr:nth-child(3),
+.cdn-pro .losers-card tbody tr:nth-child(3),
+.cdn-pro .risk-card tbody tr:nth-child(3) { animation-delay: 420ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(4),
+.cdn-pro .winners-card tbody tr:nth-child(4),
+.cdn-pro .losers-card tbody tr:nth-child(4),
+.cdn-pro .risk-card tbody tr:nth-child(4) { animation-delay: 470ms; }
+.cdn-pro .period-returns-card tbody tr:nth-child(5),
+.cdn-pro .winners-card tbody tr:nth-child(5),
+.cdn-pro .losers-card tbody tr:nth-child(5),
+.cdn-pro .risk-card tbody tr:nth-child(5) { animation-delay: 520ms; }
+.cdn-pro .winners-card tbody tr:nth-child(n+6),
+.cdn-pro .losers-card tbody tr:nth-child(n+6),
+.cdn-pro .risk-card tbody tr:nth-child(n+6) { animation-delay: 570ms; }
+.cdn-pro .risk-card tbody tr:nth-child(7) { animation-delay: 620ms; }
+.cdn-pro .risk-card tbody tr:nth-child(8) { animation-delay: 670ms; }
+.cdn-pro .risk-card tbody tr:nth-child(9) { animation-delay: 720ms; }
+.cdn-pro .risk-card tbody tr:nth-child(n+10) { animation-delay: 770ms; }
+
+/* Hover dim on the data tables — uses :has() for sibling fade. */
+.cdn-pro .period-returns-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .winners-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .losers-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .risk-card tbody:has(tr:hover) tr:not(:hover),
+.cdn-pro .forecast-holdings-table tbody:has(tr:hover) tr:not(:hover) {
+  opacity: 0.45;
+  transition: opacity 220ms ease;
+}
+.cdn-pro .period-returns-card tbody tr,
+.cdn-pro .winners-card tbody tr,
+.cdn-pro .losers-card tbody tr,
+.cdn-pro .risk-card tbody tr,
+.cdn-pro .forecast-holdings-table tbody tr {
+  transition: opacity 220ms ease, background 220ms ease;
+}
+
+/* Holding share bars (forecast table) grow like contributor bars. */
+.cdn-pro .holding-bar > i {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 200ms ease;
+}
+.cdn-pro .forecast-holdings-table tbody tr:hover .holding-bar > i {
+  filter: brightness(1.06) saturate(1.1);
+}
+
+/* Cashflow rows soft fade-in within their card. */
+.cdn-pro .cashflow-card > div > div {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .cashflow-card > div > div:nth-child(1) { animation-delay: 360ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(2) { animation-delay: 420ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(3) { animation-delay: 480ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(4) { animation-delay: 540ms; }
+.cdn-pro .cashflow-card > div > div:nth-child(5) { animation-delay: 600ms; }
+
+/* Growth scenarios card — value pulses up on first paint. */
+.cdn-pro .growth-card .num {
+  animation: cdn-fade-up 0.7s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Reduced-motion: cancel all chart entrance animations + force clip to full. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .perf-clip-rect,
+  .cdn-pro .perf-endpoints > div,
+  .cdn-pro .fc-bar,
+  .cdn-pro .fc-value-label,
+  .cdn-pro .fc-clip-rect,
+  .cdn-pro .fc-dot,
+  .cdn-pro .period-returns-card tbody tr,
+  .cdn-pro .winners-card tbody tr,
+  .cdn-pro .losers-card tbody tr,
+  .cdn-pro .risk-card tbody tr,
+  .cdn-pro .forecast-holdings-card tbody tr,
+  .cdn-pro .holding-bar > i,
+  .cdn-pro .cashflow-card > div > div,
+  .cdn-pro .growth-card .num {
+    animation: none !important;
+  }
+  .cdn-pro .perf-clip-rect,
+  .cdn-pro .fc-clip-rect {
+    transform: scaleX(1) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Dashboard — entrance + interaction polish
+   ───────────────────────────────────────────────────────── */
+
+/* Hero stat tiles — cascade in inside the strip without the strip itself
+   doing anything extra (the parent .cdn-anim already fades up the row). */
+.cdn-pro .dash-stats .tile {
+  animation: cdn-fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 80ms + 200ms);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease;
+}
+.cdn-pro .dash-stats .tile:hover {
+  background: var(--bg);
+}
+.cdn-pro .dash-stats .tile .v {
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .dash-stats .tile:hover .v { transform: translateY(-1px); }
+
+/* ─── Income rhythm chart ─── */
+.cdn-pro .irc-col { transition: opacity 220ms ease; }
+.cdn-pro .irc-col.is-dim { opacity: 0.4; }
+.cdn-pro .irc-col.is-hovered { opacity: 1; }
+
+/* Forecast chart bars — same hover-dim treatment as IncomeRhythmChart. */
+.cdn-pro .fc-col { transition: opacity 220ms ease; }
+.cdn-pro .fc-col.is-dim { opacity: 0.4; }
+.cdn-pro .fc-col.is-hovered { opacity: 1; }
+.cdn-pro .fc-col:focus-visible {
+  outline: 2px solid oklch(0.55 0.10 175);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.cdn-pro .irc-bar-stack {
+  transform-origin: bottom center;
+  animation: cdn-bar-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+.cdn-pro .irc-bar { transition: background 200ms ease; }
+
+/* Now line + label slide in once the bars are well underway. */
+.cdn-pro .irc-now-line,
+.cdn-pro .irc-now-label {
+  animation: cdn-fade-up 0.5s 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Range segmented control — buttons get a soft active flash. */
+.cdn-pro .seg button {
+  transition:
+    background 220ms ease,
+    color 220ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms ease;
+}
+.cdn-pro .seg button.on {
+  transform: translateY(-0.5px);
+}
+
+/* ─── Top contributors ─── */
+.cdn-pro .contrib-row {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-pro .contributors-card .contrib-row:hover {
+  transform: translateX(2px);
+}
+.cdn-pro .contrib-bar > i {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: filter 200ms ease;
+}
+.cdn-pro .contrib-row:hover .contrib-bar > i {
+  filter: brightness(1.06) saturate(1.1);
+}
+
+/* ─── Coming up rows ─── */
+.cdn-pro .upcoming-row {
+  animation: cdn-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: background 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 6px;
+  margin: 0 -6px;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+.cdn-pro .upcoming-card .upcoming-row:hover {
+  background: var(--surface-2);
+  transform: translateX(1px);
+}
+
+/* ─── Passive-income progress bar ─── */
+.cdn-pro .fire-fill {
+  transform-origin: left center;
+  animation: cdn-bench-grow 1.1s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-pro .fire-card:hover .fire-fill {
+  filter: brightness(1.05) saturate(1.08);
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .dash-stats .tile,
+  .cdn-pro .irc-bar-stack,
+  .cdn-pro .irc-now-line,
+  .cdn-pro .irc-now-label,
+  .cdn-pro .contrib-row,
+  .cdn-pro .contrib-bar > i,
+  .cdn-pro .upcoming-row,
+  .cdn-pro .fire-fill {
+    animation: none !important;
+  }
+  .cdn-pro .irc-col,
+  .cdn-pro .irc-bar,
+  .cdn-pro .dash-stats .tile {
+    transition-duration: 1ms !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdn-pro .pro-hero,
+  .cdn-pro .pro-hero h1,
+  .cdn-pro .pro-hero .sub,
+  .cdn-pro .pro-hero .right-meta,
+  .cdn-pro .cdn-anim,
+  .cdn-pro .donut-card .legend-row,
+  .cdn-pro .donut-card .legend-tail,
+  .cdn-pro .donut-card .donut-center,
+  .cdn-pro .sector-detail-table tr.sector-row,
+  .cdn-pro .bench-fill.pos,
+  .cdn-pro .bench-fill.neg,
+  .cdn-pro .concentration-card .pbar > i {
+    animation: none !important;
+  }
+  /* Force the mask sweep to "done" so slices stay visible without motion. */
+  .cdn-pro .donut-card .donut-reveal {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .cdn-pro .pcard,
+  .cdn-pro .donut-card .slice,
+  .cdn-pro .donut-card .legend-row,
+  .cdn-pro .donut-card .donut-center text {
+    transition-duration: 1ms !important;
+  }
+}

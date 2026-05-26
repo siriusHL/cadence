@@ -570,3 +570,953 @@ a.cdn-free .fnav .right .plan,
 }
 
 .cdn-fade-in { animation: cdn-fade-in 180ms ease-out both; }
+
+/* ─────────────────────────────────────────────────────────
+   Mobile shell — ported from templates/tokens.css (.mob)
+   ─────────────────────────────────────────────────────────
+   Each authenticated page renders both a desktop tree AND a
+   mobile tree; the .cdn-mobile-only / .cdn-desktop-only
+   utilities decide which is visible. SSR-safe (no JS viewport
+   detection). The `.mob` styles are scoped — they only apply
+   inside a wrapper that opts in.
+   ───────────────────────────────────────────────────────── */
+
+/* Visibility toggles — mobile shows by default at desktop sizes only via media query below */
+.cdn-mobile-only  { display: none; }
+.cdn-desktop-only { display: contents; }
+
+@media (max-width: 640px) {
+  .cdn-mobile-only  { display: block; }
+  .cdn-desktop-only { display: none !important; }
+
+  /* The .cdn-free chrome (.fnav + .scroll padding) gets out of the
+     way at phone size — the mobile shell owns the entire viewport. */
+  .cdn-free .fnav { display: none !important; }
+  .cdn-free .scroll {
+    padding: 0 !important;
+    /* Stop the layout's outer scroll from competing with `.mob .scroll`
+       on mobile — without this, a 100dvh `.mob` plus iOS Safari's
+       toolbar dance can let the outer container scroll too, producing
+       a weird "scroll-through" effect. The inner `.mob .scroll` is the
+     sole scroll container on phone size. */
+    overflow: hidden !important;
+    /* iOS Safari: respect the home-indicator safe area at the bottom */
+    padding-bottom: max(0px, env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Make `.mob` itself the scroll container — simplest reliable
+     pattern on mobile. Nested scroll containers (the old
+     `.mob > .scroll` overflow-auto inside `.mob` overflow-hidden) are
+     fragile across browsers and famously break touch scrolling on
+     some devices. Here `.mob` is exactly viewport-tall and scrolls
+     its own content as a single, normal-block-flow column. The
+     topbar and tabbar stay visible via `position: sticky` (defined
+     below). */
+  .mob {
+    display: block !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Topbar sticks to the top of the scroll viewport. Background is
+     opaque so scrolling content slides UNDER it cleanly. */
+  .mob .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+  }
+  /* Tabbar sticks to the bottom — the headline fix the user asked
+     for. The tabbar already has a translucent backdrop-filter
+     background, so just position-stick it. */
+  .mob .tabbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+  /* Inner `.scroll` is no longer the scroll container — it's just a
+     pass-through wrapper around page content. Disabling its overflow
+     prevents double scroll containers from fighting for touch. */
+  .mob .scroll {
+    overflow: visible !important;
+    min-height: 0;
+  }
+  /* Drawer + scrim and FAB switch to position: fixed so they stay
+     anchored to the viewport regardless of `.mob`'s scroll position
+     (otherwise they'd scroll along with content as it slides). */
+  .mob .drawer-scrim,
+  .mob .drawer,
+  .mob.v2b .fab {
+    position: fixed !important;
+  }
+  .mob .drawer-scrim { inset: 0; }
+  .mob .drawer { top: 0; bottom: 0; left: 0; }
+  .mob.v2b .fab {
+    right: 18px;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ────────── .mob shell ────────── */
+.mob {
+  --pad: 16px;
+  --card-r: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  height: 100%;
+  width: 100%;
+  /* Use CSS grid (auto/1fr/auto) instead of flex column. The `1fr`
+     middle row is a *definite* height — unlike `flex: 1; min-height: 0`
+     which is famously unreliable across browsers for activating an
+     inner `overflow-y: auto`. With grid, the topbar/tabbar take their
+     content sizes, and the scroll row gets the exact remaining viewport
+     height so its `overflow-y: auto` engages every time. */
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  /* Drawer + scrim are `position: absolute` so they overlay the grid
+     without consuming a row. The bottom-tab "More" button etc. are
+     inside the tabbar nav, also fine. */
+  position: relative;
+  overflow: hidden;
+}
+.mob[data-density="compact"] { --pad: 12px; --card-r: 14px; }
+.mob[data-density="comfy"]   { --pad: 20px; --card-r: 18px; }
+
+.mob .scroll {
+  /* Lives in the `1fr` middle row, so its height is already definite —
+     no need for `flex: 1; min-height: 0`. `min-height: 0` is still
+     useful as a defense against legacy flex-min behaviour in case any
+     ancestor still uses flex. */
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.mob .scroll::-webkit-scrollbar { display: none; }
+
+/* topbar */
+.mob .topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px var(--pad) 6px;
+  flex-shrink: 0;
+}
+.mob .topbar .portfolio-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 500; color: var(--text);
+  padding: 5px 10px 5px 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.mob .topbar .portfolio-chip .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-soft, oklch(0.55 0.10 175));
+}
+.mob .topbar .portfolio-chip .chev {
+  width: 12px; height: 12px; color: var(--text-dim);
+}
+.mob .topbar .actions { display: flex; gap: 8px; align-items: center; }
+.mob .icon-btn {
+  width: 34px; height: 34px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); cursor: pointer;
+}
+.mob .icon-btn.no-bg { background: transparent; border: 0; }
+.mob .avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, oklch(0.85 0.06 175), oklch(0.70 0.08 195));
+  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+}
+
+/* hero treatments */
+.mob .hero { padding: 8px var(--pad) 12px; }
+.mob .hero .eyebrow {
+  font-size: 11px; color: var(--text-muted); font-weight: 500;
+  margin-bottom: 6px;
+}
+.mob .hero h1 {
+  margin: 0; font-size: 38px; line-height: 1.05; letter-spacing: -0.03em;
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.mob .hero h1 .cur { font-weight: 400; color: var(--text-dim); font-size: 22px; vertical-align: top; margin-right: 2px; line-height: 1.5; }
+.mob .hero h1 .frac { color: var(--text-dim); font-weight: 400; }
+.mob .hero .sub {
+  margin-top: 8px;
+  font-size: 13px; color: var(--text-muted); line-height: 1.45;
+}
+.mob .hero .sub b { font-weight: 600; color: var(--text); }
+.mob .hero .sub .up { color: var(--up); font-weight: 600; }
+.mob .hero .sub .down { color: var(--down); font-weight: 600; }
+.mob .hero.big h1 { font-size: 56px; letter-spacing: -0.04em; line-height: 1; }
+.mob .hero.big h1 .cur { font-size: 30px; }
+.mob .hero.center { text-align: center; padding-top: 24px; padding-bottom: 18px; }
+.mob .hero.center .sub { max-width: 320px; margin-left: auto; margin-right: auto; }
+
+/* stat grid */
+.mob .stat-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--border);
+  border-radius: 14px; overflow: hidden;
+  margin: 0 var(--pad);
+}
+.mob .stat-grid .tile {
+  background: var(--surface);
+  padding: 14px 14px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.mob[data-density="compact"] .stat-grid .tile { padding: 12px 12px; }
+.mob .stat-grid .tile .l { font-size: 10.5px; color: var(--text-dim); font-weight: 500; }
+.mob .stat-grid .tile .v {
+  font-size: 22px; font-weight: 600; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.1;
+  margin-top: 2px;
+}
+.mob .stat-grid .tile .v .cur { font-size: 13px; color: var(--text-dim); font-weight: 400; vertical-align: top; margin-right: 1px; line-height: 1.5; }
+.mob .stat-grid .tile .v .pct { font-size: 14px; color: var(--text-dim); font-weight: 400; }
+.mob .stat-grid .tile .d { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+
+/* horizontal stat-scroll */
+.mob .stat-scroll {
+  display: flex; gap: 10px;
+  padding: 0 var(--pad) 4px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.mob .stat-scroll::-webkit-scrollbar { display: none; }
+.mob .stat-scroll .tile {
+  flex: 0 0 60%;
+  scroll-snap-align: start;
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+}
+.mob .stat-scroll .tile .l { font-size: 11px; color: var(--text-dim); font-weight: 500; }
+.mob .stat-scroll .tile .v {
+  font-size: 24px; font-weight: 600; letter-spacing: -0.025em;
+  margin-top: 4px; font-variant-numeric: tabular-nums;
+}
+.mob .stat-scroll .tile .v .cur { font-size: 14px; color: var(--text-dim); font-weight: 400; vertical-align: top; margin-right: 1px; }
+.mob .stat-scroll .tile .d { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* pcard — mobile */
+.mob .pcard {
+  background: var(--surface);
+  border-radius: var(--card-r);
+  border: 1px solid var(--border);
+  padding: 14px var(--pad);
+  margin: 12px var(--pad) 0;
+}
+.mob[data-density="compact"] .pcard { padding: 12px 14px; margin-top: 10px; }
+.mob[data-density="comfy"] .pcard { padding: 18px; margin-top: 14px; }
+.mob .pcard.flush { margin-left: 0; margin-right: 0; border-radius: 0; border-left: 0; border-right: 0; }
+.mob .pcard-h {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.mob .pcard-h .t { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.mob .pcard-h .sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.mob .pcard-h .tag {
+  font-size: 10.5px; padding: 3px 8px; border-radius: 999px;
+  background: var(--surface-2); color: var(--text-muted); font-weight: 500;
+}
+.mob .pcard-h .more { font-size: 12px; color: var(--accent); font-weight: 500; cursor: pointer; }
+
+/* pill */
+.mob .ppill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10.5px; font-weight: 500;
+  padding: 3px 8px; border-radius: 999px;
+  background: var(--surface-2); color: var(--text);
+}
+.mob .ppill.up   { background: var(--up-bg, oklch(0.94 0.04 165)); color: var(--up-fg, oklch(0.36 0.08 165)); }
+.mob .ppill.live::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--up); box-shadow: 0 0 0 3px oklch(0.55 0.10 165 / 0.18);
+}
+
+/* progress bar */
+.mob .pbar {
+  position: relative; height: 4px; border-radius: 2px;
+  background: var(--surface-2); overflow: hidden;
+}
+.mob .pbar > i {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: var(--accent-soft, oklch(0.55 0.10 175));
+  border-radius: 2px; display: block;
+}
+
+/* list rows */
+.mob .listrow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.mob .listrow:last-child { border-bottom: 0; }
+.mob .listrow .logo {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--surface-2);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 10px; color: var(--text); letter-spacing: 0.02em;
+  flex-shrink: 0; overflow: hidden;
+}
+.mob .listrow .body { flex: 1; min-width: 0; }
+.mob .listrow .body .t {
+  font-size: 13px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mob .listrow .body .n {
+  font-size: 11px; color: var(--text-dim); margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mob .listrow .right { text-align: right; }
+.mob .listrow .right .v { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mob .listrow .right .s { font-size: 10.5px; color: var(--text-dim); margin-top: 1px; font-variant-numeric: tabular-nums; }
+
+/* date bubble for upcoming */
+.mob .datebubble {
+  width: 38px; flex-shrink: 0; text-align: center;
+}
+.mob .datebubble .d {
+  font-size: 17px; font-weight: 600; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; color: var(--text);
+}
+.mob .datebubble .m {
+  font-size: 9px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+}
+
+/* bottom tab bar */
+.mob .tabbar {
+  /* Pinned to the bottom of `.mob` via the flex column layout — last
+     child, doesn't shrink. The chassis fix in the mobile media query
+     above (`.cdn-mobile-only` filling its parent + `.cdn-free .scroll`
+     locking its own overflow) ensures `.mob` itself is exactly the
+     viewport height, so "bottom of `.mob`" == "bottom of the screen". */
+  flex-shrink: 0;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  padding: 6px 4px max(6px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+.mob .tabbar .tab {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 6px 2px;
+  font-size: 10px; font-weight: 500; color: var(--text-dim);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  border-radius: 12px;
+  text-decoration: none;
+}
+.mob .tabbar .tab.is-active { color: var(--text); }
+.mob .tabbar .tab .ico {
+  width: 22px; height: 22px; color: currentColor;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* drawer */
+.mob .drawer-scrim {
+  /* Absolute relative to `.mob` (viewport-tall, see chassis fix). */
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 30;
+  opacity: 0; pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.mob .drawer-scrim.open { opacity: 1; pointer-events: auto; }
+.mob .drawer {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: 78%; max-width: 320px;
+  background: var(--surface);
+  z-index: 31;
+  transform: translateX(-100%);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex; flex-direction: column;
+  padding: 16px;
+  overflow-y: auto;
+}
+.mob .drawer.open { transform: translateX(0); }
+/* Right-side variant — used by the account drawer triggered by the avatar.
+   Mirrors the navigation drawer so the visual language stays the same;
+   only the slide direction flips. */
+.mob .drawer.right {
+  left: auto; right: 0;
+  transform: translateX(100%);
+}
+.mob .drawer.right.open { transform: translateX(0); }
+.mob .drawer .acct-head {
+  padding: 8px 6px 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.mob .drawer .acct-head .email {
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.005em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mob .drawer .acct-head .plan {
+  margin-top: 4px;
+  font-size: 11px; font-weight: 500;
+  color: var(--text-dim);
+}
+.mob .drawer .acct-head .plan.pro,
+.mob .drawer .acct-head .plan.elite { color: var(--text); }
+.mob .drawer .navitem.danger { color: var(--down, oklch(0.50 0.18 25)); }
+.mob .drawer .navitem.danger .ico { color: var(--down, oklch(0.50 0.18 25)); }
+.mob .drawer .navitem:disabled { opacity: 0.55; cursor: wait; }
+.mob .drawer .brand {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 8px 6px 22px;
+}
+.mob .drawer .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-soft, oklch(0.55 0.10 175)); }
+.mob .drawer .group-h {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-dim); font-weight: 600;
+  padding: 14px 6px 6px;
+}
+.mob .drawer .navitem {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 8px; border-radius: 10px;
+  font-size: 14px; color: var(--text); font-weight: 500;
+  cursor: pointer; text-decoration: none;
+}
+.mob .drawer .navitem:hover,
+.mob .drawer .navitem.is-active { background: var(--surface-2); }
+.mob .drawer .navitem .ico { width: 18px; height: 18px; color: var(--text-dim); }
+.mob .drawer .navitem.is-active .ico { color: var(--accent); }
+.mob .drawer .plan-foot {
+  margin-top: auto;
+  padding: 14px;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+
+/* mobile fade-up */
+@keyframes mob-fadeup {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.mob .cdn-anim {
+  animation: mob-fadeup 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mob .cdn-anim { animation: none; }
+}
+
+/* ────────────────────────────────────────────────────────────
+   .mob.v2b — "V2 breathing" chassis. Centered hero, paired
+   stat cards, taller contributors/upcoming rows. Used by every
+   tier's mobile screens (templates/dashboard-v2.jsx is the
+   reference; tokens copied verbatim where reasonable).
+   ──────────────────────────────────────────────────────────── */
+.mob.v2b {
+  --pad: 22px;
+  --card-r: 18px;
+  --gap: 22px;
+}
+.mob.v2b[data-density="compact"] { --pad: 16px; --gap: 14px; --card-r: 16px; }
+.mob.v2b[data-density="comfy"]   { --pad: 26px; --gap: 28px; --card-r: 20px; }
+
+.mob.v2b .topbar { padding: 10px var(--pad) 4px; }
+
+.mob.v2b .hero {
+  text-align: center;
+  padding: 36px var(--pad) 24px;
+}
+.mob.v2b[data-density="compact"] .hero { padding: 24px var(--pad) 18px; }
+.mob.v2b[data-density="comfy"]   .hero { padding: 44px var(--pad) 32px; }
+.mob.v2b .hero .eyebrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.mob.v2b .hero h1 {
+  margin: 0;
+  font-size: 64px;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.mob.v2b[data-density="compact"] .hero h1 { font-size: 54px; }
+.mob.v2b[data-density="comfy"]   .hero h1 { font-size: 72px; }
+.mob.v2b .hero h1 .cur {
+  font-weight: 400; color: var(--text-dim);
+  font-size: 0.55em; vertical-align: top; line-height: 1.4;
+  margin-right: 4px;
+}
+.mob.v2b .hero h1 .frac {
+  font-weight: 400; color: var(--text-dim);
+  font-size: 0.55em;
+}
+.mob.v2b .hero .delta {
+  margin-top: 22px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.mob.v2b .hero .delta .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background: var(--up-bg, oklch(0.94 0.04 165));
+  color: var(--up-fg, oklch(0.36 0.08 165));
+  font-weight: 600;
+  font-size: 13px;
+}
+.mob.v2b .hero .delta .pill.down {
+  background: oklch(0.95 0.04 25);
+  color: var(--down);
+}
+.mob.v2b .hero .delta .pill .arrow { font-size: 10px; line-height: 1; }
+
+/* Paired stat cards — two side-by-side mini cards under the hero */
+.mob.v2b .stat-paired {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 10px;
+  padding: 0 var(--pad);
+  margin-top: var(--gap);
+}
+.mob.v2b[data-density="compact"] .stat-paired { gap: 8px; }
+.mob.v2b[data-density="comfy"]   .stat-paired { gap: 14px; }
+.mob.v2b .stat-paired .pcard-mini {
+  background: var(--surface);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 14px 14px 16px;
+  display: flex; flex-direction: column;
+}
+.mob.v2b .stat-paired .pcard-mini .ph {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.005em;
+  margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+}
+.mob.v2b .stat-paired .pcard-mini .ph .chev {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.mob.v2b .stat-paired .paired-vals {
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 8px;
+}
+.mob.v2b .stat-paired .paired-vals .num {
+  font-family: var(--font-sans);
+  font-variant-numeric: normal;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.mob.v2b .stat-paired .paired-vals .num.a { color: var(--text); }
+.mob.v2b .stat-paired .paired-vals .num.b { color: var(--up-fg, oklch(0.36 0.08 165)); }
+.mob.v2b .stat-paired .paired-vals .num .cur {
+  font-size: 0.7em; color: var(--text-dim); font-weight: 400;
+  vertical-align: baseline; margin-right: 1px;
+}
+.mob.v2b .stat-paired .paired-vals .sep {
+  font-size: 16px; font-weight: 400; color: var(--text-dim);
+  line-height: 1;
+}
+.mob.v2b .stat-paired .paired-bar {
+  display: flex; gap: 3px;
+  height: 6px;
+  margin-top: 12px;
+}
+.mob.v2b .stat-paired .paired-bar .a {
+  background: var(--text); opacity: 0.78;
+  border-radius: 3px;
+}
+.mob.v2b .stat-paired .paired-bar .b {
+  background: var(--up); opacity: 0.85;
+  border-radius: 3px;
+}
+.mob.v2b .stat-paired .paired-foot {
+  display: flex; justify-content: space-between;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.mob.v2b .stat-paired .stacked-rows {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.mob.v2b .stat-paired .stacked-rows .srow {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px;
+}
+.mob.v2b .stat-paired .stacked-rows .srow .name {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.mob.v2b .stat-paired .stacked-rows .srow .val {
+  font-family: var(--font-sans);
+  font-variant-numeric: normal;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.mob.v2b .stat-paired .stacked-rows .srow .val.up { color: var(--up-fg, oklch(0.36 0.08 165)); }
+.mob.v2b .stat-paired .stacked-rows .srow .val.down { color: var(--down); }
+
+/* Cards in v2b — generous spacing */
+.mob.v2b .pcard {
+  margin: var(--gap) var(--pad) 0;
+  padding: 20px var(--pad);
+  border-radius: var(--card-r);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.mob.v2b[data-density="compact"] .pcard { padding: 16px 16px; }
+.mob.v2b[data-density="comfy"]   .pcard { padding: 24px 24px; }
+.mob.v2b .pcard-h {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.mob.v2b .pcard-h .t {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-transform: none;
+  color: var(--text);
+}
+.mob.v2b .pcard-h .more {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 500;
+  cursor: pointer;
+}
+.mob.v2b .pcard-h .tag {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-weight: 500;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  letter-spacing: 0.02em;
+}
+
+/* Contributors list */
+.mob.v2b .ctr-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 0;
+}
+.mob.v2b .ctr-row + .ctr-row { border-top: 1px solid var(--border); }
+.mob.v2b .ctr-row .logo {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; color: rgba(0,0,0,0.85);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.mob.v2b .ctr-row .body { flex: 1; min-width: 0; }
+.mob.v2b .ctr-row .body .tk {
+  font-size: 13px; font-weight: 600; letter-spacing: -0.01em;
+}
+.mob.v2b .ctr-row .body .nm {
+  font-size: 11px; color: var(--text-dim); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mob.v2b .ctr-row .right { text-align: right; }
+.mob.v2b .ctr-row .right .v {
+  font-size: 17px; font-weight: 600; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.mob.v2b .ctr-row .right .y {
+  font-size: 10px; color: var(--text-dim); margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Upcoming list */
+.mob.v2b .up-row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 0;
+}
+.mob.v2b .up-row + .up-row { border-top: 1px solid var(--border); }
+.mob.v2b .up-row .cal {
+  width: 46px; flex-shrink: 0; text-align: center;
+}
+.mob.v2b .up-row .cal .d {
+  font-size: 22px; font-weight: 600;
+  letter-spacing: -0.02em; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.mob.v2b .up-row .cal .m {
+  font-size: 9.5px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; margin-top: 4px;
+}
+.mob.v2b .up-row .body { flex: 1; min-width: 0; }
+.mob.v2b .up-row .body .tk { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.mob.v2b .up-row .body .in { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.mob.v2b .up-row .right .v {
+  font-size: 17px; font-weight: 600; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rhythm card */
+.mob.v2b .rhythm-wrap { padding: 4px 2px 0; }
+
+/* FIRE card */
+.mob.v2b .fire-num {
+  display: flex; align-items: baseline; gap: 10px;
+  margin-top: 4px;
+}
+.mob.v2b .fire-num .big {
+  font-size: 34px; font-weight: 600; letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.mob.v2b .fire-num .big .cur { font-size: 0.55em; color: var(--text-dim); font-weight: 400; vertical-align: top; line-height: 1.6; margin-right: 2px; }
+.mob.v2b .fire-num .of {
+  font-size: 11px; color: var(--text-dim); font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.mob.v2b .fire-track {
+  position: relative; height: 10px;
+  background: var(--surface-2);
+  border-radius: 5px; overflow: hidden;
+  margin-top: 18px;
+}
+.mob.v2b .fire-fill {
+  position: absolute; inset: 0;
+  background: var(--accent-soft, oklch(0.55 0.10 175));
+  border-radius: 5px;
+  transition: width 700ms cubic-bezier(0.22,1,0.36,1);
+}
+.mob.v2b .fire-foot {
+  display: flex; justify-content: space-between;
+  margin-top: 10px;
+  font-size: 10px; color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.mob.v2b .fire-foot .pct {
+  color: var(--text); font-weight: 600;
+}
+.mob.v2b .scroll-pad-bottom { height: 28px; }
+
+/* ────────────────────────────────────────────────────────────
+   .mob.v2b — Pro pages additions (Holdings, Dividends, Performance,
+   Diversification). Ported from templates/pro-pages.jsx.
+   ──────────────────────────────────────────────────────────── */
+
+/* Compact left-aligned hero used on Pro inner pages (not Dashboard) */
+.mob.v2b .pro-hero-mob {
+  text-align: center;
+  padding: 28px var(--pad) 18px;
+}
+.mob.v2b[data-density="compact"] .pro-hero-mob { padding: 20px var(--pad) 14px; }
+.mob.v2b[data-density="comfy"]   .pro-hero-mob { padding: 36px var(--pad) 24px; }
+.mob.v2b .pro-hero-mob .eyebrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.mob.v2b .pro-hero-mob h1 {
+  margin: 0;
+  font-size: 52px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+.mob.v2b[data-density="compact"] .pro-hero-mob h1 { font-size: 44px; }
+.mob.v2b[data-density="comfy"]   .pro-hero-mob h1 { font-size: 60px; }
+.mob.v2b .pro-hero-mob h1 .light { font-weight: 300; color: var(--text-dim); }
+.mob.v2b .pro-hero-mob h1 .cur {
+  font-size: 0.55em; font-weight: 400; color: var(--text-dim);
+  vertical-align: top; line-height: 1.4; margin-right: 4px;
+}
+.mob.v2b .pro-hero-mob .sub {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.mob.v2b .pro-hero-mob .sub b { color: var(--text); font-weight: 600; }
+.mob.v2b .pro-hero-mob .delta-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 16px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--up-bg, oklch(0.94 0.04 165));
+  color: var(--up-fg, oklch(0.36 0.08 165));
+  font-weight: 600;
+  font-size: 13px;
+}
+.mob.v2b .pro-hero-mob .delta-pill.down {
+  background: oklch(0.94 0.04 25);
+  color: var(--down);
+}
+
+/* Segmented top tab (used by Dividends / Diversification) */
+.mob.v2b .segtop-pro {
+  display: flex;
+  margin: 8px var(--pad) 0;
+  padding: 3px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 2px;
+}
+.mob.v2b .segtop-pro::-webkit-scrollbar { display: none; }
+.mob.v2b .segtop-pro .seg {
+  flex: 1; min-width: 0;
+  padding: 7px 12px;
+  font-size: 12px; font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 999px;
+  cursor: pointer; white-space: nowrap;
+  text-align: center;
+  background: transparent; border: 0; font-family: inherit;
+  transition: color 160ms ease, background 160ms ease;
+}
+.mob.v2b .segtop-pro .seg.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* Shared list-row pattern (.lr) — used by Holdings / Upcoming / Top movers */
+.mob.v2b .lr {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+}
+.mob.v2b .lr + .lr { border-top: 1px solid var(--border); }
+.mob.v2b .lr .logo {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: rgba(0,0,0,0.85);
+  flex-shrink: 0; overflow: hidden;
+}
+.mob.v2b .lr .body { flex: 1; min-width: 0; }
+.mob.v2b .lr .body .tk { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.mob.v2b .lr .body .nm {
+  font-size: 11px; color: var(--text-dim); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mob.v2b .lr .right { text-align: right; }
+.mob.v2b .lr .right .v { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.mob.v2b .lr .right .s { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+.mob.v2b .lr .right .s.up   { color: var(--up-fg, oklch(0.36 0.08 165)); font-weight: 600; }
+.mob.v2b .lr .right .s.down { color: var(--down); font-weight: 600; }
+
+/* Date bubble for dividend events */
+.mob.v2b .cal {
+  width: 42px; flex-shrink: 0; text-align: center;
+}
+.mob.v2b .cal .d { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+.mob.v2b .cal .m {
+  font-size: 9px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; margin-top: 3px;
+}
+
+/* Filter chips */
+.mob.v2b .chips {
+  display: flex; gap: 6px;
+  padding: 8px var(--pad) 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mob.v2b .chips::-webkit-scrollbar { display: none; }
+.mob.v2b .chips .chip {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 0; font-family: inherit;
+  border-radius: 999px;
+  cursor: pointer; white-space: nowrap;
+}
+.mob.v2b .chips .chip.is-active {
+  background: var(--text);
+  color: var(--surface);
+}
+
+/* Floating action button */
+.mob.v2b .fab {
+  /* Absolute relative to `.mob` (which has `position: relative` + is now
+     exactly viewport-tall via the chassis fix), so the FAB floats at the
+     screen-bottom corner regardless of how deep the content has scrolled
+     — the inner `.mob .scroll` is what scrolls, not `.mob` itself. */
+  position: absolute; right: 18px; bottom: 78px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--text); color: var(--surface);
+  border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  z-index: 5;
+  text-decoration: none;
+}
+
+/* Donut visualization helpers */
+.mob.v2b .donut-wrap { display: flex; align-items: center; gap: 16px; margin: 4px 0 6px; }
+.mob.v2b .donut-wrap .donut-meta .v { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.mob.v2b .donut-wrap .donut-meta .l { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+/* Legend row */
+.mob.v2b .legend-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.mob.v2b .legend-row + .legend-row { border-top: 1px solid var(--border); }
+.mob.v2b .legend-row .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.mob.v2b .legend-row .name { flex: 1; font-size: 12px; font-weight: 500; color: var(--text); }
+.mob.v2b .legend-row .val { font-size: 13px; font-weight: 600; }
+.mob.v2b .legend-row .pct { font-size: 10px; color: var(--text-dim); margin-left: 6px; }
+
+/* Concentration check (Diversification) */
+.mob.v2b .conc-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.mob.v2b .conc-row + .conc-row { border-top: 1px solid var(--border); }
+.mob.v2b .conc-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mob.v2b .conc-row .dot.ok { background: var(--up); }
+.mob.v2b .conc-row .dot.warn { background: oklch(0.74 0.13 70); }
+.mob.v2b .conc-row .dot.danger { background: var(--down); }
+.mob.v2b .conc-row .body { flex: 1; min-width: 0; }
+.mob.v2b .conc-row .body .label { font-size: 12px; font-weight: 500; }
+.mob.v2b .conc-row .body .note { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.mob.v2b .conc-row .v { font-size: 13px; font-weight: 600; text-align: right; }
+
+/* Performance table */
+.mob.v2b .ptable { width: 100%; border-collapse: collapse; font-family: var(--font-sans); }
+.mob.v2b .ptable thead th {
+  font-size: 9.5px; color: var(--text-dim); font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  text-align: left; padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mob.v2b .ptable thead th.r { text-align: right; }
+.mob.v2b .ptable tbody td { font-size: 12px; padding: 8px; border-bottom: 1px solid var(--border); }
+.mob.v2b .ptable tbody tr:last-child td { border-bottom: 0; }
+.mob.v2b .ptable td.r { text-align: right; }
+.mob.v2b .ptable td.b { font-weight: 600; }
+.mob.v2b .ptable td.up   { color: var(--up-fg, oklch(0.36 0.08 165)); }
+.mob.v2b .ptable td.down { color: var(--down); }
+.mob.v2b .ptable td.lbl  { color: var(--text-dim); font-size: 11.5px; }

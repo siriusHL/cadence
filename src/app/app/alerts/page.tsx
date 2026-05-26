@@ -6,6 +6,7 @@ import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich'
 import { getTaxSummary, DEFAULT_RESIDENCE, type TaxResidence } from '@/lib/tax';
 import { getActiveAlerts, type AlertCard, type AlertSeverity } from '@/lib/alerts';
 import { EmptyState } from '@/components/EmptyState';
+import { AlertsMobile } from '@/components/mobile/AlertsMobile';
 
 const SEVERITY_COLOR: Record<AlertSeverity, string> = {
   negative: 'oklch(0.50 0.16 25)',
@@ -86,7 +87,26 @@ export default async function AlertsScreen() {
   const negative = sevCounts.negative + sevCounts.warning;
   const positive = sevCounts.positive;
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
+    <>
+      <div className="cdn-mobile-only">
+        <AlertsMobile
+          alerts={alerts.map((a) => ({
+            id: a.id,
+            severity: a.severity,
+            title: a.title,
+            body: a.body,
+            amountEur: a.amountEur,
+            action: a.action,
+          }))}
+          heldCount={holdings.length}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
@@ -158,6 +178,8 @@ export default async function AlertsScreen() {
         1-year drawdown ≤−10%.
       </div>
     </div>
+      </div>
+    </>
   );
 }
 

@@ -13,6 +13,7 @@ import {
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { PerformanceChart } from '@/components/PerformanceChart';
+import { PerformanceMobile } from '@/components/mobile/PerformanceMobile';
 
 function fmt(n: number, digits = 0): string {
   if (!Number.isFinite(n)) return '—';
@@ -193,7 +194,64 @@ export default async function PerformanceScreen() {
       )
     : 0;
 
+  // Build mobile props from the same computed values used by the desktop tree
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+  const benchmarkLabel = primaryBench?.name ?? 'S&P 500';
+  const benchmarkSeries = primaryBench
+    ? primaryBench.series.map((p) => ({ date: p.date, returnPct: p.returnPct }))
+    : [];
+  const ytdAlphaPp = heroBenchDeltas[0]?.deltaPp ?? null;
+
   return (
+    <>
+      <div className="cdn-mobile-only">
+        <PerformanceMobile
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+          daysTracked={daysHeld}
+          totalReturnPct={totalReturnPct}
+          totalReturnAbs={totalReturnAbs}
+          ytdReturnPct={ytdReturn}
+          benchmarkYtdPct={
+            primaryBench
+              ? (() => {
+                  const anchor = primaryBench.series.find((p) => p.date >= ytdStart);
+                  const lastPt = primaryBench.series[primaryBench.series.length - 1];
+                  if (!anchor || !lastPt) return null;
+                  return lastPt.returnPct - anchor.returnPct;
+                })()
+              : null
+          }
+          benchmarkName={benchmarkLabel}
+          alphaVsBenchPp={ytdAlphaPp}
+          series={series.map((p) => ({ date: p.date, returnPct: p.returnPct }))}
+          benchSeries={benchmarkSeries}
+          periods={periods.map((p) => ({
+            label: p.label,
+            portfolio: p.portfolio,
+            benchmark: p.benchmarks[0]?.delta ?? null,
+            benchmarkLabel,
+          }))}
+          winners={winners.map((w) => ({
+            ticker: w.ticker, name: w.name, pl: w.pl, plPct: w.plPct,
+          }))}
+          losers={losers.map((w) => ({
+            ticker: w.ticker, name: w.name, pl: w.pl, plPct: w.plPct,
+          }))}
+          risk={{
+            volPct: volPct,
+            sharpe: sharpeRatio,
+            sortino: sortinoRatio,
+            beta: portBeta,
+            alpha: portAlpha,
+            maxDDPct: maxDD,
+            winRatePct: winRate.totalMonths > 0 ? winRate.ratePct : null,
+            winMonths: winRate.winMonths,
+            totalMonths: winRate.totalMonths,
+          }}
+        />
+      </div>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
@@ -505,6 +563,8 @@ export default async function PerformanceScreen() {
         </div>
       )}
     </div>
+      </div>
+    </>
   );
 }
 

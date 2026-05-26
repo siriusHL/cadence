@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { TIERS, type Tier } from '@/lib/tiers';
+import { PricingMobile, type PricingPlan } from '@/components/mobile/PublicMobile';
 
 interface Plan {
   key: Tier;
@@ -54,8 +55,23 @@ const PLANS: Plan[] = [
 ];
 
 export default function PricingPage() {
+  const mobilePlans: PricingPlan[] = PLANS.map((p) => ({
+    key: p.key,
+    name: p.name,
+    price: p.price,
+    blurb: p.blurb,
+    bullets: p.bullets,
+    cta: p.cta.label,
+    ctaHref: p.cta.href,
+    featured: p.featured,
+  }));
+
   return (
-    <main className="min-h-screen flex flex-col">
+    <>
+      <div className="cdn-mobile-only">
+        <PricingMobile plans={mobilePlans} />
+      </div>
+      <main className="cdn-desktop-only min-h-screen flex flex-col">
       <header className="flex items-center justify-between px-8 py-5 border-b border-line">
         <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-[0.06em] uppercase">
           <span className="w-2 h-2 rounded-full bg-accent-soft" /> Cadence
@@ -114,5 +130,6 @@ export default function PricingPage() {
         </div>
       </section>
     </main>
+    </>
   );
 }

@@ -38,6 +38,10 @@ env.txt
 # claude code — per-developer tooling (launch configs, local settings)
 .claude/
 
+# ad-hoc bundles
+*.zip
+
+
 # supabase
 supabase/.temp
 supabase/.branches

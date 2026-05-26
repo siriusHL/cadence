@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TickerLogo } from '@/components/TickerLogo';
 import { useConfirm, useToast } from '@/components/DialogProvider';
+import { MobileShell } from '@/components/mobile/MobileShell';
+import { useIsMobile } from '@/components/mobile/useMediaQuery';
 
 interface Transaction {
   id: string;
@@ -34,6 +36,7 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
   const router = useRouter();
   const confirm = useConfirm();
   const toast = useToast();
+  const isMobile = useIsMobile();
 
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -220,8 +223,8 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
   const cur = data.instrument?.currency ?? 'USD';
   const curSym = symbolFor(cur);
 
-  return (
-    <div style={{ maxWidth: 720, margin: '32px auto' }}>
+  const body = (
+    <div style={{ maxWidth: 720, margin: isMobile ? '0' : '32px auto', padding: isMobile ? '0' : undefined }}>
       <div style={{ marginBottom: 18 }}>
         <Link href="/app/stocks" style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'none' }}>
           ← Back to stocks
@@ -440,6 +443,28 @@ export default function EditStockPage({ params }: { params: Promise<{ ticker: st
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileShell chassis="v2b" currentTab="more" tabSet="pro">
+        <div
+          className="pro-hero-mob cdn-anim"
+          style={{ '--i': 0, paddingBottom: 8 } as React.CSSProperties}
+        >
+          <div className="eyebrow">Holding · {ticker}</div>
+          <h1>{data.instrument?.name ?? ticker}</h1>
+          <div className="sub">
+            <b>{totalShares.toLocaleString('en-IE', { maximumFractionDigits: 4 })}</b>{' '}
+            share{totalShares === 1 ? '' : 's'} ·{' '}
+            avg cost <b>{curSym}{avgCost.toFixed(2)}</b>
+          </div>
+        </div>
+        <div style={{ padding: '8px 16px 24px' }}>{body}</div>
+      </MobileShell>
+    );
+  }
+
+  return body;
 }
 
 function symbolFor(ccy: string): string {

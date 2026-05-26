@@ -1,144 +1,113 @@
-// app.jsx — wires design canvas + tweaks + all screens
+// App.jsx — DesignCanvas wrapping 5 mobile variants + 1 tablet, plus Tweaks.
+
+const { useEffect } = React;
+
+const VARIANT_META = [
+  { id: 'v1', label: 'V1 · Standard stack',  defaultHero: 'default' },
+  { id: 'v2', label: 'V2 · Big number',      defaultHero: 'big' },
+  { id: 'v3', label: 'V3 · Chart-first',     defaultHero: 'chart' },
+  { id: 'v4', label: 'V4 · Summary card',    defaultHero: 'summary' },
+  { id: 'v5', label: 'V5 · Today feed',      defaultHero: 'big' },
+];
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-  "tier": "all",
-  "showNote": true,
-  "blurAmounts": false
+  "density": "regular",
+  "accent": "#3a857e",
+  "navPattern": "tabs",
+  "hero": "auto"
 }/*EDITMODE-END*/;
 
-// Inject blur stylesheet once. Toggled via a body-level class.
-(function ensureBlurStyles() {
-  if (document.getElementById("__cadence_blur_styles")) return;
-  const s = document.createElement("style");
-  s.id = "__cadence_blur_styles";
-  s.textContent = `
-    body.blur-amounts .num,
-    body.blur-amounts .v,
-    body.blur-amounts .big,
-    body.blur-amounts .hero h1,
-    body.blur-amounts .pro-hero h1,
-    body.blur-amounts .tile .v,
-    body.blur-amounts .pcard .num {
-      filter: blur(6px);
-      user-select: none;
-      transition: filter .15s ease;
-    }
-  `;
-  document.head.appendChild(s);
-})();
+// Translate a hex accent → both accent + accent-soft oklch.
+const ACCENT_PRESETS = {
+  '#3a857e': { accent: 'oklch(0.48 0.08 175)', soft: 'oklch(0.55 0.10 175)' }, // teal (default)
+  '#c97a4b': { accent: 'oklch(0.62 0.13 50)',  soft: 'oklch(0.68 0.14 55)'  }, // orange/sun
+  '#5b6cc6': { accent: 'oklch(0.55 0.12 265)', soft: 'oklch(0.62 0.13 265)' }, // indigo
+  '#8856a3': { accent: 'oklch(0.50 0.13 305)', soft: 'oklch(0.58 0.14 305)' }, // violet
+};
 
 function App() {
-  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [t, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
 
-  // Apply blur class to body
-  React.useEffect(() => {
-    document.body.classList.toggle("blur-amounts", !!t.blurAmounts);
-  }, [t.blurAmounts]);
-
-  const showFree = t.tier === "all" || t.tier === "free";
-  const showPro  = t.tier === "all" || t.tier === "pro";
-
-  const W = 1280, H = 820;
+  // apply accent to root
+  useEffect(() => {
+    const preset = ACCENT_PRESETS[t.accent] || ACCENT_PRESETS['#3a857e'];
+    document.documentElement.style.setProperty('--accent', preset.accent);
+    document.documentElement.style.setProperty('--accent-soft', preset.soft);
+  }, [t.accent]);
 
   return (
     <>
-      <DesignCanvas>
-        {showFree && (
-          <DCSection id="free" title="Free tier · for everyone" subtitle="Apple-style · big, friendly, beginner-first">
-            <DCArtboard id="free-home" label="Home — Your money" width={1280} height={820}>
-              <FreeHomeScreen />
-            </DCArtboard>
-            <DCArtboard id="free-next" label="Coming up — Next payment" width={1280} height={820}>
-              <FreeNextScreen />
-            </DCArtboard>
-            <DCArtboard id="free-stocks" label="Your stocks" width={1280} height={820}>
-              <FreeStocksScreen />
-            </DCArtboard>
-            <DCArtboard id="free-year" label="Your year" width={1280} height={820}>
-              <FreeYearScreen />
-            </DCArtboard>
-          </DCSection>
-        )}
+      <window.DesignCanvas defaultPan={{ x: 80, y: 60 }} defaultZoom={0.78}>
+        <window.DCSection
+          id="mobile"
+          title="Cadence · Mobile dashboard"
+          subtitle="iPhone — 5 layout directions · /app/dashboard (Pro)"
+        >
+          {VARIANT_META.map((v) => {
+            const hero = t.hero === 'auto' ? v.defaultHero : t.hero;
+            return (
+              <window.DCArtboard
+                key={v.id}
+                id={v.id}
+                label={v.label}
+                width={402}
+                height={874}
+              >
+                <window.IOSDevice width={402} height={874} title="">
+                  <window.MobileVariant
+                    variant={v.id}
+                    density={t.density}
+                    navPattern={t.navPattern}
+                    hero={t.hero === 'auto' ? null : t.hero}
+                  />
+                </window.IOSDevice>
+              </window.DCArtboard>
+            );
+          })}
+        </window.DCSection>
 
-        {showPro && (
-          <DCSection id="overview" title="Pro tier · Overview" subtitle="Apple aesthetic · denser data · forward yield + safety score everywhere">
-            <DCArtboard id="dashboard" label="Dashboard — Portfolio at a glance" width={W} height={H}>
-              <ProDashboard />
-            </DCArtboard>
-          </DCSection>
-        )}
+        <window.DCSection
+          id="tablet"
+          title="Cadence · Tablet dashboard"
+          subtitle="iPad portrait · 820 × 1180"
+        >
+          <window.DCArtboard id="ipad" label="Tablet · expanded nav" width={820} height={1180}>
+            <window.TabletDashboard density={t.density} accent={t.accent} />
+          </window.DCArtboard>
+        </window.DCSection>
+      </window.DesignCanvas>
 
-        {showPro && (
-          <DCSection id="holdings" title="Pro · Holdings & research" subtitle="Dense table · single-stock drilldown">
-            <DCArtboard id="table" label="Holdings — full table" width={W} height={H}>
-              <ProHoldings />
-            </DCArtboard>
-            <DCArtboard id="stock" label="Stock detail — Realty Income (O)" width={W} height={H}>
-              <ProStock />
-            </DCArtboard>
-          </DCSection>
-        )}
+      <window.TweaksPanel title="Tweaks">
+        <window.TweakSection label="Layout" />
+        <window.TweakRadio
+          label="Density"
+          value={t.density}
+          options={['compact', 'regular', 'comfy']}
+          onChange={(v) => setTweak('density', v)}
+        />
+        <window.TweakRadio
+          label="Nav pattern"
+          value={t.navPattern}
+          options={['tabs', 'segmented']}
+          onChange={(v) => setTweak('navPattern', v)}
+        />
+        <window.TweakSelect
+          label="Hero (override)"
+          value={t.hero}
+          options={['auto', 'default', 'big', 'chart', 'summary']}
+          onChange={(v) => setTweak('hero', v)}
+        />
 
-        {showPro && (
-          <DCSection id="income" title="Pro · Income engine" subtitle="Calendar · 12-month forecast · DRIP snowball">
-            <DCArtboard id="calendar" label="Dividend calendar — year heatmap" width={W} height={H}>
-              <ProCalendar />
-            </DCArtboard>
-            <DCArtboard id="forecast" label="12-month income forecast" width={W} height={H}>
-              <ProForecast />
-            </DCArtboard>
-            <DCArtboard id="drip" label="DRIP simulator — snowball" width={W} height={H}>
-              <ProDrip />
-            </DCArtboard>
-          </DCSection>
-        )}
-
-        {showPro && (
-          <DCSection id="analysis" title="Pro · Analysis & risk" subtitle="Performance vs benchmark · diversification">
-            <DCArtboard id="perf" label="Performance vs benchmarks" width={W} height={H}>
-              <ProPerformance />
-            </DCArtboard>
-            <DCArtboard id="div" label="Diversification — sector · geo · ccy" width={W} height={H}>
-              <ProDiversification />
-            </DCArtboard>
-          </DCSection>
-        )}
-
-        {showPro && (
-          <DCSection id="tax" title="Pro · Tax & treaty" subtitle="Withholding · reclaim opportunities · NL Box 3">
-            <DCArtboard id="taxrep" label="Withholding report — 2026 YTD" width={W} height={H}>
-              <ProTax />
-            </DCArtboard>
-          </DCSection>
-        )}
-
-        {t.showNote && (
-          <DCPostIt top={20} right={70} rotate={2.5} width={260}>
-            Two tiers, one elegant brand. Free is consumer-friendly with 4 essentials. Pro keeps the Apple aesthetic but packs in 9 dense screens of data — for the same person, just on a heavier-research day.
-          </DCPostIt>
-        )}
-      </DesignCanvas>
-
-      <TweaksPanel title="Tweaks">
-        <TweakSection label="Which tier to show" />
-        <TweakRadio label="Tier" value={t.tier}
-          options={[
-            { value: "all",  label: "Both" },
-            { value: "free", label: "Free" },
-            { value: "pro",  label: "Pro" },
-          ]}
-          onChange={(v) => setTweak("tier", v)} />
-
-        <TweakSection label="Canvas" />
-        <TweakToggle label="Show designer note"
-          value={t.showNote} onChange={(v) => setTweak("showNote", v)} />
-
-        <TweakSection label="Privacy" />
-        <TweakToggle label="Blur sensitive amounts"
-          value={t.blurAmounts} onChange={(v) => setTweak("blurAmounts", v)} />
-      </TweaksPanel>
+        <window.TweakSection label="Brand" />
+        <window.TweakColor
+          label="Accent"
+          value={t.accent}
+          options={['#3a857e', '#c97a4b', '#5b6cc6', '#8856a3']}
+          onChange={(v) => setTweak('accent', v)}
+        />
+      </window.TweaksPanel>
     </>
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);

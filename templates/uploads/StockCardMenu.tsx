@@ -1,0 +1,572 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #fbfaf7;
+  --color-ink: #1d1d1f;
+  --color-ink-soft: #6e6e73;
+  --color-ink-dim: #86868b;
+  --color-line: rgba(0, 0, 0, 0.06);
+  --color-line-strong: rgba(0, 0, 0, 0.12);
+  --color-accent: oklch(0.48 0.08 175);
+  --color-accent-soft: oklch(0.55 0.10 175);
+  --color-up: oklch(0.48 0.08 165);
+  --color-down: oklch(0.50 0.16 25);
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* Semantic theming layer — all light-based. The user can dial two knobs:
+   • data-contrast="soft" | "standard" (default) | "sharp" — text/border weight
+   • data-bg-tone="cream" (default) | "neutral" | "cool" — page warmth
+   Overrides below adjust the base palette without changing structure. */
+:root {
+  --bg: #fbfaf7;            /* cream (default) */
+  --surface: #ffffff;
+  --surface-2: rgba(0, 0, 0, 0.035);
+  --surface-hover: rgba(0, 0, 0, 0.05);
+  --text: #1d1d1f;
+  --text-muted: #6e6e73;
+  --text-dim: #86868b;
+  --border: rgba(0, 0, 0, 0.06);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --accent: oklch(0.48 0.08 175);
+  --accent-soft: oklch(0.55 0.10 175);
+  --up: oklch(0.48 0.08 165);
+  --down: oklch(0.50 0.16 25);
+  --btn-primary-bg: #1d1d1f;
+  --btn-primary-text: #ffffff;
+  --pill-soft-bg: rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 6px 18px rgba(0, 0, 0, 0.04);
+  --shadow-elev: 0 4px 18px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --input-bg: #ffffff;
+  --input-disabled-bg: #f5f5f7;
+  --danger: oklch(0.50 0.16 25);
+}
+
+/* Contrast dials — only adjust text + border weight; surfaces stay put. */
+[data-contrast="soft"] {
+  --text: #3a3a3c;
+  --text-muted: #86868b;
+  --text-dim: #a1a1a6;
+  --border: rgba(0, 0, 0, 0.04);
+  --border-strong: rgba(0, 0, 0, 0.08);
+}
+[data-contrast="sharp"] {
+  --text: #0a0a0c;
+  --text-muted: #4a4a4d;
+  --text-dim: #6e6e73;
+  --border: rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(0, 0, 0, 0.20);
+}
+
+/* Background tone dials — change page bg only. Surfaces stay white. */
+[data-bg-tone="neutral"] { --bg: #f7f7f8; }
+[data-bg-tone="cool"]    { --bg: #f3f5f8; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01", "tnum";
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.01em;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* ─────────────────────────────────────────────────────────
+   .cdn-free — Apple-inspired beginner experience
+   ───────────────────────────────────────────────────────── */
+.cdn-free {
+  background: var(--bg);
+  color: var(--text);
+  height: 100%; width: 100%;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+.cdn-free .fnav {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 56px; padding: 0 32px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.cdn-free .fnav .brand {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.cdn-free .fnav .brand .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: oklch(0.55 0.10 175);
+}
+/* Pill-style tab nav (NavTabs component) */
+.cdn-free .fnav .cdn-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  padding: 4px;
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+.cdn-free .fnav .cdn-tab {
+  position: relative;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 160ms ease, background 160ms ease;
+}
+.cdn-free .fnav .cdn-tab:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.cdn-free .fnav .cdn-tab.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* Tabs with a count badge — Alerts is the only one today. The Link itself
+   becomes an inline-flex container so the badge sits inside the pill on the
+   right of the label. */
+.cdn-free .fnav .cdn-tab.has-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cdn-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+  background: var(--pill-soft-bg, rgba(0,0,0,0.10));
+  color: var(--text);
+  /* Soft entrance so the badge doesn't pop in jarringly when the client
+     fetch resolves a moment after the rest of the nav. */
+  animation: cdn-badge-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-tab-badge--negative {
+  background: var(--danger, oklch(0.50 0.16 25));
+  color: #fff;
+}
+.cdn-tab.is-active .cdn-tab-badge {
+  background: var(--surface-2, rgba(0,0,0,0.08));
+}
+.cdn-tab.is-active .cdn-tab-badge--negative {
+  background: var(--danger, oklch(0.50 0.16 25));
+  color: #fff;
+}
+@keyframes cdn-badge-in {
+  from { opacity: 0; transform: scale(0.7); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cdn-tab-badge { animation: none !important; }
+}
+.cdn-free .fnav .right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-muted); }
+.cdn-free .fnav .right .plan {
+  padding: 4px 10px; border: 1px solid var(--border-strong);
+  border-radius: 999px; font-weight: 500; font-size: 11px;
+  color: var(--text);
+}
+.cdn-free .fnav .right .plan.pro,
+.cdn-free .fnav .right .plan.elite { background: var(--btn-primary-bg); color: var(--btn-primary-text); border-color: var(--text); }
+.cdn-free .fnav .right .avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, oklch(0.85 0.06 175), oklch(0.70 0.08 195));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; font-weight: 600;
+}
+
+.cdn-free .scroll {
+  flex: 1; min-height: 0;
+  /* Lock the page to vertical scrolling — never let wide content open a
+     horizontal scrollbar. Children that need overflow can opt-in locally. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 32px 24px;
+  animation: cdn-fade-in 180ms ease-out both;
+}
+
+.cdn-free .hero { text-align: center; padding: 32px 0 24px; }
+.cdn-free .hero .eyebrow { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; font-weight: 500; }
+.cdn-free .hero .big {
+  font-size: 72px; font-weight: 600; letter-spacing: -0.04em;
+  line-height: 1; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cdn-free .hero .big .cur { font-size: 44px; font-weight: 400; color: var(--text-dim); vertical-align: top; margin-right: 4px; line-height: 1.4; }
+.cdn-free .hero .sub {
+  margin-top: 16px; font-size: 18px; color: var(--text-muted);
+  letter-spacing: -0.02em;
+  max-width: 720px; margin-left: auto; margin-right: auto;
+  line-height: 1.36;
+}
+.cdn-free .hero .sub b { color: var(--text); font-weight: 500; }
+
+.cdn-free .card {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 18px rgba(0,0,0,.04);
+  padding: 20px 22px;
+}
+.cdn-free .card .label { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+.cdn-free .card .v {
+  font-size: 32px; font-weight: 600; letter-spacing: -0.025em;
+  margin-top: 6px; line-height: 1.05; font-variant-numeric: tabular-nums;
+}
+.cdn-free .card .v .cur { font-size: 20px; color: var(--text-dim); font-weight: 400; vertical-align: top; margin-right: 2px; line-height: 1.5; }
+.cdn-free .card .v.sm { font-size: 22px; }
+.cdn-free .card .delta { margin-top: 4px; font-size: 12px; color: var(--text-muted); }
+.cdn-free .card .delta .up { color: oklch(0.48 0.08 165); }
+.cdn-free .card .delta .down { color: oklch(0.50 0.16 25); }
+
+.cdn-free .sect-h {
+  font-size: 28px; font-weight: 600; letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+.cdn-free .sect-h .light { font-weight: 300; color: var(--text-dim); }
+.cdn-free .sect-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 18px; }
+
+.cdn-free .upsell {
+  background: linear-gradient(135deg, oklch(0.20 0.02 175), oklch(0.30 0.05 200));
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex; align-items: center; gap: 18px;
+}
+.cdn-free .upsell .icon {
+  width: 38px; height: 38px; border-radius: 12px;
+  background: rgba(255,255,255,0.12);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 18px;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+.cdn-free .upsell .body { flex: 1; }
+.cdn-free .upsell .h { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.cdn-free .upsell .p { font-size: 13px; color: rgba(255,255,255,0.7); }
+.cdn-free .upsell .cta {
+  padding: 9px 18px;
+  background: var(--surface); color: var(--text);
+  border-radius: 999px; font-weight: 500; font-size: 13px;
+  border: 0; cursor: pointer;
+}
+
+/* Primary button — defined without a scope so it works anywhere, including
+   inside the Pro chrome (.cdn-pro) and portal'd modals (rendered into
+   <body>). Originally `.cdn-free .btn` only; promoted to global so the
+   Holdings add-holding trigger and modal submit pick it up. */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 36px; padding: 0 18px;
+  background: var(--btn-primary-bg); color: var(--btn-primary-text);
+  border-radius: 999px;
+  font-size: 14px; font-weight: 500;
+  border: 0; cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+.cdn-free .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 10px;
+  font-size: 11px; font-weight: 500;
+  border-radius: 999px;
+  background: var(--surface-2); color: var(--text);
+}
+.cdn-free .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.cdn-free .pill.safe  { background: oklch(0.94 0.04 165); color: oklch(0.36 0.07 165); }
+.cdn-free .pill.next  { background: var(--btn-primary-bg); color: var(--btn-primary-text); }
+
+.cdn-free .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.cdn-free .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.cdn-free .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* ─────────────────────────────────────────────────────────
+   Your Stocks — fluid card grid (vertical scroll only)
+   ─────────────────────────────────────────────────────────
+   auto-fill + minmax keeps cards a sensible width but lets
+   the grid reflow at any viewport — no horizontal scroll. */
+.cdn-free .stocks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  /* Grid items default to min-content for content sizing, which can push
+     wide text past the column — pin min-width: 0 on every child to make
+     them respect the column width and ellipsize instead. */
+  min-width: 0;
+}
+.cdn-free .stocks-grid > .card {
+  min-width: 0;
+  padding: 18px;
+  gap: 12px;
+  transition: box-shadow 200ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-free .stocks-grid > .card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 10px 24px rgba(0,0,0,.07);
+}
+/* Wide values ("/month" line, big numbers) shouldn't break out of the card. */
+.cdn-free .stocks-grid .stock-pay-line {
+  font-size: 22px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cdn-free .stocks-grid .stock-pay-line .unit {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.cdn-free .stocks-grid .stock-name {
+  min-width: 0;
+  flex: 1;
+}
+.cdn-free .stocks-grid .stock-name .t {
+  font-size: 18px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cdn-free .stocks-grid .stock-name .n {
+  font-size: 11.5px; color: var(--text-dim); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Bottom stat strip: keep cells from overflowing on narrow cards. */
+.cdn-free .stocks-grid .stock-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  padding-top: 12px; border-top: 1px solid var(--border);
+  min-width: 0;
+}
+.cdn-free .stocks-grid .stock-stats > div { min-width: 0; }
+.cdn-free .stocks-grid .stock-stats .v {
+  font-size: 13px; font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cdn-free .stocks-grid .stock-stats .l {
+  font-size: 10.5px; color: var(--text-dim);
+}
+
+.cdn-free .divider { height: 1px; background: var(--surface-2); margin: 16px 0; }
+
+/* ─────────────────────────────────────────────────────────
+   Your year — entrance + interaction polish
+   ───────────────────────────────────────────────────────── */
+
+/* Hero entrance — eyebrow first, then big number, then subtitle. */
+.cdn-free .hero .eyebrow { animation: cdn-rise 0.65s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cdn-free .hero .big {
+  animation: cdn-rise 0.85s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cdn-free .hero .sub {
+  animation: cdn-rise 0.75s 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Chart card + stat cards — staggered fade-up via `--i`. */
+.cdn-free .yc-anim {
+  animation: cdn-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 100ms + 180ms);
+}
+
+/* Bar columns — dim siblings when one is hovered. */
+.cdn-free .yc-col { transition: opacity 220ms ease; }
+.cdn-free .yc-col.is-dim { opacity: 0.45; }
+.cdn-free .yc-col.is-hovered { opacity: 1; }
+
+/* Bar stack scales from the baseline. The inner segments keep their
+   proportions (since heights are relative to the stack), so the bar
+   grows up cleanly without the faded tip detaching from the solid
+   base mid-animation. */
+.cdn-free .yc-bar-stack {
+  transform-origin: bottom center;
+  animation: cdn-bar-grow 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
+}
+@keyframes cdn-bar-grow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+/* Bar colour transitions on hover (independent from grow). */
+.cdn-free .yc-bar {
+  transition: background 200ms ease;
+}
+
+/* Value label + month label fade in after the bar finishes growing. */
+.cdn-free .yc-value,
+.cdn-free .yc-label {
+  animation: cdn-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle lift on the chart card when hovering anywhere over it. */
+.cdn-free .card.year-card {
+  transition: box-shadow 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cdn-free .card.year-card:hover {
+  box-shadow: 0 2px 5px rgba(0,0,0,.045), 0 12px 28px rgba(0,0,0,.06);
+}
+
+/* Tooltip glide-in. */
+.cdn-free .year-chart .yc-tooltip {
+  animation: cdn-tooltip-pop 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cdn-tooltip-pop {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes cdn-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Honour reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  .cdn-free .hero .eyebrow,
+  .cdn-free .hero .big,
+  .cdn-free .hero .sub,
+  .cdn-free .yc-anim,
+  .cdn-free .yc-bar-stack,
+  .cdn-free .yc-value,
+  .cdn-free .yc-label,
+  .cdn-free .year-chart .yc-tooltip {
+    animation: none !important;
+  }
+  .cdn-free .yc-col,
+  .cdn-free .yc-bar,
+  .cdn-free .card.year-card {
+    transition-duration: 1ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────
+   Pro-tier (.cdn-pro) styles live in pro.css, imported from
+   src/app/layout.tsx. Splitting keeps this file small enough
+   that Turbopack HMR doesn't choke on big edits.
+   ───────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────
+   Interactive feedback — hover / active / focus everywhere
+   ───────────────────────────────────────────────────────── */
+
+
+/* Plan badge / Upgrade pill in nav */
+.cdn-free .fnav .right .plan {
+  transition: opacity 150ms ease, transform 80ms ease, background 150ms ease;
+}
+a.cdn-free .fnav .right .plan,
+.cdn-free .fnav .right a.plan {
+  cursor: pointer;
+}
+.cdn-free .fnav .right a.plan:hover { opacity: 0.85; }
+.cdn-free .fnav .right a.plan:active { transform: scale(0.97); }
+
+/* Brand link (logo) */
+.cdn-free .fnav .brand {
+  transition: opacity 150ms ease;
+  cursor: pointer;
+}
+.cdn-free .fnav .brand:hover { opacity: 0.7; }
+
+/* Avatar — gently react to hover */
+.cdn-free .fnav .right .avatar {
+  transition: transform 120ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+}
+.cdn-free .fnav .right .avatar:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+}
+
+/* Primary button — interactive feedback (also global; see base rule above). */
+.btn {
+  transition: opacity 150ms ease, transform 80ms ease, background 150ms ease;
+}
+.btn:hover:not(:disabled) { opacity: 0.88; }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn.ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  opacity: 1;
+}
+
+/* Upsell card CTA pill */
+.cdn-free .upsell .cta {
+  transition: opacity 150ms ease, transform 80ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+  display: inline-block;
+}
+.cdn-free .upsell .cta:hover { opacity: 0.92; box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+.cdn-free .upsell .cta:active { transform: scale(0.97); }
+
+/* Generic anchor under cdn-free — gentle color hint */
+.cdn-free a {
+  transition: opacity 150ms ease, color 150ms ease;
+}
+
+/* Cards subtly lift on hover when wrapped in a link (future-proofing) */
+.cdn-free a > .card,
+.cdn-free .card.hoverable {
+  transition: box-shadow 200ms ease, transform 180ms ease;
+  cursor: pointer;
+}
+.cdn-free a > .card:hover,
+.cdn-free .card.hoverable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,.05), 0 10px 24px rgba(0,0,0,.07);
+}
+
+/* Focus rings — keyboard accessibility (non-mouse) */
+.cdn-free a:focus-visible,
+.cdn-free button:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid oklch(0.55 0.10 175 / 0.5);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* ─────────────────────────────────────────────────────────
+   Route-transition shimmer — used by loading.tsx
+   ───────────────────────────────────────────────────────── */
+
+@keyframes cdn-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+@keyframes cdn-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Top progress bar — used by TopProgressBar in loading.tsx */
+@keyframes cdn-progress {
+  0%   { transform: scaleX(0);    transform-origin: 0 0; }
+  40%  { transform: scaleX(0.55); transform-origin: 0 0; }
+  80%  { transform: scaleX(0.85); transform-origin: 0 0; }
+  100% { transform: scaleX(0.92); transform-origin: 0 0; }
+}
+
+.cdn-progress-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg,
+    oklch(0.55 0.10 175) 0%,
+    oklch(0.65 0.12 165) 100%
+  );
+  box-shadow: 0 0 8px oklch(0.55 0.10 175 / 0.5);
+  animation: cdn-progress 2.5s cubic-bezier(0.1, 0.5, 0.2, 1) forwards;
+}
+
+.cdn-fade-in { animation: cdn-fade-in 180ms ease-out both; }
