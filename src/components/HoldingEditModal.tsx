@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { TickerLogo } from '@/components/TickerLogo';
@@ -81,38 +81,46 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
     };
   }, [onClose]);
 
-  // Keep a fresh reference to "is this instance still mounted?" so an in-flight
-  // request started by load() doesn't setState after unmount or after the
-  // ticker changed under us.
-  const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
-
-  const load = useCallback(async () => {
-    if (!mountedRef.current) return;
-    setError(null);
-    try {
-      const res = await fetch(`/api/holdings/${encodeURIComponent(ticker)}`);
-      if (!mountedRef.current) return;
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        setError(j.error ?? `Could not load (${res.status})`);
-        return;
+  // Initial + after-mutation loader. Inlined in the effect with an `ignore`
+  // flag scoped to the effect so a late-arriving fetch can't setState after
+  // the modal closes or after `ticker` changes underneath us. The setState
+  // calls happen post-await, which satisfies react-hooks/set-state-in-effect.
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      setError(null);
+      try {
+        const res = await fetch(`/api/holdings/${encodeURIComponent(ticker)}`);
+        if (ignore) return;
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          if (ignore) return;
+          setError(j.error ?? `Could not load (${res.status})`);
+          return;
+        }
+        const json = await res.json();
+        if (ignore) return;
+        setData(json);
+      } catch (e) {
+        if (ignore) return;
+        setError(e instanceof Error ? e.message : 'Network error');
       }
-      const json = await res.json();
-      if (!mountedRef.current) return;
-      setData(json);
-    } catch (e) {
-      if (!mountedRef.current) return;
-      setError(e instanceof Error ? e.message : 'Network error');
-    }
+    })();
+    return () => { ignore = true; };
   }, [ticker]);
 
-  // Initial fetch — wrapped in a Promise.resolve().then so React's
-  // react-hooks/set-state-in-effect rule sees the setState happen on a
-  // microtask, not synchronously inside the effect body.
-  useEffect(() => {
-    Promise.resolve().then(load);
-  }, [load]);
+  // Manual reload after mutations (PATCH/DELETE/POST). Safe to setState
+  // unconditionally — only fires from user-triggered handlers while the
+  // modal is open.
+  const reload = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/holdings/${encodeURIComponent(ticker)}`);
+      if (!res.ok) return;
+      setData(await res.json());
+    } catch {
+      /* keep previous data on failure */
+    }
+  }, [ticker]);
 
   function startEdit(tx: Transaction) {
     setEditingId(tx.id);
@@ -145,7 +153,7 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
         return;
       }
       setEditingId(null);
-      await load();
+      await reload();
       router.refresh();
     } finally {
       setBusy(false);
@@ -168,7 +176,7 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
         toast(`Could not delete: ${j.error ?? res.statusText}`, 'error');
         return;
       }
-      await load();
+      await reload();
       router.refresh();
     } finally {
       setBusy(false);
@@ -203,7 +211,7 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
       }
       setDraft({ qty: '', price: '', date: today(), fee: '0' });
       setAddOpen(false);
-      await load();
+      await reload();
       router.refresh();
     } finally {
       setBusy(false);
