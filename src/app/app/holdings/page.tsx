@@ -113,14 +113,19 @@ export default async function HoldingsScreen() {
   // Hero data
   const totalValue = rows.reduce((s, r) => s + (r.price ?? 0) * r.quantity, 0);
   const countries = new Set(rows.map((r) => r.country).filter(Boolean));
-  const cadenceCounts = { monthly: 0, quarterly: 0, semi: 0, annual: 0, other: 0 };
+  // Cadence count is over dividend payers only (anything with a known
+  // payout frequency). Non-payers are surfaced separately so the hero
+  // doesn't lie about how many stocks pay you.
+  const cadenceCounts = { monthly: 0, quarterly: 0, semi: 0, annual: 0 };
+  let nonPayerCount = 0;
   for (const r of rows) {
     if (r.payoutFreq === 12) cadenceCounts.monthly++;
     else if (r.payoutFreq === 4) cadenceCounts.quarterly++;
     else if (r.payoutFreq === 2) cadenceCounts.semi++;
     else if (r.payoutFreq === 1) cadenceCounts.annual++;
-    else cadenceCounts.other++;
+    else nonPayerCount++;
   }
+  const allPayers = nonPayerCount === 0;
   const cadenceParts: string[] = [];
   if (cadenceCounts.monthly)   cadenceParts.push(`${cadenceCounts.monthly} monthly`);
   if (cadenceCounts.quarterly) cadenceParts.push(`${cadenceCounts.quarterly} quarterly`);
@@ -138,11 +143,19 @@ export default async function HoldingsScreen() {
           <div className="eyebrow">Your positions</div>
           <h1>
             {rows.length} stock{rows.length === 1 ? '' : 's'}{' '}
-            <span className="light">paying you</span>
+            <span className="light">
+              {allPayers ? 'paying you' : 'in your portfolio'}
+            </span>
           </h1>
           <div className="sub">
             <b>€{Math.round(totalValue).toLocaleString('en-IE')}</b> across {countries.size} countr{countries.size === 1 ? 'y' : 'ies'}
-            {cadenceParts.length > 0 && <> · {cadenceParts.join(', ')} payer{cadenceParts.length === 1 ? '' : 's'}</>}.
+            {cadenceParts.length > 0 && <> · {cadenceParts.join(', ')}</>}
+            {nonPayerCount > 0 && (
+              <>
+                {' '}· <b>{nonPayerCount}</b> non-payer{nonPayerCount === 1 ? '' : 's'}
+              </>
+            )}
+            .
           </div>
         </div>
         <div className="right-meta" style={{ alignItems: 'flex-end', gap: 10 }}>

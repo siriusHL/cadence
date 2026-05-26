@@ -330,7 +330,6 @@ export function HoldingsTable({ rows }: Props) {
                 <Th field="yoc"    label="YoC"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
                 <Th field="fwd"    label="Fwd income" align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
                 <th className="c">Freq</th>
-                <th className="c" style={{ width: 32 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -339,7 +338,6 @@ export function HoldingsTable({ rows }: Props) {
                   key={g.key || 'all'}
                   group={g}
                   totalValue={totalValue}
-                  router={router}
                   onPick={setEditingTicker}
                   selected={selected}
                   onToggle={toggleOne}
@@ -365,7 +363,6 @@ export function HoldingsTable({ rows }: Props) {
                 <td className="r">{totalYield.toFixed(2)}%</td>
                 <td className="r up">{totalYoC.toFixed(2)}%</td>
                 <td className="r b">€{fmt(totalFwd)}</td>
-                <td className="c muted">—</td>
                 <td className="c muted">—</td>
               </tr>
             </tfoot>
@@ -602,10 +599,9 @@ interface Group {
     value: number; cost: number; pl: number; plPct: number; fwdIncome: number;
   })[];
 }
-function Group({ group, totalValue, router, onPick, selected, onToggle, rowsDisabled }: {
+function Group({ group, totalValue, onPick, selected, onToggle, rowsDisabled }: {
   group: Group;
   totalValue: number;
-  router: ReturnType<typeof useRouter>;
   /** Open the quick-edit modal for this ticker. */
   onPick: (ticker: string) => void;
   /** Set of currently-checked tickers. */
@@ -619,7 +615,7 @@ function Group({ group, totalValue, router, onPick, selected, onToggle, rowsDisa
     <>
       {group.key && (
         <tr className="group-header">
-          <td colSpan={14}>
+          <td colSpan={13}>
             {group.key} · {group.rows.length} · €{fmt(group.rows.reduce((s, r) => s + r.value, 0))}
           </td>
         </tr>
@@ -691,26 +687,6 @@ function Group({ group, totalValue, router, onPick, selected, onToggle, rowsDisa
             <td className="r up">{r.yieldOnCostPct != null ? `${r.yieldOnCostPct.toFixed(2)}%` : '—'}</td>
             <td className="r b">€{fmt(r.fwdIncome)}</td>
             <td className="c muted" style={{ fontSize: 11 }}>{freqLabel(r.payoutFreq)}</td>
-            <td className="c">
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  router.push(`/app/stocks/${encodeURIComponent(r.ticker)}/edit`);
-                }}
-                aria-label="Open full edit page"
-                title="Open full edit page"
-                style={{
-                  display: 'inline-block', width: 22, height: 22, lineHeight: '22px',
-                  textAlign: 'center', borderRadius: 6, color: 'var(--text-dim)',
-                  fontSize: 12, cursor: 'pointer',
-                  transition: 'background 120ms, color 120ms',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; e.currentTarget.style.color = 'var(--text)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-dim)'; }}
-              >
-                ›
-              </span>
-            </td>
           </tr>
         );
       })}
