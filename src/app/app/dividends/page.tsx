@@ -92,22 +92,176 @@ export default async function DividendsScreen({ searchParams }: PageProps) {
     </div>
       </div>
       <div className="cdn-mobile-only">
-        {tab === 'upcoming' ? (
+        {tab === 'upcoming' && (
           <MobileUpcomingLoader
             portfolioId={portfolio.id}
             heldCount={held.length}
             portfolioName={portfolio.name}
             avatarInitials={avatarInitials}
           />
-        ) : (
+        )}
+        {tab === 'forecast' && (
+          <MobileForecastLoader
+            portfolioId={portfolio.id}
+            userId={user!.id}
+            portfolioName={portfolio.name}
+            avatarInitials={avatarInitials}
+          />
+        )}
+        {tab === 'year' && (
+          <MobileYearLoader
+            portfolioId={portfolio.id}
+            portfolioName={portfolio.name}
+            avatarInitials={avatarInitials}
+          />
+        )}
+        {tab === 'simulator' && (
           <DividendsMobile
-            tab={tab}
+            tab="simulator"
             portfolioName={portfolio.name}
             avatarInitials={avatarInitials}
           />
         )}
       </div>
     </>
+  );
+}
+
+// Mobile forecast loader — reuses the same data fetches as the desktop
+// ForecastTab. Slices the 24-month rhythm to last 12 + next 6 for the mobile
+// chart (18 bars fit a phone width).
+async function MobileForecastLoader({
+  portfolioId, userId, portfolioName, avatarInitials,
+}: {
+  portfolioId: string; userId: string;
+  portfolioName: string; avatarInitials: string;
+}) {
+  const supabase = await getSupabaseServer();
+  const today = new Date();
+  const year = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const [summary, rhythm24, rhythmPast12] = await Promise.all([
+    getPortfolioSummary(supabase, portfolioId),
+    getIncomeRhythm(supabase, portfolioId, 0, 24),
+    getIncomeRhythm(supabase, portfolioId, 12, 0),
+  ]);
+
+  const forecastMonths = rhythm24.map((m) => ({
+    month: m.month,
+    year: m.year,
+    received: m.received,
+    expected: Math.max(m.received, m.expected),
+  }));
+
+  const total12 = forecastMonths.slice(0, 12).reduce((s, m) => s + m.expected, 0);
+
+  const thisMonthTotal = forecastMonths[0]?.expected ?? 0;
+  const quarterStart = currentMonth - (currentMonth % 3);
+  const thisQuarterTotal = forecastMonths
+    .slice(0, 3 - (currentMonth - quarterStart))
+    .reduce((s, m) => s + m.expected, 0);
+  const thisYearRemaining = forecastMonths
+    .slice(0, 12 - currentMonth)
+    .filter((m) => m.year === year)
+    .reduce((s, m) => s + m.expected, 0);
+  const thisYearTotal = summary.ytdReceived + thisYearRemaining;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('tax_country')
+    .eq('id', userId)
+    .single();
+  const taxRate =
+      profile?.tax_country === 'NL' ? 0.22
+    : profile?.tax_country === 'FR' ? 0.30
+    : profile?.tax_country === 'DE' ? 0.25
+    : profile?.tax_country === 'US' ? 0.15
+    : 0.22;
+  const taxLabel =
+      profile?.tax_country === 'NL' ? 'NL Box 3 22%'
+    : profile?.tax_country === 'FR' ? 'FR flat 30%'
+    : profile?.tax_country === 'DE' ? 'DE Abgeltung 25%'
+    : profile?.tax_country === 'US' ? 'US qualified 15%'
+    : 'NL Box 3 22%';
+
+  // 18-bar rhythm: last 12 past + next 6
+  const past12 = rhythmPast12.map((m) => ({
+    month: m.month, year: m.year, received: m.received, expected: m.expected,
+  }));
+  const next6 = rhythm24.slice(0, 6).map((m) => ({
+    month: m.month, year: m.year, received: m.received, expected: m.expected,
+  }));
+  const rhythm18 = [...past12.slice(0, 12), ...next6];
+  const nowIndex = 11; // last bar of the past-12 portion
+
+  const fivePctGrowth = total12 * 0.05;
+  const in5y = total12 * Math.pow(1.078, 5);
+  const in10y = total12 * Math.pow(1.078, 10);
+
+  const rangeLabel = `${MONTH_NAMES[currentMonth]} → ${MONTH_NAMES[(currentMonth + 11) % 12]}`;
+
+  return (
+    <DividendsMobile
+      tab="forecast"
+      portfolioName={portfolioName}
+      avatarInitials={avatarInitials}
+      forecast={{
+        next12M: total12,
+        next12MNet: total12 * (1 - taxRate),
+        taxLabel,
+        thisMonth: thisMonthTotal,
+        thisQuarter: thisQuarterTotal,
+        thisYearTotal,
+        rhythm: rhythm18,
+        nowIndex,
+        fivePctGrowth,
+        in5y,
+        in10y,
+        rangeLabel,
+      }}
+    />
+  );
+}
+
+// Mobile year loader — fetches current-year rhythm + event count.
+async function MobileYearLoader({
+  portfolioId, portfolioName, avatarInitials,
+}: {
+  portfolioId: string; portfolioName: string; avatarInitials: string;
+}) {
+  const supabase = await getSupabaseServer();
+  const today = new Date();
+  const year = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const [rhythm, events] = await Promise.all([
+    getIncomeRhythm(supabase, portfolioId, 12 + currentMonth, 11 - currentMonth),
+    getYearEvents(supabase, portfolioId, year),
+  ]);
+
+  // Filter to just this calendar year (12 months, January..December)
+  const months = rhythm.filter((m) => m.year === year);
+  const ytdReceived = months.reduce((s, m) => s + m.received, 0);
+  const activeMonths = months.filter((m) => m.received > 0).length;
+  const payerCount = new Set(events.filter((e) => e.isPast).map((e) => e.ticker)).size;
+
+  return (
+    <DividendsMobile
+      tab="year"
+      portfolioName={portfolioName}
+      avatarInitials={avatarInitials}
+      yearData={{
+        year,
+        ytdReceived,
+        months: months.map((m) => ({
+          month: m.month, year: m.year, received: m.received, expected: m.expected,
+        })),
+        nowIndex: currentMonth,
+        activeMonths,
+        payerCount,
+      }}
+    />
   );
 }
 
