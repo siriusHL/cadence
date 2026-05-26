@@ -75,6 +75,8 @@ export interface MobileShellProps {
   avatarInitials?: string;
   /** "compact" | "regular" | "comfy" — passed to `data-density` on `.mob`. */
   density?: 'compact' | 'regular' | 'comfy';
+  /** Chassis variant. "v2b" = breathing layout used by every tier. */
+  chassis?: 'default' | 'v2b';
   children: React.ReactNode;
 }
 
@@ -83,6 +85,7 @@ export function MobileShell({
   portfolioName = 'Main portfolio',
   avatarInitials = 'U',
   density = 'regular',
+  chassis = 'default',
   children,
 }: MobileShellProps) {
   const pathname = usePathname();
@@ -109,7 +112,10 @@ export function MobileShell({
   );
 
   return (
-    <div className="mob" data-density={density === 'regular' ? undefined : density}>
+    <div
+      className={'mob' + (chassis === 'v2b' ? ' v2b' : '')}
+      data-density={density === 'regular' ? undefined : density}
+    >
       {/* Top bar */}
       <div className="topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

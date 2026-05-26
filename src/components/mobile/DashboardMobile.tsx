@@ -1,8 +1,14 @@
-// Mobile Dashboard view. Server-rendered — takes the same data the desktop
-// dashboard already computes and arranges it in the V1Standard layout from
-// templates/dashboard-mobile.jsx (big € hero → 2×2 stat grid → income rhythm
-// chart → top contributors → upcoming dividends → passive-income progress).
-// Wrapped in MobileShell which provides the top bar, drawer, and bottom tabs.
+// Mobile Dashboard — V2b chassis (Pro tier, paired-card pattern).
+// Mirrors templates/dashboard-v2.jsx V2Breathing:
+//   centered hero with split € + delta pill (since-start change)
+//   paired stat cards (Annual income · Yield) using .stat-paired
+//   income rhythm with "12M + 6M" tag
+//   top contributors with .ctr-row
+//   coming up with .up-row
+//   passive-income progress with .fire-num / .fire-track / .fire-foot
+//
+// Wrapped in MobileShell (chassis="v2b") which provides the top bar,
+// drawer, and bottom tabs.
 
 import Link from 'next/link';
 import { MobileShell } from '@/components/mobile/MobileShell';
@@ -62,6 +68,15 @@ export interface DashboardMobileProps {
   avatarInitials: string;
 }
 
+// Small chevron used inside the paired-card headers (template uses an inline SVG).
+function Chev({ size = 14 }: { size?: number }) {
+  return (
+    <svg className="chev" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M9.3 6.3l5.7 5.7-5.7 5.7-1.4-1.4L11.2 12 7.9 7.7z" />
+    </svg>
+  );
+}
+
 export function DashboardMobile({
   summary,
   rhythm,
@@ -74,19 +89,23 @@ export function DashboardMobile({
   avatarInitials,
 }: DashboardMobileProps) {
   const { whole, frac } = splitEuro(summary.totalValue);
-  const topContribMax = contributors[0]?.forwardAnnualLocal ?? 1;
-  const next4 = upcoming.slice(0, 4);
   const top4Contributors = contributors.slice(0, 4);
+  const next3 = upcoming.slice(0, 3);
+  const deltaIsUp = summary.unrealizedPL >= 0;
 
-  // Passive-income progress
+  // Paired-card 1: Annual income (Trailing 12M : Forward 12M) with split bar
+  const t12m = summary.t12mReceived;
+  const fwd = summary.forwardAnnualIncome;
+  const totalAB = t12m + fwd;
+  const aPct = totalAB > 0 ? (t12m / totalAB) * 100 : 50;
+  const bPct = totalAB > 0 ? (fwd / totalAB) * 100 : 50;
+
+  // FIRE progress
   const firePct = incomeTarget > 0
     ? Math.min(100, (summary.forwardAnnualIncome / incomeTarget) * 100)
     : 0;
-  const growthRate = 0.08;
   const fireYears = summary.forwardAnnualIncome > 0 && incomeTarget > summary.forwardAnnualIncome
-    ? Math.ceil(
-        Math.log(incomeTarget / summary.forwardAnnualIncome) / Math.log(1 + growthRate),
-      )
+    ? Math.ceil(Math.log(incomeTarget / summary.forwardAnnualIncome) / Math.log(1.08))
     : 0;
 
   return (
@@ -94,70 +113,88 @@ export function DashboardMobile({
       currentTab="dashboard"
       portfolioName={portfolioName}
       avatarInitials={avatarInitials}
+      chassis="v2b"
     >
-      {/* Hero */}
+      {/* Hero — centered big number with delta pill */}
       <div className="hero cdn-anim" style={{ '--i': 0 } as React.CSSProperties}>
-        <div className="eyebrow">Your portfolio · {todayLabel}</div>
+        <div className="eyebrow">Portfolio · {todayLabel}</div>
         <h1>
           <span className="cur">€</span>{whole}<span className="frac">.{frac}</span>
         </h1>
-        <div className="sub">
-          {summary.unrealizedPL >= 0 ? 'Up ' : 'Down '}
-          <span className={summary.unrealizedPL >= 0 ? 'up' : 'down'}>
-            €{fmt(Math.abs(summary.unrealizedPL))} ({summary.unrealizedPLPct >= 0 ? '+' : ''}
-            {summary.unrealizedPLPct.toFixed(2)}%)
-          </span>{' '}
-          since you started · <b>{summary.positionsCount} stocks</b> across{' '}
-          <b>{summary.countriesCount} countries</b> paying{' '}
-          <b>€{fmt(summary.forwardAnnualIncome)}</b>/yr forward.
+        <div className="delta">
+          <span className={'pill' + (deltaIsUp ? '' : ' down')}>
+            <span className="arrow">{deltaIsUp ? '▲' : '▼'}</span>
+            {deltaIsUp ? '+' : '−'}€{fmt(Math.abs(summary.unrealizedPL))} ·{' '}
+            {summary.unrealizedPLPct >= 0 ? '+' : ''}{summary.unrealizedPLPct.toFixed(2)}%
+          </span>
+          <span style={{ marginLeft: 8 }}>since start</span>
         </div>
       </div>
 
-      {/* 2×2 stat tiles */}
-      <div className="stat-grid cdn-anim" style={{ '--i': 1 } as React.CSSProperties}>
-        <div className="tile">
-          <div className="l">Forward income</div>
-          <div className="v">
-            <span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}
+      {/* Paired stat cards — Annual income (left) + Yield (right) */}
+      <div className="stat-paired cdn-anim" style={{ '--i': 1 } as React.CSSProperties}>
+        {/* Card 1: Annual income, paired (Trailing : Forward) with split bar */}
+        <Link
+          href="/app/dividends"
+          className="pcard-mini"
+          style={{ textDecoration: 'none', color: 'inherit' }}
+        >
+          <div className="ph">
+            Annual income
+            <Chev />
           </div>
-          <div className="d">over next 12M</div>
-        </div>
-        <div className="tile">
-          <div className="l">Forward yield</div>
-          <div className="v">
-            {summary.forwardYieldPct.toFixed(2)}<span className="pct">%</span>
+          <div className="paired-vals">
+            <span className="num a"><span className="cur">€</span>{fmt(t12m)}</span>
+            <span className="sep">:</span>
+            <span className="num b"><span className="cur">€</span>{fmt(fwd)}</span>
           </div>
-          <div className="d">
-            YoC <b style={{ color: 'var(--text)' }}>{summary.yieldOnCostPct.toFixed(2)}%</b>
+          <div className="paired-bar">
+            <div className="a" style={{ width: `${aPct}%` }} />
+            <div className="b" style={{ width: `${bPct}%` }} />
           </div>
-        </div>
-        <div className="tile">
-          <div className="l">YTD income</div>
-          <div className="v">
-            <span className="cur">€</span>{fmt(summary.ytdReceived)}
+          <div className="paired-foot">
+            <span>Trailing 12M</span>
+            <span>Forward 12M</span>
           </div>
-          <div className="d">Jan {new Date().getFullYear()} → today</div>
-        </div>
-        <div className="tile">
-          <div className="l">T12M income</div>
-          <div className="v">
-            <span className="cur">€</span>{fmt(summary.t12mReceived)}
+        </Link>
+
+        {/* Card 2: Yield, stacked named rows */}
+        <Link
+          href="/app/holdings"
+          className="pcard-mini"
+          style={{ textDecoration: 'none', color: 'inherit' }}
+        >
+          <div className="ph">
+            Yield
+            <Chev />
           </div>
-          <div className="d">trailing 12 months</div>
-        </div>
+          <div className="stacked-rows">
+            <div className="srow">
+              <span className="name">Forward</span>
+              <span className="val">{summary.forwardYieldPct.toFixed(2)}%</span>
+            </div>
+            <div className="srow">
+              <span className="name">YoC</span>
+              <span className="val up">{summary.yieldOnCostPct.toFixed(2)}%</span>
+            </div>
+            <div className="srow">
+              <span className="name">YTD</span>
+              <span className="val">€{fmt(summary.ytdReceived)}</span>
+            </div>
+          </div>
+        </Link>
       </div>
 
-      {/* Income rhythm chart */}
+      {/* Income rhythm */}
       {rhythm.length > 0 && (
         <div className="pcard cdn-anim" style={{ '--i': 2 } as React.CSSProperties}>
           <div className="pcard-h">
-            <div>
-              <div className="t">Income rhythm</div>
-              <div className="sub">Received + expected</div>
-            </div>
-            <span className="ppill live">live</span>
+            <div className="t">Income rhythm</div>
+            <span className="more">12M + 6M</span>
           </div>
-          <RhythmBars months={rhythm} nowIndex={nowIndex} />
+          <div className="rhythm-wrap">
+            <RhythmBars months={rhythm} nowIndex={nowIndex} height={120} />
+          </div>
         </div>
       )}
 
@@ -165,38 +202,57 @@ export function DashboardMobile({
       {top4Contributors.length > 0 && (
         <div className="pcard cdn-anim" style={{ '--i': 3 } as React.CSSProperties}>
           <div className="pcard-h">
-            <div>
-              <div className="t">Top income contributors</div>
-              <div className="sub">Forward 12M</div>
-            </div>
+            <div className="t">Top contributors</div>
             <Link href="/app/holdings" className="more" style={{ textDecoration: 'none' }}>
               See all
             </Link>
           </div>
           <div>
-            {top4Contributors.map((c) => {
-              const w = topContribMax > 0 ? (c.forwardAnnualLocal / topContribMax) * 100 : 0;
+            {top4Contributors.map((c) => (
+              <div key={c.ticker} className="ctr-row">
+                <span className="logo" style={{ background: 'transparent', padding: 0 }}>
+                  <TickerLogo ticker={c.ticker} size={38} radius={10} />
+                </span>
+                <div className="body">
+                  <div className="tk">{c.ticker}</div>
+                  {c.name && <div className="nm">{c.name}</div>}
+                </div>
+                <div className="right">
+                  <div className="v">€{fmt(c.forwardAnnualLocal)}</div>
+                  {c.yieldPct != null && (
+                    <div className="y">{c.yieldPct.toFixed(2)}% yld</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Coming up — next dividends */}
+      {next3.length > 0 && (
+        <div className="pcard cdn-anim" style={{ '--i': 4 } as React.CSSProperties}>
+          <div className="pcard-h">
+            <div className="t">Coming up</div>
+            <Link href="/app/dividends" className="more" style={{ textDecoration: 'none' }}>
+              See all
+            </Link>
+          </div>
+          <div>
+            {next3.map((e) => {
+              const d = new Date(e.exDate);
               return (
-                <div key={c.ticker} className="listrow">
-                  <span className="logo" style={{ background: 'transparent', padding: 0 }}>
-                    <TickerLogo ticker={c.ticker} size={32} radius={8} />
-                  </span>
-                  <div className="body">
-                    <div className="t">
-                      {c.ticker}{' '}
-                      {c.name && (
-                        <span style={{ color: 'var(--text-dim)', fontWeight: 400 }}>· {c.name}</span>
-                      )}
-                    </div>
-                    <div className="pbar" style={{ marginTop: 5 }}>
-                      <i style={{ width: `${w}%` }} />
-                    </div>
+                <div key={`${e.ticker}-${e.exDate}`} className="up-row">
+                  <div className="cal">
+                    <div className="d">{String(d.getDate()).padStart(2, '0')}</div>
+                    <div className="m">{MONTH_SHORT[d.getMonth()]}</div>
                   </div>
-                  <div className="right num">
-                    <div className="v">€{fmt(c.forwardAnnualLocal)}</div>
-                    {c.yieldPct != null && (
-                      <div className="s">{c.yieldPct.toFixed(2)}% yld</div>
-                    )}
+                  <div className="body">
+                    <div className="tk">{e.ticker}</div>
+                    <div className="in">in {e.daysUntil}d{e.isProjected ? ' · est' : ''}</div>
+                  </div>
+                  <div className="right">
+                    <div className="v">€{fmt(e.estimatedTotalLocal, 2)}</div>
                   </div>
                 </div>
               );
@@ -205,119 +261,37 @@ export function DashboardMobile({
         </div>
       )}
 
-      {/* Upcoming dividends */}
-      {next4.length > 0 && (
-        <div className="pcard cdn-anim" style={{ '--i': 4 } as React.CSSProperties}>
-          <div className="pcard-h">
-            <div>
-              <div className="t">Coming up · next {next4.length}</div>
-              <div className="sub">Through next 60 days</div>
-            </div>
-            {next4[0] && (
-              <span className="ppill">next {next4[0].daysUntil}d</span>
-            )}
-          </div>
-          {next4.map((e) => {
-            const d = new Date(e.exDate);
-            return (
-              <div key={`${e.ticker}-${e.exDate}`} className="listrow">
-                <div className="datebubble">
-                  <div className="d">{String(d.getDate()).padStart(2, '0')}</div>
-                  <div className="m">{MONTH_SHORT[d.getMonth()]}</div>
-                </div>
-                <span className="logo" style={{ background: 'transparent', padding: 0 }}>
-                  <TickerLogo ticker={e.ticker} size={28} radius={6} />
-                </span>
-                <div className="body">
-                  <div className="t">{e.ticker}</div>
-                  {e.name && <div className="n">{e.name}</div>}
-                </div>
-                <div className="right num">
-                  <div className="v">€{fmt(e.estimatedTotalLocal, 2)}</div>
-                  <div className="s">in {e.daysUntil}d{e.isProjected ? ' · est' : ''}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       {/* Passive income progress (FIRE) */}
       {incomeTarget > 0 && summary.forwardAnnualIncome > 0 && (
         <div className="pcard cdn-anim" style={{ '--i': 5 } as React.CSSProperties}>
           <div className="pcard-h">
-            <div>
-              <div className="t">Passive income progress</div>
-              <div className="sub">€{(incomeTarget / 1000).toFixed(0)}k / yr target</div>
-            </div>
-            <span className="ppill">{firePct.toFixed(1)}%</span>
+            <div className="t">Passive income target</div>
+            <span className="more">€{(incomeTarget / 1000).toFixed(0)}k / yr</span>
           </div>
-          <div
-            className="num"
-            style={{
-              fontSize: 24,
-              fontWeight: 600,
-              letterSpacing: '-0.025em',
-              lineHeight: 1.05,
-            }}
-          >
-            <span style={{ fontSize: 14, color: 'var(--text-dim)', fontWeight: 400 }}>€</span>
-            {fmt(summary.forwardAnnualIncome)}
-            <span
-              style={{
-                fontSize: 12,
-                color: 'var(--text-dim)',
-                fontWeight: 400,
-                marginLeft: 6,
-              }}
-            >
-              / €{fmt(incomeTarget)}
+          <div className="fire-num">
+            <span className="big">
+              <span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}
             </span>
+            <span className="of">/ €{fmt(incomeTarget)}</span>
           </div>
-          {fireYears > 0 && (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-              ~<b style={{ color: 'var(--text)' }}>{fireYears} years</b> at 8% growth
-            </div>
-          )}
-          <div
-            style={{
-              position: 'relative',
-              height: 8,
-              background: 'var(--surface-2)',
-              borderRadius: 4,
-              overflow: 'hidden',
-              marginTop: 12,
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: `${firePct}%`,
-                background: 'var(--accent-soft, oklch(0.55 0.10 175))',
-                borderRadius: 4,
-                transition: 'width 600ms cubic-bezier(0.22,1,0.36,1)',
-              }}
-            />
-            {[0.25, 0.5, 0.75].map((p) => (
-              <div
-                key={p}
-                style={{
-                  position: 'absolute',
-                  top: -2,
-                  bottom: -2,
-                  left: `${p * 100}%`,
-                  width: 1,
-                  background: 'var(--surface)',
-                }}
-              />
-            ))}
+          <div className="fire-track">
+            <div className="fire-fill" style={{ width: `${firePct}%` }} />
+          </div>
+          <div className="fire-foot">
+            <span>
+              <span className="pct">{firePct.toFixed(1)}%</span> of target
+            </span>
+            {fireYears > 0 && <span>~{fireYears} yrs at 8%</span>}
           </div>
         </div>
       )}
 
-      {/* Bottom spacer so the last card clears the bottom tab bar */}
-      <div style={{ height: 16 }} />
+      <div className="scroll-pad-bottom" />
     </MobileShell>
   );
 }
+
+// Avoid "unused export" warnings if RhythmMonth isn't directly referenced
+// elsewhere in this module — re-export so importers can pull the type from
+// the same file as the component if convenient.
+export type { RhythmMonth };
