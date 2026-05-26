@@ -4,8 +4,10 @@ import { getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import {
   getTaxSummary, computeDomesticTax,
+  getCapitalGainsSummary, computeCapitalGainsTax,
   DEFAULT_RESIDENCE, COUNTRY_NAMES,
   type TaxResidence, type DomesticTaxBreakdown, type ResidenceModel,
+  type CapitalGainsSummary, type CGTBreakdown, type CGTModel,
 } from '@/lib/tax';
 import { EmptyState } from '@/components/EmptyState';
 
@@ -56,7 +58,11 @@ export default async function TaxScreen() {
 
   const residence = (profile?.tax_country as TaxResidence | null) ?? DEFAULT_RESIDENCE;
   const fiscalYear = new Date().getFullYear();
-  const summary = await getTaxSummary(supabase, portfolio.id, fiscalYear, residence);
+  const [summary, capitalGains] = await Promise.all([
+    getTaxSummary(supabase, portfolio.id, fiscalYear, residence),
+    getCapitalGainsSummary(supabase, portfolio.id, fiscalYear, residence),
+  ]);
+  const cgt = computeCapitalGainsTax(capitalGains);
 
   // Domestic tax: residence-side layer (final tax minus foreign credit).
   // NL Box 3 needs the user's portfolio value at 1 Jan — for v0 we approximate
@@ -317,8 +323,229 @@ export default async function TaxScreen() {
 
         </div>{/* /right column flex wrapper */}
       </div>
+
+      {/* ─── Capital gains · YTD ─────────────────────────────────────── */}
+      <CapitalGainsSection
+        summary={capitalGains}
+        breakdown={cgt}
+        residenceName={residenceName}
+        fiscalYear={fiscalYear}
+      />
     </div>
   );
+}
+
+// ─── Capital gains card ───────────────────────────────────────────────
+
+function CapitalGainsSection({
+  summary, breakdown, residenceName, fiscalYear,
+}: {
+  summary: CapitalGainsSummary;
+  breakdown: CGTBreakdown;
+  residenceName: string;
+  fiscalYear: number;
+}) {
+  const hasSales = summary.sales.length > 0;
+  const gainPositive = summary.totalRealizedGainEur >= 0;
+  const gainColor = gainPositive ? 'oklch(0.36 0.08 165)' : 'oklch(0.50 0.16 25)';
+
+  return (
+    <div className="row-2" style={{ gridTemplateColumns: '1.5fr 1fr', marginTop: 14 }}>
+      {/* Realized sales table */}
+      <div className="pcard flush" style={{ overflow: 'hidden' }}>
+        <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
+          <div className="t">Capital gains · {fiscalYear}</div>
+          <span className="tag">FIFO · EUR equiv.</span>
+        </div>
+        {!hasSales ? (
+          <div style={{ padding: '20px 22px 22px', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.55 }}>
+            No sales recorded for {fiscalYear}. Record a sale from any holding (Edit → Sell shares)
+            to start tracking realized gains.
+          </div>
+        ) : (
+          <div style={{ maxHeight: 360, overflow: 'auto' }}>
+            <table className="pt">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Ticker</th>
+                  <th className="r">Qty</th>
+                  <th className="r">Proceeds €</th>
+                  <th className="r">Cost basis €</th>
+                  <th className="r">Gain/Loss €</th>
+                  <th>Held</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.sales.map((s) => {
+                  const gain = s.realizedGainEur;
+                  const isGain = gain >= 0;
+                  return (
+                    <tr key={s.txId}>
+                      <td className="muted">{s.saleDate}</td>
+                      <td className="b">{s.ticker}</td>
+                      <td className="r num">
+                        {s.qty.toLocaleString('en-IE', { maximumFractionDigits: 4 })}
+                      </td>
+                      <td className="r num">€{fmtMoney(s.proceedsEur, 2)}</td>
+                      <td className="r num muted">€{fmtMoney(s.costBasisEur, 2)}</td>
+                      <td
+                        className={'r num b ' + (isGain ? 'up' : 'down')}
+                      >
+                        {isGain ? '+' : '−'}€{fmtMoney(Math.abs(gain), 2)}
+                      </td>
+                      <td className="muted">
+                        {holdingLabel(s.holdingDays)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: 'var(--surface-2)' }}>
+                  <td className="b" colSpan={3} style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>
+                    Σ {summary.sales.length} sale{summary.sales.length === 1 ? '' : 's'}
+                  </td>
+                  <td className="r b">€{fmtMoney(summary.totalProceedsEur, 2)}</td>
+                  <td className="r b muted">€{fmtMoney(summary.totalCostBasisEur, 2)}</td>
+                  <td className={'r b ' + (gainPositive ? 'up' : 'down')}>
+                    {gainPositive ? '+' : '−'}€{fmtMoney(Math.abs(summary.totalRealizedGainEur), 2)}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+        {summary.hasUnmatchedSells && (
+          <div
+            style={{
+              padding: '10px 22px 14px', fontSize: 11.5,
+              color: 'oklch(0.46 0.10 25)', lineHeight: 1.5,
+            }}
+          >
+            ⚠ One or more sales had no matching buy lots in your history. The un-matched
+            portion is treated as full gain (worst case) — add the missing buy transactions
+            to refine the basis.
+          </div>
+        )}
+      </div>
+
+      {/* CGT estimate */}
+      <div className="pcard">
+        <div className="pcard-h">
+          <div className="t">{residenceName} CGT · {fiscalYear}</div>
+          <span className="tag">{cgtModelTag(breakdown.model)}</span>
+        </div>
+        {!hasSales ? (
+          <div style={{ padding: '12px 4px', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.55 }}>
+            Once you record sales, Cadence applies {residenceName}&rsquo;s capital-gains
+            regime and shows the tax owed on the year&rsquo;s realized profit here.
+          </div>
+        ) : (
+          <>
+            <table className="pt">
+              <tbody>
+                <tr>
+                  <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>Realized gains</td>
+                  <td className="r num" style={{ fontSize: 12, color: 'oklch(0.36 0.08 165)' }}>
+                    +€{fmtMoney(summary.totalGainsEur, 2)}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>Realized losses</td>
+                  <td className="r num" style={{ fontSize: 12, color: 'oklch(0.50 0.16 25)' }}>
+                    −€{fmtMoney(summary.totalLossesEur, 2)}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ fontSize: 12, fontWeight: 600 }}>Net realized</td>
+                  <td className="r num b" style={{ fontSize: 13, color: gainColor }}>
+                    {gainPositive ? '+' : '−'}€{fmtMoney(Math.abs(summary.totalRealizedGainEur), 2)}
+                  </td>
+                </tr>
+                {breakdown.allowanceUsedEur > 0 && (
+                  <tr>
+                    <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+                      {(breakdown.model.kind === 'flat' || breakdown.model.kind === 'progressive') && breakdown.model.allowanceLabel
+                        ? breakdown.model.allowanceLabel
+                        : 'Annual exemption'}
+                    </td>
+                    <td className="r num" style={{ fontSize: 12, color: 'oklch(0.36 0.08 165)' }}>
+                      −€{fmtMoney(breakdown.allowanceUsedEur, 2)}
+                    </td>
+                  </tr>
+                )}
+                {breakdown.taxableGainEur > 0 && (
+                  <tr>
+                    <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>Taxable gain</td>
+                    <td className="r num" style={{ fontSize: 12 }}>
+                      €{fmtMoney(breakdown.taxableGainEur, 2)}
+                    </td>
+                  </tr>
+                )}
+                <tr style={{ background: 'var(--surface-2)' }}>
+                  <td style={{ fontSize: 12, fontWeight: 600 }}>
+                    {residenceName} CGT due
+                  </td>
+                  <td
+                    className="r num b"
+                    style={{
+                      fontSize: 14, fontWeight: 700,
+                      color: breakdown.taxDueEur > 0.5 ? 'oklch(0.50 0.16 25)' : 'var(--text)',
+                    }}
+                  >
+                    €{fmtMoney(breakdown.taxDueEur, 2)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div
+              style={{
+                marginTop: 12, padding: '12px 14px',
+                background: 'oklch(0.97 0.03 165)', borderRadius: 10,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>Net realized after CGT</span>
+              <span
+                className="num"
+                style={{ fontSize: 18, fontWeight: 700, color: gainColor }}
+              >
+                {breakdown.netAfterTaxEur >= 0 ? '+' : '−'}€{fmtMoney(Math.abs(breakdown.netAfterTaxEur), 0)}
+              </span>
+            </div>
+            {breakdown.note && (
+              <div
+                style={{
+                  marginTop: 10, fontSize: 11, color: 'var(--text-muted)',
+                  lineHeight: 1.5, borderTop: '1px solid var(--border)', paddingTop: 8,
+                }}
+              >
+                {breakdown.note}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function cgtModelTag(model: CGTModel): string {
+  switch (model.kind) {
+    case 'flat':        return model.surchargeLabel ?? `flat ${model.rate}%`;
+    case 'progressive': return 'progressive';
+    case 'box3':        return 'Box 3 · no per-sale CGT';
+    case 'none':        return 'no CGT';
+  }
+}
+
+function holdingLabel(days: number): string {
+  if (days <= 0) return 'same day';
+  if (days < 30) return `${Math.round(days)}d`;
+  if (days < 365) return `${Math.round(days / 30)}mo`;
+  return `${(days / 365).toFixed(1)}y`;
 }
 
 // ─── Components ────────────────────────────────────────────────────────

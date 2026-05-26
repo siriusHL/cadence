@@ -628,3 +628,398 @@ function quantityAt(trades: { kind: string; date: Date; qty: number }[], onDate:
   }
   return q;
 }
+
+// ─── Capital gains (realized) ─────────────────────────────────────────
+//
+// Walks every buy/sell across the portfolio, matches sells against the
+// oldest open buy lots (FIFO), and reports realized gain in EUR per sale.
+// Sells outside the requested fiscal year still consume lots (so FIFO
+// order is preserved across years), but only fiscal-year sells appear in
+// the output rows.
+//
+// Gross figures are local-currency × the sell-row's fx_to_base. Cost
+// basis uses the buy lot's own fx_to_base — i.e. the EUR cost is what
+// the user paid in EUR at the time, not what it would be at today's FX.
+// That matches how most tax authorities want gains computed.
+
+export interface RealizedSale {
+  txId: string;
+  ticker: string;
+  saleDate: string;
+  currency: string;
+  qty: number;
+  proceedsLocal: number;
+  proceedsEur: number;
+  costBasisLocal: number;
+  costBasisEur: number;
+  realizedGainEur: number;
+  holdingDays: number;     // weighted-average across consumed lots, in days
+}
+
+export interface TickerGainRow {
+  ticker: string;
+  qtySold: number;
+  proceedsEur: number;
+  costBasisEur: number;
+  realizedGainEur: number;
+}
+
+export interface CapitalGainsSummary {
+  residence: TaxResidence;
+  fiscalYear: number;
+  sales: RealizedSale[];
+  byTicker: TickerGainRow[];
+  totalProceedsEur: number;
+  totalCostBasisEur: number;
+  /** Net of gains and losses (gains − |losses|). */
+  totalRealizedGainEur: number;
+  /** Sum of positive sale gains only. */
+  totalGainsEur: number;
+  /** Sum of absolute losses (always ≥ 0). */
+  totalLossesEur: number;
+  /** True when any sell consumed more shares than the FIFO queue contained
+   *  — usually means the user has buys missing for an inherited holding.
+   *  Cost basis for the un-matched portion is treated as zero (worst case). */
+  hasUnmatchedSells: boolean;
+}
+
+interface TradeRow {
+  id: string;
+  ticker: string;
+  kind: string;
+  occurred_on: string;
+  quantity: string | number;
+  price_local: string | number;
+  fee_local: string | number | null;
+  fx_to_base: string | number | null;
+}
+
+interface FifoLot {
+  date: Date;
+  qty: number;            // mutable, depleted by sells
+  priceLocal: number;
+  feePerShareLocal: number;
+  fx: number;             // fx_to_base captured at buy time
+}
+
+/**
+ * Build the realized-gain summary for a portfolio + fiscal year, FIFO-matched.
+ */
+export async function getCapitalGainsSummary(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  fiscalYear: number,
+  residence: TaxResidence,
+): Promise<CapitalGainsSummary> {
+  const yearStart = `${fiscalYear}-01-01`;
+  const yearEnd   = `${fiscalYear}-12-31`;
+
+  const { data: txData } = await supabase
+    .from('transactions')
+    .select('id, ticker, kind, occurred_on, quantity, price_local, fee_local, fx_to_base')
+    .eq('portfolio_id', portfolioId)
+    .in('kind', ['buy', 'sell'])
+    .order('occurred_on', { ascending: true });
+
+  const txs = (txData ?? []) as TradeRow[];
+  if (txs.length === 0) return emptyCapitalGains(residence, fiscalYear);
+
+  // Group by ticker so each ticker has its own FIFO queue.
+  const byTicker = new Map<string, TradeRow[]>();
+  for (const t of txs) {
+    if (!byTicker.has(t.ticker)) byTicker.set(t.ticker, []);
+    byTicker.get(t.ticker)!.push(t);
+  }
+
+  // Need currency per ticker for the per-sale view.
+  const { data: instData } = await supabase
+    .from('instruments')
+    .select('ticker, currency')
+    .in('ticker', Array.from(byTicker.keys()));
+  const ccyByTicker = new Map(
+    (instData ?? []).map((r) => [r.ticker, r.currency ?? 'EUR']),
+  );
+
+  const sales: RealizedSale[] = [];
+  let hasUnmatchedSells = false;
+
+  for (const [ticker, rows] of byTicker) {
+    const lots: FifoLot[] = [];
+
+    for (const tx of rows) {
+      const qty = Number(tx.quantity);
+      const price = Number(tx.price_local);
+      const fee = Number(tx.fee_local ?? 0);
+      const fx = Number(tx.fx_to_base ?? 1);
+      const date = new Date(tx.occurred_on);
+
+      if (tx.kind === 'buy') {
+        if (qty <= 0) continue;
+        lots.push({
+          date,
+          qty,
+          priceLocal: price,
+          feePerShareLocal: fee / qty,
+          fx,
+        });
+        continue;
+      }
+
+      // Sell — match against FIFO lots regardless of whether the sale is
+      // in the requested fiscal year (lots consumed in earlier years can't
+      // be re-used for current-year gains).
+      let remaining = qty;
+      let costLocal = 0;
+      let costEur = 0;
+      let weightedHoldingDays = 0;
+      let matchedQty = 0;
+
+      while (remaining > 1e-9 && lots.length > 0) {
+        const lot = lots[0];
+        const taken = Math.min(lot.qty, remaining);
+        const lotCostPerShareLocal = lot.priceLocal + lot.feePerShareLocal;
+        costLocal += taken * lotCostPerShareLocal;
+        costEur   += taken * lotCostPerShareLocal * lot.fx;
+        weightedHoldingDays += taken * Math.max(0, daysBetween(lot.date, date));
+        matchedQty += taken;
+        lot.qty -= taken;
+        remaining -= taken;
+        if (lot.qty <= 1e-9) lots.shift();
+      }
+
+      // Un-matched portion: cost basis is 0 (worst case — full proceeds
+      // treated as gain). Flag the summary so the UI can warn.
+      if (remaining > 1e-9) {
+        hasUnmatchedSells = true;
+      }
+
+      // Only emit a row when the sale is in the requested fiscal year.
+      if (tx.occurred_on < yearStart || tx.occurred_on > yearEnd) continue;
+
+      const proceedsLocal = qty * price - fee;
+      const proceedsEur = proceedsLocal * fx;
+      const realizedGainEur = proceedsEur - costEur;
+      const holdingDays = matchedQty > 0 ? weightedHoldingDays / matchedQty : 0;
+
+      sales.push({
+        txId:             tx.id,
+        ticker,
+        saleDate:         tx.occurred_on,
+        currency:         ccyByTicker.get(ticker) ?? 'EUR',
+        qty,
+        proceedsLocal,
+        proceedsEur,
+        costBasisLocal:   costLocal,
+        costBasisEur:     costEur,
+        realizedGainEur,
+        holdingDays,
+      });
+    }
+  }
+
+  // Roll up by ticker for the side table.
+  const tickerAgg = new Map<string, TickerGainRow>();
+  let totalProceeds = 0, totalCost = 0, totalGains = 0, totalLosses = 0;
+  for (const s of sales) {
+    const existing = tickerAgg.get(s.ticker);
+    if (existing) {
+      existing.qtySold         += s.qty;
+      existing.proceedsEur     += s.proceedsEur;
+      existing.costBasisEur    += s.costBasisEur;
+      existing.realizedGainEur += s.realizedGainEur;
+    } else {
+      tickerAgg.set(s.ticker, {
+        ticker:           s.ticker,
+        qtySold:          s.qty,
+        proceedsEur:      s.proceedsEur,
+        costBasisEur:     s.costBasisEur,
+        realizedGainEur:  s.realizedGainEur,
+      });
+    }
+    totalProceeds += s.proceedsEur;
+    totalCost     += s.costBasisEur;
+    if (s.realizedGainEur >= 0) totalGains += s.realizedGainEur;
+    else totalLosses += -s.realizedGainEur;
+  }
+
+  const byTickerSorted = [...tickerAgg.values()].sort(
+    (a, b) => Math.abs(b.realizedGainEur) - Math.abs(a.realizedGainEur),
+  );
+  const salesSorted = [...sales].sort((a, b) => b.saleDate.localeCompare(a.saleDate));
+
+  return {
+    residence,
+    fiscalYear,
+    sales: salesSorted,
+    byTicker: byTickerSorted,
+    totalProceedsEur:     totalProceeds,
+    totalCostBasisEur:    totalCost,
+    totalRealizedGainEur: totalGains - totalLosses,
+    totalGainsEur:        totalGains,
+    totalLossesEur:       totalLosses,
+    hasUnmatchedSells,
+  };
+}
+
+function emptyCapitalGains(residence: TaxResidence, fiscalYear: number): CapitalGainsSummary {
+  return {
+    residence, fiscalYear,
+    sales: [], byTicker: [],
+    totalProceedsEur: 0, totalCostBasisEur: 0,
+    totalRealizedGainEur: 0, totalGainsEur: 0, totalLossesEur: 0,
+    hasUnmatchedSells: false,
+  };
+}
+
+function daysBetween(a: Date, b: Date): number {
+  return Math.floor((b.getTime() - a.getTime()) / 86400000);
+}
+
+// ─── Residence-side CGT models ────────────────────────────────────────
+//
+// Mirrors the dividend `RESIDENCE_MODELS` shape. Most EU jurisdictions
+// tax capital gains separately from dividends — same flat rate in some
+// (DE/AT/IT use the same rate, but allowances are typically separate
+// pools so we treat them independently here), different in others (IE
+// 33% CGT vs 40%+USC marginal on dividends; FR 30% PFU on both; BE has
+// no general CGT on listed-share gains for private investors).
+
+export type CGTModel =
+  | {
+      kind: 'flat';
+      rate: number;
+      allowance?: number;
+      allowanceLabel?: string;
+      surchargeLabel?: string;
+    }
+  | {
+      kind: 'progressive';
+      bands: { upTo: number; rate: number }[];
+      allowance?: number;
+      allowanceLabel?: string;
+    }
+  | {
+      kind: 'box3';
+      // NL: gains on listed shares aren't taxed per-event; the wealth
+      // sits inside Box 3. We surface this with a note rather than a number.
+    }
+  | {
+      kind: 'none';
+      // BE individual investors on regular share trades; flagged with a note.
+      note: string;
+    };
+
+export const RESIDENCE_CGT_MODELS: Record<TaxResidence, CGTModel> = {
+  IE: { kind: 'flat', rate: 33, allowance: 1270, allowanceLabel: 'Personal CGT exemption' },
+  NL: { kind: 'box3' },
+  DE: { kind: 'flat', rate: 26.375, allowance: 1000, allowanceLabel: 'Sparer-Pauschbetrag', surchargeLabel: 'incl. Soli' },
+  FR: { kind: 'flat', rate: 30, surchargeLabel: 'PFU · 12.8 IT + 17.2 social' },
+  ES: { kind: 'progressive', bands: [
+    { upTo: 6000,   rate: 19 },
+    { upTo: 50000,  rate: 21 },
+    { upTo: 200000, rate: 23 },
+    { upTo: 300000, rate: 27 },
+    { upTo: Infinity, rate: 28 },
+  ]},
+  IT: { kind: 'flat', rate: 26 },
+  BE: { kind: 'none', note: 'Belgium does not tax capital gains on listed shares for individual investors managing private assets.' },
+  PT: { kind: 'flat', rate: 28 },
+  AT: { kind: 'flat', rate: 27.5, surchargeLabel: 'KESt' },
+  GB: { kind: 'flat', rate: 24, allowance: 3000, allowanceLabel: 'Annual exempt amount (£3,000)' },
+};
+
+export interface CGTBreakdown {
+  model: CGTModel;
+  /** Net realized gain before allowance & tax. Equal to summary.totalRealizedGainEur. */
+  netGainEur: number;
+  /** Allowance applied this year. */
+  allowanceUsedEur: number;
+  /** Gain after allowance (the part actually subject to tax). */
+  taxableGainEur: number;
+  /** Estimated CGT owed at residence. */
+  taxDueEur: number;
+  /** Net the user keeps after CGT: netGainEur − taxDueEur. */
+  netAfterTaxEur: number;
+  /** Effective CGT rate on the realized gain. */
+  effectiveRatePct: number;
+  /** Free-text caveat shown in the UI. */
+  note?: string;
+}
+
+/**
+ * Apply the residence-country CGT to a capital-gains summary. Losses
+ * (net gain < 0) yield zero tax — loss carry-forward is intentionally
+ * out of scope for v1.
+ */
+export function computeCapitalGainsTax(summary: CapitalGainsSummary): CGTBreakdown {
+  const model = RESIDENCE_CGT_MODELS[summary.residence];
+  const net = summary.totalRealizedGainEur;
+
+  if (model.kind === 'box3') {
+    return {
+      model,
+      netGainEur:       net,
+      allowanceUsedEur: 0,
+      taxableGainEur:   0,
+      taxDueEur:        0,
+      netAfterTaxEur:   net,
+      effectiveRatePct: 0,
+      note: 'Listed-share gains aren’t taxed per sale in NL — wealth sits in Box 3 alongside dividends.',
+    };
+  }
+  if (model.kind === 'none') {
+    return {
+      model,
+      netGainEur:       net,
+      allowanceUsedEur: 0,
+      taxableGainEur:   0,
+      taxDueEur:        0,
+      netAfterTaxEur:   net,
+      effectiveRatePct: 0,
+      note: model.note,
+    };
+  }
+
+  if (net <= 0) {
+    return {
+      model,
+      netGainEur:       net,
+      allowanceUsedEur: 0,
+      taxableGainEur:   0,
+      taxDueEur:        0,
+      netAfterTaxEur:   net,
+      effectiveRatePct: 0,
+      note: net < 0 ? 'Net loss for the year — no CGT owed. Loss carry-forward isn’t modelled in this estimate.' : undefined,
+    };
+  }
+
+  const allowance = model.allowance ?? 0;
+  const allowanceUsed = Math.min(allowance, net);
+  const taxable = Math.max(0, net - allowanceUsed);
+  let tax = 0;
+
+  if (model.kind === 'flat') {
+    tax = (taxable * model.rate) / 100;
+  } else if (model.kind === 'progressive') {
+    let prev = 0;
+    let remaining = taxable;
+    for (const band of model.bands) {
+      const slice = Math.min(band.upTo, remaining + prev) - prev;
+      if (slice <= 0) break;
+      tax += (slice * band.rate) / 100;
+      prev += slice;
+      remaining -= slice;
+      if (remaining <= 0) break;
+    }
+  }
+
+  return {
+    model,
+    netGainEur:       net,
+    allowanceUsedEur: allowanceUsed,
+    taxableGainEur:   taxable,
+    taxDueEur:        tax,
+    netAfterTaxEur:   net - tax,
+    effectiveRatePct: net > 0 ? (tax / net) * 100 : 0,
+  };
+}
