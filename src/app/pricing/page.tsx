@@ -31,7 +31,7 @@ const PLANS: Plan[] = [
     blurb: 'The full dividend research toolkit.',
     bullets: [
       `3 portfolios, up to ${TIERS.premium.maxHoldings} holdings each`,
-      'Calendar, 12-month forecast, DRIP simulator',
+      'Calendar, 12-month forecast, income simulator',
       'Performance vs benchmarks, diversification',
       '10-minute live quotes, CSV export',
     ],

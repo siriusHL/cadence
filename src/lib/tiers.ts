@@ -19,7 +19,7 @@ export type Screen =
   | 'add'                                       // action — available to all tiers, RLS-capped
   | 'profile' | 'settings' | 'portfolios'       // account pages — accessible to every tier
   | 'dashboard' | 'holdings' | 'stock'
-  | 'calendar' | 'forecast' | 'drip'
+  | 'calendar' | 'forecast' | 'simulator'
   | 'performance' | 'diversification'
   | 'tax' | 'alerts';
 
@@ -61,11 +61,11 @@ export const TIERS: Record<Tier, TierConfig> = {
     fxFreshnessMin: 15,
     // Premium swaps the four beginner-oriented screens (home / next / stocks /
      // year) for the data-dense pro versions (dashboard / holdings / calendar /
-     // forecast / drip / performance / diversification).
+     // forecast / simulator / performance / diversification).
     screens: [
       'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
-      'calendar', 'forecast', 'drip',
+      'calendar', 'forecast', 'simulator',
       'performance', 'diversification',
     ],
     features: {
@@ -86,7 +86,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     screens: [
       'add', 'profile', 'settings', 'portfolios',
       'dashboard', 'holdings', 'stock',
-      'calendar', 'forecast', 'drip',
+      'calendar', 'forecast', 'simulator',
       'performance', 'diversification',
       'tax', 'alerts',
     ],

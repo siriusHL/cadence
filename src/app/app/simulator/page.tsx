@@ -1,15 +1,15 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { getActivePortfolio, } from '@/lib/activePortfolio';
+import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getHoldingsView, getPortfolioSummary } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { canAccessScreen, type Tier } from '@/lib/tiers';
 import { EmptyState } from '@/components/EmptyState';
-import { DripSimulator } from '@/components/DripSimulator';
+import { IncomeSimulator } from '@/components/IncomeSimulator';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DripScreen() {
+export default async function SimulatorScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -20,14 +20,14 @@ export default async function DripScreen() {
     .maybeSingle();
   const tier = (sub?.tier ?? 'free') as Tier;
 
-  if (!canAccessScreen(tier, 'drip')) redirect('/upgrade');
+  if (!canAccessScreen(tier, 'simulator')) redirect('/upgrade');
 
   const portfolio = await getActivePortfolio(supabase, user!.id);
   if (!portfolio) {
     return (
       <EmptyState
         title="No portfolio yet"
-        body="Add a holding to simulate how dividend reinvestment compounds over time."
+        body="Add a holding to simulate how reinvested dividends compound over time."
         ctaLabel="Add a holding"
         ctaHref="/app/add"
       />
@@ -44,7 +44,7 @@ export default async function DripScreen() {
       <EmptyState
         icon="📈"
         title="Not enough data yet"
-        body="DRIP needs at least one dividend-paying holding with a market value to simulate compounding."
+        body="The simulator needs at least one dividend-paying holding with a market value to project compounding."
         ctaLabel="Add a holding"
         ctaHref="/app/add"
       />
@@ -52,7 +52,7 @@ export default async function DripScreen() {
   }
 
   return (
-    <DripSimulator
+    <IncomeSimulator
       baseValue={summary.totalValue}
       baseIncome={summary.forwardAnnualIncome}
       baseCost={summary.costBasis || summary.totalValue}

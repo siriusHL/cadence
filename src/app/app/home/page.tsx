@@ -234,7 +234,7 @@ export default async function HomeScreen() {
             <div className="icon">✦</div>
             <div className="body">
               <div className="h">Want to see further ahead?</div>
-              <div className="p">Forecast 12 months of income, simulate DRIP, track your FIRE goal, and reclaim foreign tax.</div>
+              <div className="p">Forecast 12 months of income, simulate dividend reinvestment, track your passive income goal, and reclaim foreign tax.</div>
             </div>
             <Link href="/upgrade" className="cta" style={{ textDecoration: 'none' }}>
               Upgrade

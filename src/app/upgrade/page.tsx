@@ -21,7 +21,7 @@ const PLANS: Plan[] = [
     price: '€4 / mo',
     bullets: [
       '3 portfolios, 100 holdings each',
-      'Forecast, calendar, DRIP, performance',
+      'Forecast, calendar, simulator, performance',
       '10-min live quotes · CSV export',
     ],
   },
