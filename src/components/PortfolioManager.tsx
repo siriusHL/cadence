@@ -235,7 +235,12 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
         </div>
         <form
           onSubmit={createPortfolio}
-          style={{ display: 'flex', gap: 8, padding: 16 }}
+          style={{
+            display: 'flex',
+            gap: 8,
+            padding: 16,
+            alignItems: 'stretch',
+          }}
         >
           <input
             type="text"
@@ -246,11 +251,13 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
             disabled={atCap || pending}
             style={{
               flex: 1,
-              padding: '8px 12px',
+              height: 36,
+              padding: '0 12px',
               border: '1px solid var(--border-strong)',
               borderRadius: 8,
               fontSize: 14,
               background: atCap ? "var(--input-disabled-bg)" : "var(--input-bg)",
+              boxSizing: 'border-box',
             }}
           />
           <button
@@ -276,7 +283,12 @@ export function PortfolioManager({ tier, portfolios, activeId, cap }: Props) {
 }
 
 const btnPrimary: React.CSSProperties = {
-  padding: '8px 14px',
+  // Explicit 36px height + border-box so the button matches the
+  // sibling input pixel-for-pixel in the Create-a-portfolio form
+  // — without this they had a 1-2px height mismatch from differing
+  // font-size + padding combinations.
+  height: 36,
+  padding: '0 14px',
   background: 'var(--btn-primary-bg)',
   color: 'var(--btn-primary-text)',
   border: '1px solid var(--btn-primary-bg)',
@@ -284,6 +296,8 @@ const btnPrimary: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 500,
   cursor: 'pointer',
+  boxSizing: 'border-box',
+  whiteSpace: 'nowrap',
 };
 
 const btnGhost: React.CSSProperties = {
