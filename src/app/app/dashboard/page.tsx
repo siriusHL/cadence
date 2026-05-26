@@ -124,6 +124,17 @@ export default async function DashboardScreen() {
     : avgSafety >= 70 ? 'oklch(0.48 0.08 165)'
     : avgSafety >= 50 ? 'oklch(0.55 0.10 75)'
     : 'oklch(0.50 0.16 25)';
+  function letterGrade(score: number | null): string {
+    if (score == null) return '–';
+    if (score >= 90) return 'A+';
+    if (score >= 80) return 'A';
+    if (score >= 70) return 'B+';
+    if (score >= 60) return 'B';
+    if (score >= 50) return 'C';
+    if (score >= 40) return 'D';
+    return 'F';
+  }
+  const safetyLetter = letterGrade(avgSafety);
 
   // Passive-income target from profile (Settings → Passive income target).
   const incomeTarget = Number(profile?.income_target ?? 30_000);
@@ -220,16 +231,37 @@ export default async function DashboardScreen() {
         </div>
         <div className="tile" style={{ ['--i' as never]: 4 }}>
           <div className="l">Avg safety</div>
-          <div className="v" style={{ color: safetyColor }}>
+          <div
+            className="v"
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 10,
+              color: safetyColor,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                fontSize: 40,
+                fontWeight: 700,
+                letterSpacing: '-0.04em',
+                lineHeight: 0.95,
+              }}
+            >
+              {safetyLetter}
+            </span>
             {avgSafety == null ? (
-              <span style={{ color: 'var(--text-dim)' }}>—</span>
+              <span style={{ color: 'var(--text-dim)', fontSize: 16, fontWeight: 400 }}>
+                no data
+              </span>
             ) : (
-              <>
+              <span>
                 {avgSafety}
                 <span style={{ fontSize: 14, color: 'var(--text-dim)', fontWeight: 400 }}>
                   /100
                 </span>
-              </>
+              </span>
             )}
           </div>
           <div className="d">
