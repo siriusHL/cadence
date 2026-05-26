@@ -1142,19 +1142,6 @@
   animation: cdn-fade-up 0.5s 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Cumulative-P/L line — draws in left-to-right via stroke-dashoffset. */
-.cdn-pro .irc-pl-line {
-  stroke-dasharray: 1000;
-  stroke-dashoffset: 1000;
-  animation: cdn-pl-draw 1s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.cdn-pro .irc-pl-dot {
-  animation: cdn-fade-in 0.3s 1s both;
-}
-@keyframes cdn-pl-draw {
-  to { stroke-dashoffset: 0; }
-}
-
 /* Range segmented control — buttons get a soft active flash. */
 .cdn-pro .seg button {
   transition:
@@ -1213,8 +1200,6 @@
   .cdn-pro .irc-bar-stack,
   .cdn-pro .irc-now-line,
   .cdn-pro .irc-now-label,
-  .cdn-pro .irc-pl-line,
-  .cdn-pro .irc-pl-dot,
   .cdn-pro .contrib-row,
   .cdn-pro .contrib-bar > i,
   .cdn-pro .upcoming-row,

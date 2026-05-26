@@ -9,9 +9,8 @@ import {
   getTopContributors,
   getTopPLContributors,
   getUpcomingDividends,
-  getPerformanceSeries,
 } from '@/lib/portfolio';
-import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich';
+import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { IncomeRhythmChart } from '@/components/IncomeRhythmChart';
@@ -57,53 +56,21 @@ export default async function DashboardScreen() {
     );
   }
 
+  // Make sure quote/dividend caches are warm for every held ticker
+  await enrichInstruments(held.map((h) => h.ticker));
+
   // Fetch a wide window so the client range selector can show 6M / 1Y / 18M / 3Y
   // without re-querying. 36 past + 6 future = 42 total.
   const FULL_PAST = 36;
   const FULL_FUTURE = 6;
 
-  // Warm quote cache + backfill weekly closes. The history backfill is what
-  // makes the rhythm-chart P/L line move month-to-month — without it the
-  // instrument_history table only has whatever the Performance/Alerts pages
-  // last populated, so getPerformanceSeries returns near-constant values
-  // and the line goes flat.
-  await enrichInstruments(held.map((h) => h.ticker));
-  await enrichWeeklyHistory(held.map((h) => h.ticker), (FULL_PAST + FULL_FUTURE) * 5);
-
-  const [summary, rhythm, contributors, plContributors, upcoming, perfSeries] = await Promise.all([
+  const [summary, rhythm, contributors, plContributors, upcoming] = await Promise.all([
     getPortfolioSummary(supabase, portfolio.id),
     getIncomeRhythm(supabase, portfolio.id, FULL_PAST, FULL_FUTURE),
     getTopContributors(supabase, portfolio.id, 6),
     getTopPLContributors(supabase, portfolio.id, 6),
     getUpcomingDividends(supabase, portfolio.id, 60),
-    // Weekly perf series covering the same window as `rhythm`. ~5 weeks
-    // per month; we trim down per-month below.
-    getPerformanceSeries(supabase, portfolio.id, (FULL_PAST + FULL_FUTURE) * 5),
   ]);
-
-  // Resample weekly perf → one absolute P/L € value per rhythm month. The
-  // chart rebases each visible slice to 0 at its left edge, so a portfolio
-  // whose total P/L sits at a near-steady ~€25k still shows the month-over-
-  // month delta against a tight auto-scaled range (gains and dips of a few
-  // hundred euros become visible). returnPct was tried first but DCA
-  // portfolios keep returnPct nearly constant, which rebased to a flat 0%.
-  function lastDayOfMonth(year: number, monthIdx: number): string {
-    const d = new Date(Date.UTC(year, monthIdx + 1, 0));
-    return d.toISOString().slice(0, 10);
-  }
-  let perfCursor = 0;
-  const plLine: (number | null)[] = rhythm.map((m) => {
-    const eom = lastDayOfMonth(m.year, m.month);
-    let lastIdx = -1;
-    for (let i = perfCursor; i < perfSeries.length; i++) {
-      if (perfSeries[i].date > eom) break;
-      lastIdx = i;
-    }
-    if (lastIdx === -1) return null;
-    perfCursor = lastIdx;
-    const p = perfSeries[lastIdx];
-    return p.value - p.cost;
-  });
 
   // Index of the current month inside `rhythm` (0-based).
   const nowIndex = FULL_PAST - 1;
@@ -222,7 +189,7 @@ export default async function DashboardScreen() {
             </div>
           </div>
         </div>
-        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} plLine={plLine} />
+        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} />
       </div>
 
       {/* Top contributors — income side-by-side with P/L */}

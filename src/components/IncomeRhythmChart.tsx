@@ -23,15 +23,6 @@ interface Props {
   months: MonthOverview[];
   /** Index of the current month inside `months`. */
   nowIndex: number;
-  /**
-   * Optional cumulative absolute P/L in € (value − cost), sampled at
-   * end-of-month, same length and index alignment as `months`. The chart
-   * rebases each visible slice to 0 at the first non-null point and
-   * auto-scales the right axis to the actual range, so even small
-   * month-over-month variations on a steady-state portfolio are visible.
-   * `null` entries become gaps.
-   */
-  plLine?: (number | null)[];
 }
 
 function fmt(n: number, digits = 0): string {
@@ -40,79 +31,34 @@ function fmt(n: number, digits = 0): string {
 
 interface HoverState { idx: number; x: number; y: number; }
 
-export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
+export function IncomeRhythmChart({ months, nowIndex }: Props) {
   const [range, setRange] = useState<RangeKey>('18M');
   const [hover, setHover] = useState<HoverState | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
 
-  // Slice the months for the selected range, then rebase the P/L line to 0 at
-  // the first non-null point in the slice — small month-over-month deltas
-  // become readable instead of getting flattened against a 0-anchored axis.
-  const { slice, slicePL, nowIndexInSlice, sliceStart } = useMemo(() => {
+  // Slice the full month array based on the selected range
+  const { slice, nowIndexInSlice, sliceStart } = useMemo(() => {
     const cfg = RANGES[range];
     const start = Math.max(0, nowIndex - cfg.past + 1);
     const end = Math.min(months.length, nowIndex + cfg.future + 1);
-    const rawSlice = plLine ? plLine.slice(start, end) : null;
-    let rebased: (number | null)[] | null = null;
-    if (rawSlice) {
-      const firstNonNull = rawSlice.find((v) => v != null);
-      const base = firstNonNull ?? 0;
-      rebased = rawSlice.map((v) => (v == null ? null : v - base));
-    }
     return {
       slice: months.slice(start, end),
-      slicePL: rebased,
       nowIndexInSlice: nowIndex - start,
       sliceStart: start,
     };
-  }, [months, nowIndex, range, plLine]);
+  }, [months, nowIndex, range]);
 
-  // Bars: left axis, 0 → niceCeil(barMax). P/L line: right axis, auto-scaled
-  // tightly to the rebased data range with light padding — the line is
-  // already centred near zero by rebasing, so no need to anchor at 0.
-  const { barTop, plTop, plBottom } = useMemo(() => {
-    const barMax = Math.max(...slice.map((m) => Math.max(m.received, m.expected)), 0);
-    const plValues = slicePL?.filter((v): v is number => v != null) ?? [];
-    if (plValues.length < 2) {
-      return {
-        barTop: Math.max(1, niceCeil(barMax * 1.18)),
-        plTop: 1,
-        plBottom: 0,
-      };
-    }
-    const plMax = Math.max(...plValues);
-    const plMin = Math.min(...plValues);
-    const span = Math.max(Math.abs(plMax), Math.abs(plMin), Math.abs(plMax - plMin));
-    const pad = Math.max(span * 0.2, 1);
-    return {
-      barTop: Math.max(1, niceCeil(barMax * 1.18)),
-      plTop: niceCeil(plMax + pad),
-      plBottom: plMin < 0 ? -niceCeil(-(plMin - pad)) : 0,
-    };
-  }, [slice, slicePL]);
+  // Scale to slice max — empty slices fall back to 1 to avoid divide-by-zero
+  const maxBar = useMemo(() => {
+    const m = Math.max(...slice.map((m) => Math.max(m.received, m.expected)), 0);
+    return Math.max(1, m * 1.18);
+  }, [slice]);
 
-  // Left-axis ticks (bars, €) and right-axis ticks (line, €) — three each.
-  const barTicks = useMemo(() => [0, barTop / 2, barTop], [barTop]);
-  const plTicks = useMemo(() => {
-    if (plBottom < 0 && plTop > 0) return [plBottom, 0, plTop];
-    if (plBottom < 0) return [plBottom, plBottom / 2, 0];
-    return [0, plTop / 2, plTop];
-  }, [plBottom, plTop]);
-
-  /** Project a bar € value into 0–100% of chart height (0 = top, 100 = bottom). */
-  const barYPct = (v: number): number => ((barTop - v) / barTop) * 100;
-  /** Project a P/L € value onto the same vertical span, using the right axis. */
-  const plRange = plTop - plBottom;
-  const plYPct = (v: number): number =>
-    plRange > 0 ? ((plTop - v) / plRange) * 100 : 100;
-  const hasPL = (slicePL?.filter((v) => v != null).length ?? 0) >= 2;
-  const lastPLValue = (() => {
-    if (!slicePL) return null;
-    for (let i = slicePL.length - 1; i >= 0; i--) {
-      if (slicePL[i] != null) return slicePL[i] as number;
-    }
-    return null;
-  })();
+  // 3 y-axis ticks: 0, max/2, max — rounded to a nice number
+  const yTicks = useMemo(() => {
+    const top = niceCeil(maxBar);
+    return [0, top / 2, top];
+  }, [maxBar]);
 
   const chartHeight = 170;
   const yAxisWidth = 38;
@@ -121,46 +67,13 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Toolbar: legend + range selector */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175)' }} /> Received
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: 'oklch(0.55 0.10 175 / 0.22)' }} /> Expected
           </span>
-          {hasPL && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
-              <span
-                aria-hidden
-                style={{
-                  display: 'inline-block',
-                  width: 14,
-                  height: 2,
-                  background: 'oklch(0.42 0.14 30)',
-                  borderRadius: 1,
-                }}
-              />{' '}
-              P/L Δ
-              {lastPLValue != null && (
-                <span
-                  className="num"
-                  style={{
-                    color:
-                      lastPLValue >= 0
-                        ? 'oklch(0.42 0.14 30)'
-                        : 'oklch(0.50 0.16 25)',
-                    fontWeight: 600,
-                  }}
-                >
-                  {lastPLValue >= 0 ? '+€' : '−€'}
-                  {fmt(Math.abs(lastPLValue))}
-                </span>
-              )}
-              <span style={{ color: 'var(--text-dim)', fontSize: 10.5 }}>
-                · since {RANGES[range].past}M ago, right axis
-              </span>
-            </span>
-          )}
         </div>
         <div className="seg">
           {(Object.keys(RANGES) as RangeKey[]).map((r) => (
@@ -178,48 +91,55 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
 
       {/* Chart with y-axis + grid + bars */}
       <div style={{ position: 'relative', height: chartHeight + 22, display: 'flex' }}>
-        {/* Left y-axis labels — bar scale */}
+        {/* Y-axis labels */}
         <div style={{
           width: yAxisWidth,
           height: chartHeight,
           position: 'relative',
           flexShrink: 0,
         }}>
-          {barTicks.map((v, i) => (
-            <div
-              key={i}
-              className="num"
-              style={{
-                position: 'absolute',
-                right: 6,
-                top: `${barYPct(v)}%`,
-                transform: 'translateY(-50%)',
-                fontSize: 10,
-                color: 'var(--text-dim)',
-                fontWeight: 500,
-              }}
-            >
-              €{fmt(v)}
-            </div>
-          ))}
+          {yTicks.map((v, i) => {
+            // Top is 100% (max), bottom is 0%
+            const pct = (yTicks[yTicks.length - 1] - v) / (yTicks[yTicks.length - 1] || 1);
+            return (
+              <div
+                key={i}
+                className="num"
+                style={{
+                  position: 'absolute',
+                  right: 6,
+                  top: `${pct * 100}%`,
+                  transform: 'translateY(-50%)',
+                  fontSize: 10,
+                  color: 'var(--text-dim)',
+                  fontWeight: 500,
+                }}
+              >
+                €{fmt(v)}
+              </div>
+            );
+          })}
         </div>
 
         {/* Bars area */}
         <div style={{ position: 'relative', flex: 1, height: chartHeight + 22 }}>
-          {/* Horizontal grid lines — aligned to the bar-scale ticks. */}
+          {/* Horizontal grid lines */}
           <div style={{ position: 'absolute', inset: `0 0 22px 0`, pointerEvents: 'none' }}>
-            {barTicks.map((v, i) => (
-              <div
-                key={i}
-                style={{
-                  position: 'absolute',
-                  left: 0, right: 0,
-                  top: `${barYPct(v)}%`,
-                  height: 1,
-                  background: 'rgba(0,0,0,0.05)',
-                }}
-              />
-            ))}
+            {yTicks.map((_, i) => {
+              const pct = i / (yTicks.length - 1);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: 0, right: 0,
+                    top: `${(1 - pct) * 100}%`,
+                    height: 1,
+                    background: 'rgba(0,0,0,0.05)',
+                  }}
+                />
+              );
+            })}
           </div>
 
           {/* Bars — re-keyed by range so the entrance replays on range change. */}
@@ -236,7 +156,8 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
                   const received = m.received;
                   const expected = m.expected;
                   const top = Math.max(received, expected);
-                  const totalH = (top / barTop) * 100;
+                  const top100 = yTicks[yTicks.length - 1] || 1;
+                  const totalH = (top / top100) * 100;
                   const solidPortion = top > 0 ? (received / top) * totalH : 0;
                   const fadedPortion = Math.max(0, totalH - solidPortion);
                   const isHovered = hover?.idx === i;
@@ -321,15 +242,6 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
             );
           })()}
 
-          {/* Cumulative P/L line overlay — uses right-axis (P/L) scale. */}
-          {hasPL && slicePL && (
-            <PLLine
-              key={`pl-${range}`}
-              values={slicePL}
-              yPct={plYPct}
-            />
-          )}
-
           {/* "Now" divider — keyed by range so it fades in alongside the bars. */}
           {nowIndexInSlice >= 0 && nowIndexInSlice < slice.length && (
             <NowMarker
@@ -339,47 +251,6 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
               chartHeight={chartHeight}
             />
           )}
-
-          {/* Trailing-P/L dot — HTML element (so it stays circular regardless
-              of aspect ratio) inside a wrapper with the same inset as the
-              SVG line, so plYPct can be used directly. */}
-          {hasPL && slicePL && (() => {
-            for (let i = slicePL.length - 1; i >= 0; i--) {
-              const v = slicePL[i];
-              if (v == null) continue;
-              const leftPct = ((i + 0.5) / slicePL.length) * 100;
-              const topPct = plYPct(v);
-              return (
-                <div
-                  key={`pl-dot-wrap-${range}`}
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    inset: '0 0 22px 0',
-                    pointerEvents: 'none',
-                  }}
-                >
-                  <div
-                    className="irc-pl-dot"
-                    style={{
-                      position: 'absolute',
-                      left: `${leftPct}%`,
-                      top: `${topPct}%`,
-                      width: 8,
-                      height: 8,
-                      marginLeft: -4,
-                      marginTop: -4,
-                      borderRadius: '50%',
-                      background: 'oklch(0.42 0.14 30)',
-                      border: '1.5px solid #fff',
-                      boxShadow: '0 0 0 0.5px rgba(0,0,0,0.10)',
-                    }}
-                  />
-                </div>
-              );
-            }
-            return null;
-          })()}
 
           {/* Month labels along the bottom — adaptive density */}
           <div style={{
@@ -405,38 +276,6 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
           </div>
 
         </div>
-
-        {/* Right y-axis labels — cumulative P/L scale. Only when P/L data
-            is present, so the chart stays unchanged for portfolios without
-            a performance series. */}
-        {hasPL && (
-          <div style={{
-            width: yAxisWidth,
-            height: chartHeight,
-            position: 'relative',
-            flexShrink: 0,
-          }}>
-            {plTicks.map((v, i) => (
-              <div
-                key={i}
-                className="num"
-                style={{
-                  position: 'absolute',
-                  left: 6,
-                  top: `${plYPct(v)}%`,
-                  transform: 'translateY(-50%)',
-                  fontSize: 10,
-                  color: v === 0 && plBottom < 0
-                    ? 'var(--text-muted)'
-                    : 'oklch(0.42 0.14 30 / 0.85)',
-                  fontWeight: 500,
-                }}
-              >
-                {v < 0 ? '−€' : v > 0 ? '+€' : '€'}{fmt(Math.abs(v))}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Slim hover hint with the click affordance. Hidden while the modal
@@ -504,77 +343,6 @@ function NowMarker({ totalBars, nowIndexInSlice, chartHeight }: {
         Now
       </div>
     </>
-  );
-}
-
-/**
- * Cumulative P/L line, layered over the bars on the same y-axis. Renders one
- * path per contiguous run of non-null values so gaps (months with no data)
- * stay as gaps instead of being interpolated.
- */
-function PLLine({
-  values,
-  yPct,
-}: {
-  values: (number | null)[];
-  yPct: (v: number) => number;
-}) {
-  // Build segments — contiguous runs of points with values. The line area
-  // spans 0 -> 100% horizontally; each point sits at the centre of its month
-  // column.
-  const segments: { x: number; y: number; v: number }[][] = [];
-  let current: { x: number; y: number; v: number }[] = [];
-  for (let i = 0; i < values.length; i++) {
-    const v = values[i];
-    if (v == null) {
-      if (current.length > 0) segments.push(current);
-      current = [];
-      continue;
-    }
-    const x = ((i + 0.5) / values.length) * 100;
-    current.push({ x, y: yPct(v), v });
-  }
-  if (current.length > 0) segments.push(current);
-  if (segments.length === 0) return null;
-
-  return (
-    <svg
-      aria-hidden
-      style={{
-        position: 'absolute',
-        inset: '0 0 22px 0',
-        width: '100%',
-        height: 'calc(100% - 22px)',
-        pointerEvents: 'none',
-        overflow: 'visible',
-      }}
-      preserveAspectRatio="none"
-      viewBox="0 0 100 100"
-    >
-      {segments.map((seg, segIdx) => {
-        if (seg.length < 2) {
-          // Single-point segment — render just the dot below.
-          return null;
-        }
-        const d = seg
-          .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
-          .join(' ');
-        return (
-          <path
-            key={segIdx}
-            d={d}
-            fill="none"
-            stroke="oklch(0.42 0.14 30)"
-            strokeWidth={1.6}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-            className="irc-pl-line"
-            style={{ animationDelay: `${320 + segIdx * 80}ms` }}
-          />
-        );
-      })}
-    </svg>
   );
 }
 
