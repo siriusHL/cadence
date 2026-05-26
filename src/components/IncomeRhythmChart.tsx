@@ -24,11 +24,13 @@ interface Props {
   /** Index of the current month inside `months`. */
   nowIndex: number;
   /**
-   * Optional cumulative portfolio P/L (value − cost) sampled at end-of-month.
-   * Same length and index alignment as `months`. `null` entries are skipped
-   * (months before any trade, or future months without data).
+   * Optional portfolio cumulative return % sampled at end-of-month, same
+   * length and index alignment as `months`. The chart rebases to 0 at the
+   * first non-null point in the visible slice — so the line always starts at
+   * 0% on the left edge and grows from there (same idea as the Performance
+   * screen). `null` entries become gaps.
    */
-  plLine?: (number | null)[];
+  plReturnLine?: (number | null)[];
 }
 
 function fmt(n: number, digits = 0): string {
@@ -37,42 +39,52 @@ function fmt(n: number, digits = 0): string {
 
 interface HoverState { idx: number; x: number; y: number; }
 
-export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
+export function IncomeRhythmChart({ months, nowIndex, plReturnLine }: Props) {
   const [range, setRange] = useState<RangeKey>('18M');
   const [hover, setHover] = useState<HoverState | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
 
-  // Slice the full month array based on the selected range
+  // Slice the full month array based on the selected range. The return-% line
+  // is rebased to 0 at the first non-null point in the visible slice — the
+  // curve always starts at 0% on the left edge and grows from there, matching
+  // the Performance screen's rebasing convention.
   const { slice, slicePL, nowIndexInSlice, sliceStart } = useMemo(() => {
     const cfg = RANGES[range];
     const start = Math.max(0, nowIndex - cfg.past + 1);
     const end = Math.min(months.length, nowIndex + cfg.future + 1);
+    const rawSlice = plReturnLine ? plReturnLine.slice(start, end) : null;
+    let rebased: (number | null)[] | null = null;
+    if (rawSlice) {
+      const firstNonNull = rawSlice.find((v) => v != null);
+      const base = firstNonNull ?? 0;
+      rebased = rawSlice.map((v) => (v == null ? null : v - base));
+    }
     return {
       slice: months.slice(start, end),
-      slicePL: plLine ? plLine.slice(start, end) : null,
+      slicePL: rebased,
       nowIndexInSlice: nowIndex - start,
       sliceStart: start,
     };
-  }, [months, nowIndex, range, plLine]);
+  }, [months, nowIndex, range, plReturnLine]);
 
-  // Dual scales — bars on the left axis, cumulative-P/L line on the right.
-  // Bars are non-negative; the line can dip below zero, in which case the
-  // chart bottom extends a bit so the line still reads.
+  // Dual scales — bars on the left axis (€), cumulative-return line on the
+  // right (%). The line can dip below 0%; right axis extends as needed.
   const { barTop, plTop, plBottom } = useMemo(() => {
     const barMax = Math.max(...slice.map((m) => Math.max(m.received, m.expected)), 0);
     const plValues = slicePL?.filter((v): v is number => v != null) ?? [];
     const plMax = plValues.length > 0 ? Math.max(...plValues) : 0;
     const plMin = plValues.length > 0 ? Math.min(...plValues) : 0;
-    const rawPLTop = plMax * 1.18;
-    const rawPLBottom = Math.min(0, plMin) * 1.18;
+    // Pad by 15%, round to nearest 5pp for the % axis so labels stay tidy.
+    const rawPLTop = Math.max(plMax * 1.15, 0);
+    const rawPLBottom = Math.min(plMin * 1.15, 0);
     return {
       barTop: Math.max(1, niceCeil(barMax * 1.18)),
-      plTop: Math.max(1, niceCeil(rawPLTop)),
-      plBottom: rawPLBottom < 0 ? -niceCeil(-rawPLBottom) : 0,
+      plTop: Math.max(5, Math.ceil(rawPLTop / 5) * 5),
+      plBottom: rawPLBottom < 0 ? Math.floor(rawPLBottom / 5) * 5 : 0,
     };
   }, [slice, slicePL]);
 
-  // Left-axis ticks (bars, €) and right-axis ticks (line, €) — three each.
+  // Left-axis ticks (bars, €) and right-axis ticks (line, %) — three each.
   const barTicks = useMemo(() => [0, barTop / 2, barTop], [barTop]);
   const plTicks = useMemo(() => {
     if (plBottom < 0) return [plBottom, 0, plTop];
@@ -81,11 +93,18 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
 
   /** Project a bar € value into 0–100% of chart height (0 = top, 100 = bottom). */
   const barYPct = (v: number): number => ((barTop - v) / barTop) * 100;
-  /** Project a P/L € value onto the same vertical scale, using the right axis. */
+  /** Project a return % onto the same vertical scale, using the right axis. */
   const plRange = plTop - plBottom;
   const plYPct = (v: number): number =>
     plRange > 0 ? ((plTop - v) / plRange) * 100 : 100;
   const hasPL = slicePL?.some((v) => v != null) ?? false;
+  const lastPLValue = (() => {
+    if (!slicePL) return null;
+    for (let i = slicePL.length - 1; i >= 0; i--) {
+      if (slicePL[i] != null) return slicePL[i] as number;
+    }
+    return null;
+  })();
 
   const chartHeight = 170;
   const yAxisWidth = 38;
@@ -113,9 +132,24 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
                   borderRadius: 1,
                 }}
               />{' '}
-              Cumulative P/L
+              Cumulative return
+              {lastPLValue != null && (
+                <span
+                  className="num"
+                  style={{
+                    color:
+                      lastPLValue >= 0
+                        ? 'oklch(0.42 0.14 30)'
+                        : 'oklch(0.50 0.16 25)',
+                    fontWeight: 600,
+                  }}
+                >
+                  {lastPLValue >= 0 ? '+' : ''}
+                  {lastPLValue.toFixed(2)}%
+                </span>
+              )}
               <span style={{ color: 'var(--text-dim)', fontSize: 10.5 }}>
-                {' '}· right axis
+                · since {RANGES[range].past}M ago, right axis
               </span>
             </span>
           )}
@@ -390,7 +424,7 @@ export function IncomeRhythmChart({ months, nowIndex, plLine }: Props) {
                   fontWeight: 500,
                 }}
               >
-                {v < 0 ? '−€' : '€'}{fmt(Math.abs(v))}
+                {v > 0 ? '+' : ''}{v.toFixed(0)}%
               </div>
             ))}
           </div>

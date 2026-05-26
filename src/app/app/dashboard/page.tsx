@@ -76,15 +76,17 @@ export default async function DashboardScreen() {
     getPerformanceSeries(supabase, portfolio.id, (FULL_PAST + FULL_FUTURE) * 5),
   ]);
 
-  // Resample weekly perf → one cumulative P/L value per rhythm month. For each
-  // month we take the last weekly point on or before its last day; months
-  // before the first trade or in the future (no data) come back as null.
+  // Resample weekly perf → one cumulative return-% value per rhythm month. For
+  // each month we take the last weekly point on or before its last day. The
+  // chart rebases this to 0% at the slice start (same concept as the
+  // Performance screen) so the curve has motion even on a mature portfolio
+  // whose absolute P/L is near steady-state.
   function lastDayOfMonth(year: number, monthIdx: number): string {
     const d = new Date(Date.UTC(year, monthIdx + 1, 0));
     return d.toISOString().slice(0, 10);
   }
   let perfCursor = 0;
-  const plLine: (number | null)[] = rhythm.map((m) => {
+  const plReturnLine: (number | null)[] = rhythm.map((m) => {
     const eom = lastDayOfMonth(m.year, m.month);
     let lastIdx = -1;
     for (let i = perfCursor; i < perfSeries.length; i++) {
@@ -93,8 +95,7 @@ export default async function DashboardScreen() {
     }
     if (lastIdx === -1) return null;
     perfCursor = lastIdx;
-    const p = perfSeries[lastIdx];
-    return p.value - p.cost;
+    return perfSeries[lastIdx].returnPct;
   });
 
   // Index of the current month inside `rhythm` (0-based).
@@ -214,7 +215,7 @@ export default async function DashboardScreen() {
             </div>
           </div>
         </div>
-        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} plLine={plLine} />
+        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} plReturnLine={plReturnLine} />
       </div>
 
       {/* Top contributors — income side-by-side with P/L */}
