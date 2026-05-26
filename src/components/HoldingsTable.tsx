@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { TickerLogo } from '@/components/TickerLogo';
 import { HoldingEditModal } from '@/components/HoldingEditModal';
+import { useConfirm, useToast } from '@/components/DialogProvider';
 
 export interface HoldingRow {
   ticker: string;
@@ -57,12 +58,24 @@ function freqLabel(n: number | null): string {
 
 export function HoldingsTable({ rows }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const toast = useToast();
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('value');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupBy, setGroupBy] = useState<GroupKey>('none');
   // Quick-edit modal: ticker of the row being inspected, or null if closed.
   const [editingTicker, setEditingTicker] = useState<string | null>(null);
+  // Bulk-select state. `selectedRaw` is what the user has toggled — it may
+  // contain stale tickers after a holding gets deleted (from the quick-edit
+  // modal, the full edit page, or quantity hitting 0). `selected` below is
+  // the live-pruned view derived from `rows`; everything in the UI reads
+  // `selected`. Stale entries in the raw set are harmless — they're invisible
+  // to every consumer and get filtered out the next time the user mutates
+  // the selection.
+  const [selectedRaw, setSelectedRaw] = useState<Set<string>>(() => new Set());
+  // Disables row interaction while a bulk delete is in flight.
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Compute derived columns per row
   const enriched = useMemo(() => {
@@ -147,6 +160,126 @@ export function HoldingsTable({ rows }: Props) {
     }
   }
 
+  // ─── Selection helpers ───────────────────────────────────
+  // Live ticker set — used to prune stale entries from `selectedRaw` and to
+  // scope "all visible".
+  const liveTickers = useMemo(() => new Set(rows.map((r) => r.ticker)), [rows]);
+
+  // Pruned, live view of the user's selection. Stale entries (deleted
+  // holdings) drop out automatically here without ever touching state.
+  const selected = useMemo(() => {
+    if (selectedRaw.size === 0) return selectedRaw;
+    let hasStale = false;
+    for (const t of selectedRaw) {
+      if (!liveTickers.has(t)) { hasStale = true; break; }
+    }
+    if (!hasStale) return selectedRaw;
+    const next = new Set<string>();
+    for (const t of selectedRaw) if (liveTickers.has(t)) next.add(t);
+    return next;
+  }, [selectedRaw, liveTickers]);
+
+  // "All" / "none" / "some" is scoped to the currently-visible (filtered) rows,
+  // not the full portfolio — matches the GitHub/Gmail mental model.
+  const visibleTickers = useMemo(() => filtered.map((r) => r.ticker), [filtered]);
+  const visibleCount = visibleTickers.length;
+  const selectedVisibleCount = useMemo(
+    () => visibleTickers.reduce((n, t) => n + (selected.has(t) ? 1 : 0), 0),
+    [visibleTickers, selected],
+  );
+  const allVisibleSelected = visibleCount > 0 && selectedVisibleCount === visibleCount;
+  const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
+
+  function toggleOne(ticker: string) {
+    setSelectedRaw((cur) => {
+      const next = new Set(cur);
+      if (next.has(ticker)) next.delete(ticker);
+      else next.add(ticker);
+      return next;
+    });
+  }
+
+  function toggleAllVisible() {
+    setSelectedRaw((cur) => {
+      if (allVisibleSelected) {
+        // Deselect all visible — keep selection of any tickers filtered out of view.
+        const next = new Set(cur);
+        for (const t of visibleTickers) next.delete(t);
+        return next;
+      }
+      // Select all visible — union with prior selection.
+      const next = new Set(cur);
+      for (const t of visibleTickers) next.add(t);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedRaw(new Set());
+  }
+
+  // ─── Bulk delete ──────────────────────────────────────────
+  async function bulkDelete() {
+    const tickers = Array.from(selected);
+    if (tickers.length === 0) return;
+
+    // Resolve { ticker, name } for each selection — preserves the table's
+    // current sort order so the list in the confirm dialog matches what the
+    // user sees on screen.
+    const byTicker = new Map(enriched.map((r) => [r.ticker, r]));
+    const items = tickers
+      .map((t) => byTicker.get(t))
+      .filter((r): r is (typeof enriched)[number] => r != null);
+
+    const ok = await confirm({
+      title: `Delete ${tickers.length} holding${tickers.length === 1 ? '' : 's'}?`,
+      body: <DeleteConfirmList items={items.map((r) => ({ ticker: r.ticker, name: r.name }))} />,
+      confirmLabel: `Delete ${tickers.length}`,
+      destructive: true,
+    });
+    if (!ok) return;
+
+    setBulkBusy(true);
+    try {
+      const results = await Promise.allSettled(
+        tickers.map((t) =>
+          fetch(`/api/holdings/${encodeURIComponent(t)}`, { method: 'DELETE' }),
+        ),
+      );
+      const succeeded: string[] = [];
+      const failed: string[] = [];
+      results.forEach((r, i) => {
+        const t = tickers[i];
+        if (r.status === 'fulfilled' && r.value.ok) succeeded.push(t);
+        else failed.push(t);
+      });
+
+      // Drop only the successfully-deleted tickers from selection; keep failed
+      // ones checked so the user can retry without re-selecting. The derived
+      // `selected` view will also drop them once `rows` refreshes — this
+      // setState just keeps the raw set tidy.
+      setSelectedRaw((cur) => {
+        const next = new Set(cur);
+        for (const t of succeeded) next.delete(t);
+        return next;
+      });
+
+      if (failed.length === 0) {
+        toast(`Deleted ${succeeded.length} holding${succeeded.length === 1 ? '' : 's'}.`, 'info');
+      } else if (succeeded.length === 0) {
+        toast(`Couldn't delete ${failed.join(', ')}.`, 'error');
+      } else {
+        toast(
+          `Deleted ${succeeded.length}; ${failed.length} failed (${failed.join(', ')}).`,
+          'error',
+        );
+      }
+      router.refresh();
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <div>
       <div className="filterbar">
@@ -163,11 +296,28 @@ export function HoldingsTable({ rows }: Props) {
         />
       </div>
 
+      {selected.size > 0 && (
+        <SelectionActionBar
+          count={selected.size}
+          busy={bulkBusy}
+          onClear={clearSelection}
+          onDelete={bulkDelete}
+        />
+      )}
+
       <div className="pcard flush">
         <div style={{ overflow: 'auto', maxHeight: 640 }}>
           <table className="pt">
             <thead>
               <tr>
+                <th className="c" style={{ width: 36, paddingLeft: 14, paddingRight: 6 }}>
+                  <HeaderCheckbox
+                    checked={allVisibleSelected}
+                    indeterminate={someVisibleSelected}
+                    disabled={visibleCount === 0}
+                    onChange={toggleAllVisible}
+                  />
+                </th>
                 <Th field="ticker" label="Ticker" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
                 <Th field="price"  label="Price"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
                 <Th field="change" label="Day"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
@@ -191,11 +341,15 @@ export function HoldingsTable({ rows }: Props) {
                   totalValue={totalValue}
                   router={router}
                   onPick={setEditingTicker}
+                  selected={selected}
+                  onToggle={toggleOne}
+                  rowsDisabled={bulkBusy}
                 />
               ))}
             </tbody>
             <tfoot>
               <tr>
+                <td className="c muted">—</td>
                 <td className="b">Total · {sorted.length} position{sorted.length === 1 ? '' : 's'}</td>
                 <td className="r muted">—</td>
                 <td className="r muted">—</td>
@@ -235,6 +389,189 @@ export function HoldingsTable({ rows }: Props) {
   );
 }
 
+function DeleteConfirmList({ items }: { items: { ticker: string; name: string | null }[] }) {
+  // Cap visible height so 50+ selections don't push the dialog buttons off-screen.
+  // List scrolls inside the dialog body; the dialog itself stays a fixed size.
+  return (
+    <div>
+      <div style={{ marginBottom: 10 }}>
+        These holdings and all of their transactions will be removed.{' '}
+        <b style={{ color: 'var(--text)' }}>This can&rsquo;t be undone.</b>
+      </div>
+      <div
+        style={{
+          maxHeight: 220,
+          overflowY: 'auto',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          background: 'var(--surface)',
+        }}
+      >
+        {items.map((it, i) => (
+          <div
+            key={it.ticker}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 12px',
+              borderTop: i === 0 ? 0 : '1px solid var(--border)',
+            }}
+          >
+            <TickerLogo ticker={it.ticker} size={24} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 13, fontWeight: 600,
+                  color: 'var(--text)', letterSpacing: '-0.01em',
+                }}
+              >
+                {it.ticker}
+              </div>
+              {it.name && (
+                <div
+                  style={{
+                    fontSize: 11.5, color: 'var(--text-dim)',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {it.name}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HeaderCheckbox({
+  checked, indeterminate, disabled, onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  disabled: boolean;
+  onChange: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={checked ? 'Deselect all visible' : 'Select all visible'}
+      title={checked ? 'Deselect all visible' : 'Select all visible'}
+      style={checkboxStyle}
+    />
+  );
+}
+
+function RowCheckbox({
+  checked, disabled, onChange, ...rest
+}: {
+  checked: boolean;
+  disabled: boolean;
+  onChange: () => void;
+  'aria-label': string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={disabled}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      style={checkboxStyle}
+      {...rest}
+    />
+  );
+}
+
+const checkboxStyle: React.CSSProperties = {
+  width: 16,
+  height: 16,
+  margin: 0,
+  cursor: 'pointer',
+  accentColor: 'oklch(0.55 0.10 175)',
+};
+
+function SelectionActionBar({
+  count, busy, onClear, onDelete,
+}: {
+  count: number;
+  busy: boolean;
+  onClear: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div
+      role="region"
+      aria-label={`${count} holding${count === 1 ? '' : 's'} selected`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '10px 16px',
+        marginBottom: 14,
+        background: 'oklch(0.96 0.02 175)',
+        border: '1px solid oklch(0.86 0.06 175)',
+        borderRadius: 12,
+      }}
+    >
+      <span style={{ fontSize: 13, fontWeight: 600, color: 'oklch(0.30 0.07 175)' }}>
+        {count} holding{count === 1 ? '' : 's'} selected
+      </span>
+      <button
+        type="button"
+        onClick={onClear}
+        disabled={busy}
+        style={{
+          height: 28, padding: '0 12px',
+          background: 'transparent', border: 0,
+          color: 'oklch(0.40 0.06 175)',
+          fontSize: 12, fontWeight: 500,
+          borderRadius: 999, cursor: busy ? 'wait' : 'pointer',
+          transition: 'background 120ms',
+        }}
+        onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = 'oklch(0.92 0.04 175)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+      >
+        Clear
+      </button>
+      <span style={{ flex: 1 }} />
+      <button
+        type="button"
+        onClick={onDelete}
+        disabled={busy}
+        style={{
+          height: 30, padding: '0 14px',
+          background: busy ? 'oklch(0.85 0.05 25)' : 'oklch(0.55 0.16 25)',
+          color: '#fff',
+          border: 0, borderRadius: 999,
+          fontSize: 13, fontWeight: 500,
+          cursor: busy ? 'wait' : 'pointer',
+          transition: 'background 120ms, transform 80ms',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }}
+        onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = 'oklch(0.50 0.18 25)'; }}
+        onMouseLeave={(e) => { if (!busy) e.currentTarget.style.background = 'oklch(0.55 0.16 25)'; }}
+        onMouseDown={(e) => { if (!busy) e.currentTarget.style.transform = 'scale(0.97)'; }}
+        onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+      >
+        {busy
+          ? `Deleting ${count}…`
+          : `Delete ${count} holding${count === 1 ? '' : 's'}`}
+      </button>
+    </div>
+  );
+}
+
 function Th({ field, label, align, sortField, sortDir, onClick }: {
   field: SortField;
   label: string;
@@ -265,18 +602,24 @@ interface Group {
     value: number; cost: number; pl: number; plPct: number; fwdIncome: number;
   })[];
 }
-function Group({ group, totalValue, router, onPick }: {
+function Group({ group, totalValue, router, onPick, selected, onToggle, rowsDisabled }: {
   group: Group;
   totalValue: number;
   router: ReturnType<typeof useRouter>;
   /** Open the quick-edit modal for this ticker. */
   onPick: (ticker: string) => void;
+  /** Set of currently-checked tickers. */
+  selected: Set<string>;
+  /** Toggle a single row's checkbox. */
+  onToggle: (ticker: string) => void;
+  /** Disable row interaction (modal open, checkbox) while a bulk op is running. */
+  rowsDisabled: boolean;
 }) {
   return (
     <>
       {group.key && (
         <tr className="group-header">
-          <td colSpan={13}>
+          <td colSpan={14}>
             {group.key} · {group.rows.length} · €{fmt(group.rows.reduce((s, r) => s + r.value, 0))}
           </td>
         </tr>
@@ -285,13 +628,31 @@ function Group({ group, totalValue, router, onPick }: {
         const weight = totalValue > 0 ? (r.value / totalValue) * 100 : 0;
         const sym = symbolFor(r.currency);
         const dayClass = r.changePct == null ? 'muted' : r.changePct >= 0 ? 'up' : 'down';
+        const isChecked = selected.has(r.ticker);
         return (
           <tr
             key={r.ticker}
-            onClick={() => onPick(r.ticker)}
-            style={{ cursor: 'pointer' }}
-            title="Click to modify or delete"
+            onClick={() => { if (!rowsDisabled) onPick(r.ticker); }}
+            style={{
+              cursor: rowsDisabled ? 'not-allowed' : 'pointer',
+              opacity: rowsDisabled ? 0.55 : 1,
+              background: isChecked ? 'oklch(0.97 0.02 175)' : undefined,
+              transition: 'background 120ms, opacity 120ms',
+            }}
+            title="Click to modify or delete · use the checkbox to bulk select"
           >
+            <td
+              className="c"
+              style={{ paddingLeft: 14, paddingRight: 6 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <RowCheckbox
+                checked={isChecked}
+                disabled={rowsDisabled}
+                aria-label={`Select ${r.ticker}`}
+                onChange={() => onToggle(r.ticker)}
+              />
+            </td>
             <td className="ticker">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <TickerLogo ticker={r.ticker} size={28} />
