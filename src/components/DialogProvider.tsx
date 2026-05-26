@@ -11,7 +11,10 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 
 interface ConfirmOptions {
   title: string;
-  body?: string;
+  /** Body content — string OR JSX. The dialog wraps it in a muted container,
+   *  so callers passing JSX should rely on that styling for the prose and
+   *  provide their own children for any structured content (lists, etc.). */
+  body?: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;

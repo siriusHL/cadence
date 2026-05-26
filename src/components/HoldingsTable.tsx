@@ -198,9 +198,18 @@ export function HoldingsTable({ rows }: Props) {
   async function bulkDelete() {
     const tickers = Array.from(selected);
     if (tickers.length === 0) return;
+
+    // Resolve { ticker, name } for each selection — preserves the table's
+    // current sort order so the list in the confirm dialog matches what the
+    // user sees on screen.
+    const byTicker = new Map(enriched.map((r) => [r.ticker, r]));
+    const items = tickers
+      .map((t) => byTicker.get(t))
+      .filter((r): r is (typeof enriched)[number] => r != null);
+
     const ok = await confirm({
       title: `Delete ${tickers.length} holding${tickers.length === 1 ? '' : 's'}?`,
-      body: `${tickers.join(', ')} and all of their transactions will be removed. This can't be undone.`,
+      body: <DeleteConfirmList items={items.map((r) => ({ ticker: r.ticker, name: r.name }))} />,
       confirmLabel: `Delete ${tickers.length}`,
       destructive: true,
     });
@@ -350,6 +359,64 @@ export function HoldingsTable({ rows }: Props) {
           onClose={() => setEditingTicker(null)}
         />
       )}
+    </div>
+  );
+}
+
+function DeleteConfirmList({ items }: { items: { ticker: string; name: string | null }[] }) {
+  // Cap visible height so 50+ selections don't push the dialog buttons off-screen.
+  // List scrolls inside the dialog body; the dialog itself stays a fixed size.
+  return (
+    <div>
+      <div style={{ marginBottom: 10 }}>
+        These holdings and all of their transactions will be removed.{' '}
+        <b style={{ color: 'var(--text)' }}>This can&rsquo;t be undone.</b>
+      </div>
+      <div
+        style={{
+          maxHeight: 220,
+          overflowY: 'auto',
+          border: '1px solid var(--border)',
+          borderRadius: 10,
+          background: 'var(--surface)',
+        }}
+      >
+        {items.map((it, i) => (
+          <div
+            key={it.ticker}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '8px 12px',
+              borderTop: i === 0 ? 0 : '1px solid var(--border)',
+            }}
+          >
+            <TickerLogo ticker={it.ticker} size={24} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 13, fontWeight: 600,
+                  color: 'var(--text)', letterSpacing: '-0.01em',
+                }}
+              >
+                {it.ticker}
+              </div>
+              {it.name && (
+                <div
+                  style={{
+                    fontSize: 11.5, color: 'var(--text-dim)',
+                    overflow: 'hidden', textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {it.name}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
