@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { HoldingsTable, type HoldingRow } from '@/components/HoldingsTable';
 import { AddHoldingTrigger } from '@/components/AddHoldingTrigger';
 import { ImportCsvButton } from '@/components/ImportCsvButton';
+import { HoldingsMobile } from '@/components/mobile/HoldingsMobile';
 import { can, type Tier } from '@/lib/tiers';
 
 interface InstrumentMeta {
@@ -126,7 +127,11 @@ export default async function HoldingsScreen() {
   if (cadenceCounts.semi)      cadenceParts.push(`${cadenceCounts.semi} semi-annual`);
   if (cadenceCounts.annual)    cadenceParts.push(`${cadenceCounts.annual} annual`);
 
+  const avatarInitials = (user?.email ?? 'U').slice(0, 2).toUpperCase();
+
   return (
+    <>
+      <div className="cdn-desktop-only">
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
@@ -154,5 +159,26 @@ export default async function HoldingsScreen() {
 
       <HoldingsTable rows={rows} />
     </div>
+      </div>
+      <div className="cdn-mobile-only">
+        <HoldingsMobile
+          rows={rows.map((r) => ({
+            ticker: r.ticker,
+            name: r.name,
+            currency: r.currency,
+            quantity: r.quantity,
+            price: r.price,
+            changePct: r.changePct,
+            fwdYieldPct: r.fwdYieldPct,
+            payoutFreq: r.payoutFreq,
+          }))}
+          totalValueEur={totalValue}
+          countriesCount={countries.size}
+          cadenceCounts={cadenceCounts}
+          portfolioName={portfolio.name}
+          avatarInitials={avatarInitials}
+        />
+      </div>
+    </>
   );
 }

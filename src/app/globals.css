@@ -1207,3 +1207,202 @@ a.cdn-free .fnav .right .plan,
   color: var(--text); font-weight: 600;
 }
 .mob.v2b .scroll-pad-bottom { height: 28px; }
+
+/* ────────────────────────────────────────────────────────────
+   .mob.v2b — Pro pages additions (Holdings, Dividends, Performance,
+   Diversification). Ported from templates/pro-pages.jsx.
+   ──────────────────────────────────────────────────────────── */
+
+/* Compact left-aligned hero used on Pro inner pages (not Dashboard) */
+.mob.v2b .pro-hero-mob {
+  text-align: center;
+  padding: 28px var(--pad) 18px;
+}
+.mob.v2b[data-density="compact"] .pro-hero-mob { padding: 20px var(--pad) 14px; }
+.mob.v2b[data-density="comfy"]   .pro-hero-mob { padding: 36px var(--pad) 24px; }
+.mob.v2b .pro-hero-mob .eyebrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.mob.v2b .pro-hero-mob h1 {
+  margin: 0;
+  font-size: 52px;
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+.mob.v2b[data-density="compact"] .pro-hero-mob h1 { font-size: 44px; }
+.mob.v2b[data-density="comfy"]   .pro-hero-mob h1 { font-size: 60px; }
+.mob.v2b .pro-hero-mob h1 .light { font-weight: 300; color: var(--text-dim); }
+.mob.v2b .pro-hero-mob h1 .cur {
+  font-size: 0.55em; font-weight: 400; color: var(--text-dim);
+  vertical-align: top; line-height: 1.4; margin-right: 4px;
+}
+.mob.v2b .pro-hero-mob .sub {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.mob.v2b .pro-hero-mob .sub b { color: var(--text); font-weight: 600; }
+.mob.v2b .pro-hero-mob .delta-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 16px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--up-bg, oklch(0.94 0.04 165));
+  color: var(--up-fg, oklch(0.36 0.08 165));
+  font-weight: 600;
+  font-size: 13px;
+}
+.mob.v2b .pro-hero-mob .delta-pill.down {
+  background: oklch(0.94 0.04 25);
+  color: var(--down);
+}
+
+/* Segmented top tab (used by Dividends / Diversification) */
+.mob.v2b .segtop-pro {
+  display: flex;
+  margin: 8px var(--pad) 0;
+  padding: 3px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 2px;
+}
+.mob.v2b .segtop-pro::-webkit-scrollbar { display: none; }
+.mob.v2b .segtop-pro .seg {
+  flex: 1; min-width: 0;
+  padding: 7px 12px;
+  font-size: 12px; font-weight: 500;
+  color: var(--text-muted);
+  border-radius: 999px;
+  cursor: pointer; white-space: nowrap;
+  text-align: center;
+  background: transparent; border: 0; font-family: inherit;
+  transition: color 160ms ease, background 160ms ease;
+}
+.mob.v2b .segtop-pro .seg.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04);
+}
+
+/* Shared list-row pattern (.lr) — used by Holdings / Upcoming / Top movers */
+.mob.v2b .lr {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0;
+}
+.mob.v2b .lr + .lr { border-top: 1px solid var(--border); }
+.mob.v2b .lr .logo {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px; color: rgba(0,0,0,0.85);
+  flex-shrink: 0; overflow: hidden;
+}
+.mob.v2b .lr .body { flex: 1; min-width: 0; }
+.mob.v2b .lr .body .tk { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+.mob.v2b .lr .body .nm {
+  font-size: 11px; color: var(--text-dim); margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.mob.v2b .lr .right { text-align: right; }
+.mob.v2b .lr .right .v { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.mob.v2b .lr .right .s { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+.mob.v2b .lr .right .s.up   { color: var(--up-fg, oklch(0.36 0.08 165)); font-weight: 600; }
+.mob.v2b .lr .right .s.down { color: var(--down); font-weight: 600; }
+
+/* Date bubble for dividend events */
+.mob.v2b .cal {
+  width: 42px; flex-shrink: 0; text-align: center;
+}
+.mob.v2b .cal .d { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+.mob.v2b .cal .m {
+  font-size: 9px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 600; margin-top: 3px;
+}
+
+/* Filter chips */
+.mob.v2b .chips {
+  display: flex; gap: 6px;
+  padding: 8px var(--pad) 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mob.v2b .chips::-webkit-scrollbar { display: none; }
+.mob.v2b .chips .chip {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 0; font-family: inherit;
+  border-radius: 999px;
+  cursor: pointer; white-space: nowrap;
+}
+.mob.v2b .chips .chip.is-active {
+  background: var(--text);
+  color: var(--surface);
+}
+
+/* Floating action button */
+.mob.v2b .fab {
+  position: absolute; right: 18px; bottom: 78px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--text); color: var(--surface);
+  border: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  z-index: 5;
+  text-decoration: none;
+}
+
+/* Donut visualization helpers */
+.mob.v2b .donut-wrap { display: flex; align-items: center; gap: 16px; margin: 4px 0 6px; }
+.mob.v2b .donut-wrap .donut-meta .v { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.mob.v2b .donut-wrap .donut-meta .l { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+/* Legend row */
+.mob.v2b .legend-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.mob.v2b .legend-row + .legend-row { border-top: 1px solid var(--border); }
+.mob.v2b .legend-row .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.mob.v2b .legend-row .name { flex: 1; font-size: 12px; font-weight: 500; color: var(--text); }
+.mob.v2b .legend-row .val { font-size: 13px; font-weight: 600; }
+.mob.v2b .legend-row .pct { font-size: 10px; color: var(--text-dim); margin-left: 6px; }
+
+/* Concentration check (Diversification) */
+.mob.v2b .conc-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.mob.v2b .conc-row + .conc-row { border-top: 1px solid var(--border); }
+.mob.v2b .conc-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mob.v2b .conc-row .dot.ok { background: var(--up); }
+.mob.v2b .conc-row .dot.warn { background: oklch(0.74 0.13 70); }
+.mob.v2b .conc-row .dot.danger { background: var(--down); }
+.mob.v2b .conc-row .body { flex: 1; min-width: 0; }
+.mob.v2b .conc-row .body .label { font-size: 12px; font-weight: 500; }
+.mob.v2b .conc-row .body .note { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.mob.v2b .conc-row .v { font-size: 13px; font-weight: 600; text-align: right; }
+
+/* Performance table */
+.mob.v2b .ptable { width: 100%; border-collapse: collapse; font-family: var(--font-sans); }
+.mob.v2b .ptable thead th {
+  font-size: 9.5px; color: var(--text-dim); font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  text-align: left; padding: 6px 8px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.mob.v2b .ptable thead th.r { text-align: right; }
+.mob.v2b .ptable tbody td { font-size: 12px; padding: 8px; border-bottom: 1px solid var(--border); }
+.mob.v2b .ptable tbody tr:last-child td { border-bottom: 0; }
+.mob.v2b .ptable td.r { text-align: right; }
+.mob.v2b .ptable td.b { font-weight: 600; }
+.mob.v2b .ptable td.up   { color: var(--up-fg, oklch(0.36 0.08 165)); }
+.mob.v2b .ptable td.down { color: var(--down); }
+.mob.v2b .ptable td.lbl  { color: var(--text-dim); font-size: 11.5px; }
