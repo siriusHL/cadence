@@ -265,16 +265,22 @@ body {
   border: 0; cursor: pointer;
 }
 
-.cdn-free .btn {
+/* Primary button — defined without a scope so it works anywhere, including
+   inside the Pro chrome (.cdn-pro) and portal'd modals (rendered into
+   <body>). Originally `.cdn-free .btn` only; promoted to global so the
+   Holdings add-holding trigger and modal submit pick it up. */
+.btn {
   display: inline-flex; align-items: center; gap: 6px;
   height: 36px; padding: 0 18px;
   background: var(--btn-primary-bg); color: var(--btn-primary-text);
   border-radius: 999px;
   font-size: 14px; font-weight: 500;
   border: 0; cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
 }
-.cdn-free .btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
-.cdn-free .btn:disabled { opacity: 0.5; cursor: default; }
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+.btn:disabled { opacity: 0.5; cursor: default; }
 
 .cdn-free .pill {
   display: inline-flex; align-items: center; gap: 6px;
@@ -485,14 +491,13 @@ a.cdn-free .fnav .right .plan,
   box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
 }
 
-/* Primary button */
-.cdn-free .btn {
+/* Primary button — interactive feedback (also global; see base rule above). */
+.btn {
   transition: opacity 150ms ease, transform 80ms ease, background 150ms ease;
-  cursor: pointer;
 }
-.cdn-free .btn:hover:not(:disabled) { opacity: 0.88; }
-.cdn-free .btn:active:not(:disabled) { transform: scale(0.97); }
-.cdn-free .btn.ghost:hover:not(:disabled) {
+.btn:hover:not(:disabled) { opacity: 0.88; }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn.ghost:hover:not(:disabled) {
   background: var(--surface-2);
   opacity: 1;
 }
@@ -526,7 +531,7 @@ a.cdn-free .fnav .right .plan,
 /* Focus rings — keyboard accessibility (non-mouse) */
 .cdn-free a:focus-visible,
 .cdn-free button:focus-visible,
-.cdn-free .btn:focus-visible {
+.btn:focus-visible {
   outline: 2px solid oklch(0.55 0.10 175 / 0.5);
   outline-offset: 2px;
   border-radius: 999px;
