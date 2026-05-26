@@ -43,17 +43,18 @@ export async function GET() {
     getPerformanceSeries(supabase, portfolio.id, 104),
   ]);
 
-  const alerts = await getActiveAlerts({
+  const { active } = await getActiveAlerts({
     supabase,
     portfolioId: portfolio.id,
     holdings,
     taxSummary,
     performanceSeries,
+    userId: user.id,
   });
 
-  const negative = alerts.filter(
+  const negative = active.filter(
     (a) => a.severity === 'negative' || a.severity === 'warning',
   ).length;
 
-  return NextResponse.json({ total: alerts.length, negative });
+  return NextResponse.json({ total: active.length, negative });
 }
