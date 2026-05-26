@@ -45,9 +45,10 @@ export function AccountMobile({
         <div className="sub">{sub}</div>
       </div>
 
-      {/* Slot — existing form components render here. Their .pcard /
-          .pcard-h classes inherit the V2b chassis styling. */}
-      <div className="cdn-anim" style={{ '--i': 1 } as React.CSSProperties}>
+      {/* Wrap the form in a `.pcard` so it picks up the V2b chassis
+          horizontal padding + surface background — without this the
+          form fields sit flush against the screen edges. */}
+      <div className="pcard cdn-anim" style={{ '--i': 1 } as React.CSSProperties}>
         {children}
       </div>
 
