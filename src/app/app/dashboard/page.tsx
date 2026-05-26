@@ -175,19 +175,55 @@ export default async function DashboardScreen() {
         </div>
       </div>
 
-      {/* 4-tile stat strip (Avg safety has been promoted to its own card below). */}
-      <div className="hero-stats dash-stats cdn-anim" style={{ ['--i' as never]: 0 }}>
-        <div className="tile" style={{ ['--i' as never]: 0 }}>
+      {/* Stat strip — Cadence Safety Score sits first, wider than the other
+          tiles so the ring + headline + sub fit horizontally. */}
+      <div
+        className="hero-stats dash-stats cdn-anim"
+        style={{ ['--i' as never]: 0, gridTemplateColumns: '1.6fr 1fr 1fr 1fr 1fr' }}
+      >
+        <div
+          className="tile"
+          style={{
+            ['--i' as never]: 0,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+          }}
+        >
+          <SafetyRing score={avgSafety} color={safetyColor} size={84} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="l">Cadence Safety Score</div>
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 600,
+                letterSpacing: '-0.02em',
+                color: safetyColor,
+                marginTop: 2,
+                lineHeight: 1.1,
+              }}
+            >
+              {safetyLabel} · {safetyLetter}
+            </div>
+            <div className="d" style={{ marginTop: 4 }}>
+              {watchCount > 0
+                ? `${watchCount} high-yield risk${watchCount === 1 ? '' : 's'} (≥7%)`
+                : 'no high-yield risks'}
+            </div>
+          </div>
+        </div>
+        <div className="tile" style={{ ['--i' as never]: 1 }}>
           <div className="l">Forward income</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}</div>
           <div className="d">over the next 12 months</div>
         </div>
-        <div className="tile" style={{ ['--i' as never]: 1 }}>
+        <div className="tile" style={{ ['--i' as never]: 2 }}>
           <div className="l">Forward yield</div>
           <div className="v">{summary.forwardYieldPct.toFixed(2)}<span style={{ fontSize: 16, color: 'var(--text-dim)', fontWeight: 400 }}>%</span></div>
           <div className="d">YoC <b style={{ color: 'var(--text)' }}>{summary.yieldOnCostPct.toFixed(2)}%</b></div>
         </div>
-        <div className="tile" style={{ ['--i' as never]: 2 }}>
+        <div className="tile" style={{ ['--i' as never]: 3 }}>
           <div className="l">Total return</div>
           <div
             className="v"
@@ -218,7 +254,7 @@ export default async function DashboardScreen() {
             unrealized
           </div>
         </div>
-        <div className="tile" style={{ ['--i' as never]: 3 }}>
+        <div className="tile" style={{ ['--i' as never]: 4 }}>
           <div className="l">Capital deployed</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.costBasis)}</div>
           <div className="d">
@@ -228,44 +264,6 @@ export default async function DashboardScreen() {
         </div>
       </div>
 
-      {/* Cadence Safety Score — ring gauge on the left, headline + body text
-          on the right. Modeled on the research template. */}
-      <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-          <SafetyRing score={avgSafety} color={safetyColor} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500 }}>
-              Cadence Safety Score
-            </div>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 600,
-                letterSpacing: '-0.02em',
-                marginTop: 2,
-                color: safetyColor,
-              }}
-            >
-              {safetyLabel} · {safetyLetter}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.45 }}>
-              Weighted across{' '}
-              <b style={{ color: 'var(--text)' }}>{summary.positionsCount}</b>{' '}
-              position{summary.positionsCount === 1 ? '' : 's'} by market value.{' '}
-              {watchCount > 0 ? (
-                <>
-                  <b style={{ color: 'oklch(0.50 0.16 25)' }}>
-                    {watchCount} high-yield risk{watchCount === 1 ? '' : 's'}
-                  </b>{' '}
-                  flagged (yield ≥ 7%) — sustainability worth checking.
-                </>
-              ) : (
-                <>No high-yield risks flagged — every holding sits below the 7% sustainability bar.</>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Income rhythm chart */}
       <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
