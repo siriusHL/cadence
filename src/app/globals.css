@@ -1462,12 +1462,17 @@ a.cdn-free .fnav .right .plan,
 
 /* Filter chips */
 .mob.v2b .chips {
-  display: flex; gap: 6px;
+  /* Wrap to a second row instead of hiding behind a horizontal
+     scroll — at 360px the All/Monthly/Quarterly/Annual/USD/EUR
+     row clipped EUR off the right edge and the user couldn't tell
+     it was scrollable. With `flex-wrap: wrap` every chip is always
+     visible at the cost of one extra row of vertical space. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  row-gap: 6px;
   padding: 8px var(--pad) 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.mob.v2b .chips::-webkit-scrollbar { display: none; }
 .mob.v2b .chips .chip {
   padding: 6px 12px;
   font-size: 11px;
