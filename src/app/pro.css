@@ -192,7 +192,7 @@
   color: var(--text);
 }
 .cdn-pro table.pt tr:last-child td { border-bottom: 0; }
-.cdn-pro table.pt tr:hover td { background: var(--surface-2); }
+.cdn-pro table.pt tbody tr:hover td { background: var(--surface-2); }
 .cdn-pro table.pt td.r, .cdn-pro table.pt th.r { text-align: right; }
 .cdn-pro table.pt td.c, .cdn-pro table.pt th.c { text-align: center; }
 .cdn-pro table.pt td.muted, .cdn-pro table.pt .muted { color: var(--text-dim); }
