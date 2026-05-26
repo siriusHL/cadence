@@ -87,6 +87,44 @@ export default async function DashboardScreen() {
   );
   const next5 = upcoming.slice(0, 5);
 
+  // Portfolio-level avg dividend safety, weighted by position value. Maps the
+  // same yield buckets used on the Stocks screen to a 0–100 score: high yield
+  // = lower safety (sustainability risk goes up as yields stretch). Holdings
+  // without a known yield are excluded — they can't be scored.
+  function safetyScoreForYield(yieldPct: number | null): number | null {
+    if (yieldPct == null) return null;
+    if (yieldPct < 3) return 95;
+    if (yieldPct < 5) return 80;
+    if (yieldPct < 7) return 55;
+    return 30;
+  }
+  let safetyWeightedSum = 0;
+  let safetyWeightTotal = 0;
+  let watchCount = 0;
+  for (const h of held) {
+    const score = safetyScoreForYield(h.fwdYieldPct);
+    if (score == null) continue;
+    const value = (h.price ?? 0) * h.quantity;
+    if (value <= 0) continue;
+    safetyWeightedSum += score * value;
+    safetyWeightTotal += value;
+    if ((h.fwdYieldPct ?? 0) >= 7) watchCount += 1;
+  }
+  const avgSafety = safetyWeightTotal > 0
+    ? Math.round(safetyWeightedSum / safetyWeightTotal)
+    : null;
+  const safetyLabel = avgSafety == null
+    ? '—'
+    : avgSafety >= 85 ? 'Very safe'
+    : avgSafety >= 70 ? 'Safe'
+    : avgSafety >= 50 ? 'Mixed'
+    : 'Stretched';
+  const safetyColor = avgSafety == null
+    ? 'var(--text-dim)'
+    : avgSafety >= 70 ? 'oklch(0.48 0.08 165)'
+    : avgSafety >= 50 ? 'oklch(0.55 0.10 75)'
+    : 'oklch(0.50 0.16 25)';
+
   // Passive-income target from profile (Settings → Passive income target).
   const incomeTarget = Number(profile?.income_target ?? 30_000);
   const targetPct = Math.min(100, (summary.forwardAnnualIncome / incomeTarget) * 100);
@@ -126,8 +164,11 @@ export default async function DashboardScreen() {
         </div>
       </div>
 
-      {/* 4-tile stat strip (cash + safety from template omitted in v0) */}
-      <div className="hero-stats dash-stats cdn-anim" style={{ ['--i' as never]: 0 }}>
+      {/* 5-tile stat strip — dividend metrics, total return, capital deployed, avg safety. */}
+      <div
+        className="hero-stats dash-stats cdn-anim"
+        style={{ ['--i' as never]: 0, gridTemplateColumns: 'repeat(5, 1fr)' }}
+      >
         <div className="tile" style={{ ['--i' as never]: 0 }}>
           <div className="l">Forward income</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}</div>
@@ -175,6 +216,29 @@ export default async function DashboardScreen() {
           <div className="d">
             across <b style={{ color: 'var(--text)' }}>{summary.positionsCount}</b>{' '}
             position{summary.positionsCount === 1 ? '' : 's'}
+          </div>
+        </div>
+        <div className="tile" style={{ ['--i' as never]: 4 }}>
+          <div className="l">Avg safety</div>
+          <div className="v" style={{ color: safetyColor }}>
+            {avgSafety == null ? (
+              <span style={{ color: 'var(--text-dim)' }}>—</span>
+            ) : (
+              <>
+                {avgSafety}
+                <span style={{ fontSize: 14, color: 'var(--text-dim)', fontWeight: 400 }}>
+                  /100
+                </span>
+              </>
+            )}
+          </div>
+          <div className="d">
+            <b style={{ color: safetyColor }}>{safetyLabel}</b>
+            {watchCount > 0 && (
+              <>
+                {' '}· {watchCount} high-yield risk{watchCount === 1 ? '' : 's'}
+              </>
+            )}
           </div>
         </div>
       </div>
