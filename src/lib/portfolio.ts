@@ -79,6 +79,18 @@ export interface Contributor {
   quantity: number;
 }
 
+export interface PLContributor {
+  ticker: string;
+  name: string | null;
+  /** (price − cost_basis_local) × quantity, in instrument-local currency. */
+  unrealizedPLLocal: number;
+  /** (price − cost_basis_local) / cost_basis_local × 100. Null if cost basis ≤ 0. */
+  returnPct: number | null;
+  /** Current market value: price × quantity, in instrument-local currency. */
+  marketValueLocal: number;
+  quantity: number;
+}
+
 export interface PerformancePoint {
   /** YYYY-MM-DD — week-end (Friday close typically) */
   date: string;
@@ -578,6 +590,39 @@ export async function getTopContributors(
     }))
     .filter((c) => c.forwardAnnualLocal > 0)
     .sort((a, b) => b.forwardAnnualLocal - a.forwardAnnualLocal)
+    .slice(0, n);
+}
+
+/**
+ * Top positions by unrealized P/L — works for every position with a price,
+ * dividend-payer or not. Excludes holdings still missing market data.
+ */
+export async function getTopPLContributors(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  n = 6,
+): Promise<PLContributor[]> {
+  const holdings = (await getHoldingsView(supabase, portfolioId)).filter((h) => h.quantity > 0);
+  return holdings
+    .filter((h) => h.price != null)
+    .map((h) => {
+      const price = h.price as number;
+      const unrealizedPLLocal = (price - h.costBasisLocal) * h.quantity;
+      const marketValueLocal = price * h.quantity;
+      const returnPct =
+        h.costBasisLocal > 0
+          ? ((price - h.costBasisLocal) / h.costBasisLocal) * 100
+          : null;
+      return {
+        ticker: h.ticker,
+        name: h.name,
+        unrealizedPLLocal,
+        returnPct,
+        marketValueLocal,
+        quantity: h.quantity,
+      };
+    })
+    .sort((a, b) => b.unrealizedPLLocal - a.unrealizedPLLocal)
     .slice(0, n);
 }
 

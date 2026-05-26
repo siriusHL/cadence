@@ -2,11 +2,12 @@ import Link from 'next/link';
 import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import {
-  
+
   getHoldingsView,
   getPortfolioSummary,
   getIncomeRhythm,
   getTopContributors,
+  getTopPLContributors,
   getUpcomingDividends,
 } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
@@ -63,10 +64,11 @@ export default async function DashboardScreen() {
   const FULL_PAST = 36;
   const FULL_FUTURE = 6;
 
-  const [summary, rhythm, contributors, upcoming] = await Promise.all([
+  const [summary, rhythm, contributors, plContributors, upcoming] = await Promise.all([
     getPortfolioSummary(supabase, portfolio.id),
     getIncomeRhythm(supabase, portfolio.id, FULL_PAST, FULL_FUTURE),
     getTopContributors(supabase, portfolio.id, 6),
+    getTopPLContributors(supabase, portfolio.id, 6),
     getUpcomingDividends(supabase, portfolio.id, 60),
   ]);
 
@@ -77,6 +79,12 @@ export default async function DashboardScreen() {
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
   });
   const topContribMax = contributors[0]?.forwardAnnualLocal ?? 0;
+  // For the P/L bar we want the largest absolute swing in the list — that way a
+  // big loser at the bottom still draws a visible bar instead of a zero stub.
+  const topPLMax = plContributors.reduce(
+    (m, c) => Math.max(m, Math.abs(c.unrealizedPLLocal)),
+    0,
+  );
   const next5 = upcoming.slice(0, 5);
 
   // Passive-income target from profile (Settings → Passive income target).
@@ -131,14 +139,43 @@ export default async function DashboardScreen() {
           <div className="d">YoC <b style={{ color: 'var(--text)' }}>{summary.yieldOnCostPct.toFixed(2)}%</b></div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 2 }}>
-          <div className="l">YTD income</div>
-          <div className="v"><span className="cur">€</span>{fmt(summary.ytdReceived)}</div>
-          <div className="d">received Jan {today.getFullYear()} → today</div>
+          <div className="l">Total return</div>
+          <div
+            className="v"
+            style={{
+              color:
+                summary.unrealizedPL >= 0
+                  ? 'oklch(0.48 0.08 165)'
+                  : 'oklch(0.50 0.16 25)',
+            }}
+          >
+            <span className="cur" style={{ color: 'inherit' }}>
+              {summary.unrealizedPL >= 0 ? '+€' : '−€'}
+            </span>
+            {fmt(Math.abs(summary.unrealizedPL))}
+          </div>
+          <div className="d">
+            <b
+              style={{
+                color:
+                  summary.unrealizedPL >= 0
+                    ? 'oklch(0.48 0.08 165)'
+                    : 'oklch(0.50 0.16 25)',
+              }}
+            >
+              {summary.unrealizedPLPct >= 0 ? '+' : ''}
+              {summary.unrealizedPLPct.toFixed(2)}%
+            </b>{' '}
+            unrealized
+          </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 3 }}>
-          <div className="l">T12M income</div>
-          <div className="v"><span className="cur">€</span>{fmt(summary.t12mReceived)}</div>
-          <div className="d">trailing 12 months</div>
+          <div className="l">Capital deployed</div>
+          <div className="v"><span className="cur">€</span>{fmt(summary.costBasis)}</div>
+          <div className="d">
+            across <b style={{ color: 'var(--text)' }}>{summary.positionsCount}</b>{' '}
+            position{summary.positionsCount === 1 ? '' : 's'}
+          </div>
         </div>
       </div>
 
@@ -155,45 +192,111 @@ export default async function DashboardScreen() {
         <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} />
       </div>
 
-      {/* 3-column row */}
-      <div className="row-3" style={{ gridTemplateColumns: '1.2fr 1.1fr 1fr' }}>
-        {/* Top contributors */}
+      {/* Top contributors — income side-by-side with P/L */}
+      <div className="row-2" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        {/* Top income contributors */}
         <div className="pcard cdn-anim interactive contributors-card" style={{ ['--i' as never]: 2 }}>
           <div className="pcard-h">
             <div className="t">Top income contributors</div>
             <span className="tag">Forward 12M</span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {contributors.map((c, i) => {
-              const widthPct = topContribMax > 0 ? (c.forwardAnnualLocal / topContribMax) * 100 : 0;
-              return (
-                <div
-                  key={c.ticker}
-                  className="contrib-row"
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, animationDelay: `${360 + i * 70}ms` }}
-                >
-                  <TickerLogo ticker={c.ticker} size={30} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.ticker}
-                      {c.name && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11.5 }}> · {c.name}</span>}
+          {contributors.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 0' }}>
+              No dividend payers in this portfolio yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {contributors.map((c, i) => {
+                const widthPct = topContribMax > 0 ? (c.forwardAnnualLocal / topContribMax) * 100 : 0;
+                return (
+                  <div
+                    key={c.ticker}
+                    className="contrib-row"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, animationDelay: `${360 + i * 70}ms` }}
+                  >
+                    <TickerLogo ticker={c.ticker} size={30} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.ticker}
+                        {c.name && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11.5 }}> · {c.name}</span>}
+                      </div>
+                      <div className="pbar contrib-bar" style={{ marginTop: 5 }}>
+                        <i style={{ width: `${widthPct}%`, animationDelay: `${420 + i * 70}ms` }} />
+                      </div>
                     </div>
-                    <div className="pbar contrib-bar" style={{ marginTop: 5 }}>
-                      <i style={{ width: `${widthPct}%`, animationDelay: `${420 + i * 70}ms` }} />
+                    <div style={{ textAlign: 'right' }} className="num">
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>€{fmt(c.forwardAnnualLocal)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                        {c.yieldPct != null ? `${c.yieldPct.toFixed(2)}% yld` : '—'}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }} className="num">
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>€{fmt(c.forwardAnnualLocal)}</div>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                      {c.yieldPct != null ? `${c.yieldPct.toFixed(2)}% yld` : '—'}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
+        {/* Top P/L contributors — peer card surfacing growth/non-payers */}
+        <div className="pcard cdn-anim interactive contributors-card" style={{ ['--i' as never]: 3 }}>
+          <div className="pcard-h">
+            <div className="t">Top P/L contributors</div>
+            <span className="tag">Unrealized</span>
+          </div>
+          {plContributors.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 0' }}>
+              Waiting for live prices to compute P/L.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {plContributors.map((c, i) => {
+                const widthPct = topPLMax > 0 ? (Math.abs(c.unrealizedPLLocal) / topPLMax) * 100 : 0;
+                const positive = c.unrealizedPLLocal >= 0;
+                const accent = positive
+                  ? 'oklch(0.48 0.08 165)'
+                  : 'oklch(0.50 0.16 25)';
+                return (
+                  <div
+                    key={c.ticker}
+                    className="contrib-row"
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, animationDelay: `${360 + i * 70}ms` }}
+                  >
+                    <TickerLogo ticker={c.ticker} size={30} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.ticker}
+                        {c.name && <span style={{ color: 'var(--text-dim)', fontWeight: 400, fontSize: 11.5 }}> · {c.name}</span>}
+                      </div>
+                      <div className="pbar contrib-bar" style={{ marginTop: 5 }}>
+                        <i
+                          style={{
+                            width: `${widthPct}%`,
+                            background: accent,
+                            animationDelay: `${420 + i * 70}ms`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }} className="num">
+                      <div style={{ fontSize: 13, fontWeight: 600, color: accent }}>
+                        {positive ? '+' : '−'}€{fmt(Math.abs(c.unrealizedPLLocal))}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                        {c.returnPct != null
+                          ? `${c.returnPct >= 0 ? '+' : ''}${c.returnPct.toFixed(2)}%`
+                          : '—'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Coming up + Passive income progress */}
+      <div className="row-2" style={{ gridTemplateColumns: '1.1fr 1fr' }}>
         {/* Coming up */}
         <div className="pcard cdn-anim interactive upcoming-card" style={{ ['--i' as never]: 3 }}>
           <div className="pcard-h">
