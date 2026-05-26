@@ -310,8 +310,20 @@ function IncomeCurves({
 
       <line x1={pad.l} x2={W - pad.r} y1={targetY} y2={targetY}
             stroke="var(--border-strong)" strokeDasharray="4 3" strokeWidth="1" />
-      <text x={W - pad.r - 4} y={targetY - 4} textAnchor="end"
-            style={{ fontSize: 10.5, fill: 'var(--text-dim)', fontWeight: 500 }}>
+      <text
+        x={W - pad.r - 4}
+        y={targetY - 4}
+        textAnchor="end"
+        style={{
+          fontSize: 10.5,
+          fill: 'var(--text-dim)',
+          fontWeight: 500,
+          paintOrder: 'stroke',
+          stroke: 'var(--surface)',
+          strokeWidth: 4,
+          strokeLinejoin: 'round',
+        }}
+      >
         Goal €{(target / 1000).toFixed(0)}k
       </text>
 
@@ -326,7 +338,9 @@ function IncomeCurves({
 
       {/* Endpoint dots — pop in once the line reaches them. Labels sit
           inside the plot just left of each dot so the chart can use the
-          full container width. */}
+          full container width. A surface-coloured stroke painted UNDER
+          the fill (paint-order: stroke) gives each label a halo so the
+          chart lines never bleed through the text. */}
       <g className="drip-endpoints">
         {[
           { p: series.noReinvest[years],   c: 'rgba(0,0,0,0.5)' },
@@ -335,8 +349,21 @@ function IncomeCurves({
         ].map((s, i) => (
           <g key={i}>
             <circle cx={xs(s.p.year)} cy={ys(s.p.income)} r="4" fill="var(--surface)" stroke={s.c} strokeWidth="2" />
-            <text x={xs(s.p.year) - 8} y={ys(s.p.income) + 4} textAnchor="end"
-                  style={{ fontSize: 11, fill: s.c, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
+            <text
+              x={xs(s.p.year) - 8}
+              y={ys(s.p.income) + 4}
+              textAnchor="end"
+              style={{
+                fontSize: 11,
+                fill: s.c,
+                fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
+                paintOrder: 'stroke',
+                stroke: 'var(--surface)',
+                strokeWidth: 4,
+                strokeLinejoin: 'round',
+              }}
+            >
               €{(s.p.income / 1000).toFixed(1)}k
             </text>
           </g>
