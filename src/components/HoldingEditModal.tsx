@@ -61,9 +61,12 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // New-lot drawer
+  // New-lot drawer. `kind` toggles between recording a buy (adding to the
+  // position) and a sell (reducing it — tracked for capital-gains tax).
   const [addOpen, setAddOpen] = useState(false);
-  const [draft, setDraft] = useState({ qty: '', price: '', date: today(), fee: '0' });
+  const [draft, setDraft] = useState<{
+    qty: string; price: string; date: string; fee: string; kind: 'buy' | 'sell';
+  }>({ qty: '', price: '', date: today(), fee: '0', kind: 'buy' });
 
   // Inline lot edit
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -188,6 +191,10 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
       toast('Shares and price are required.', 'error');
       return;
     }
+    if (draft.kind === 'sell' && Number(draft.qty) > totalShares + 1e-9) {
+      toast(`You only hold ${totalShares} share${totalShares === 1 ? '' : 's'}.`, 'error');
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch('/api/holdings', {
@@ -201,15 +208,19 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
             price_local: draft.price,
             occurred_on: draft.date,
             fee_local:   draft.fee || '0',
+            kind:        draft.kind,
           }],
         }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        toast(`Could not add: ${j.error ?? res.statusText}`, 'error');
+        const msg = j.error === 'insufficient_shares'
+          ? `You only hold ${j.held} share${j.held === 1 ? '' : 's'} — can't sell ${j.attempted_sell}.`
+          : `Could not add: ${j.error ?? res.statusText}`;
+        toast(msg, 'error');
         return;
       }
-      setDraft({ qty: '', price: '', date: today(), fee: '0' });
+      setDraft({ qty: '', price: '', date: today(), fee: '0', kind: 'buy' });
       setAddOpen(false);
       await reload();
       router.refresh();
@@ -363,6 +374,59 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
                     marginBottom: 12,
                   }}
                 >
+                  {/* Buy / Sell toggle — sells deplete the position and feed
+                      the Tax page's capital-gains tracker. */}
+                  <div
+                    role="tablist"
+                    aria-label="Lot kind"
+                    style={{
+                      display: 'inline-flex', gap: 2, padding: 2,
+                      background: 'var(--surface)', border: '1px solid var(--border)',
+                      borderRadius: 8, marginBottom: 10,
+                    }}
+                  >
+                    {(['buy', 'sell'] as const).map((k) => {
+                      const isActive = draft.kind === k;
+                      const isSell = k === 'sell';
+                      return (
+                        <button
+                          key={k}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => setDraft({ ...draft, kind: k })}
+                          style={{
+                            height: 24, padding: '0 12px',
+                            fontSize: 11.5, fontWeight: 600, letterSpacing: '0.03em',
+                            textTransform: 'uppercase',
+                            border: 0, borderRadius: 6, cursor: 'pointer',
+                            background: isActive
+                              ? (isSell ? 'oklch(0.96 0.04 25)' : 'oklch(0.94 0.04 165)')
+                              : 'transparent',
+                            color: isActive
+                              ? (isSell ? 'oklch(0.46 0.10 25)' : 'oklch(0.36 0.07 165)')
+                              : 'var(--text-muted)',
+                            transition: 'background 120ms, color 120ms',
+                          }}
+                        >
+                          {k === 'buy' ? 'Buy' : 'Sell'}
+                        </button>
+                      );
+                    })}
+                    {draft.kind === 'sell' && totalShares > 0 && (
+                      <span
+                        style={{
+                          alignSelf: 'center', marginLeft: 10,
+                          fontSize: 10.5, color: 'var(--text-muted)',
+                        }}
+                      >
+                        max{' '}
+                        <span className="num" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {totalShares.toLocaleString('en-IE', { maximumFractionDigits: 4 })}
+                        </span>
+                      </span>
+                    )}
+                  </div>
                   <div
                     style={{
                       display: 'grid', gap: 8,
@@ -374,7 +438,7 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
                       <input
                         type="number" min="0" step="any" value={draft.qty}
                         onChange={(e) => setDraft({ ...draft, qty: e.target.value })}
-                        placeholder="100"
+                        placeholder={draft.kind === 'sell' ? String(totalShares || 100) : '100'}
                         style={inputStyle}
                       />
                     </Field>
@@ -406,7 +470,9 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
                     className="btn"
                     style={{ height: 30, padding: '0 14px', fontSize: 12 }}
                   >
-                    {busy ? 'Adding…' : 'Add lot'}
+                    {busy
+                      ? (draft.kind === 'sell' ? 'Recording…' : 'Adding…')
+                      : (draft.kind === 'sell' ? 'Record sale' : 'Add lot')}
                   </button>
                 </div>
               )}

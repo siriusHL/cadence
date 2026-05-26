@@ -11,6 +11,7 @@ const Lot = z.object({
   price_local: z.coerce.number().nonnegative(),
   occurred_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   fee_local:   z.coerce.number().nonnegative().default(0),
+  kind:        z.enum(['buy', 'sell']).default('buy'),
 });
 
 const Body = z.object({
@@ -59,7 +60,8 @@ export const POST = withAuth({}, async ({ userId, req }) => {
 
   // 3) Insert holding row. RLS enforces the per-tier holdings cap here.
   //    Idempotent on (portfolio_id, ticker) — adding more lots to an existing
-  //    holding is fine.
+  //    holding is fine. Sells assume the holding already exists; the upsert
+  //    above keeps the path safe either way.
   const holdingRes = await supabase
     .from('holdings')
     .insert({ portfolio_id: portfolio.id, ticker: input.ticker })
@@ -69,11 +71,38 @@ export const POST = withAuth({}, async ({ userId, req }) => {
     return rlsOrError(holdingRes.error, 'holding_cap_reached');
   }
 
-  // 4) Insert one buy transaction per lot.
+  // 3b) For sell lots, guard against overselling by checking the running net
+  //     share count from existing buy/sell rows. We do this before insert so
+  //     the user gets a clear 400 rather than a silently-allowed short.
+  const sellQty = input.lots
+    .filter((l) => l.kind === 'sell')
+    .reduce((s, l) => s + l.quantity, 0);
+  if (sellQty > 0) {
+    const { data: existingTx } = await supabase
+      .from('transactions')
+      .select('kind, quantity')
+      .eq('portfolio_id', portfolio.id)
+      .eq('ticker', input.ticker)
+      .in('kind', ['buy', 'sell']);
+    const heldQty = (existingTx ?? []).reduce(
+      (s, t) => s + (t.kind === 'buy' ? Number(t.quantity) : -Number(t.quantity)),
+      0,
+    );
+    if (sellQty > heldQty + 1e-9) {
+      return json({
+        error: 'insufficient_shares',
+        held: heldQty,
+        attempted_sell: sellQty,
+      }, 400);
+    }
+  }
+
+  // 4) Insert one transaction per lot — kind defaults to 'buy', or 'sell' when
+  //    the caller records a sale.
   const txRows = input.lots.map((lot) => ({
     portfolio_id: portfolio!.id,
     ticker:       input.ticker,
-    kind:         'buy' as const,
+    kind:         lot.kind,
     occurred_on:  lot.occurred_on,
     quantity:     lot.quantity,
     price_local:  lot.price_local,
@@ -97,6 +126,7 @@ export const POST = withAuth({}, async ({ userId, req }) => {
   revalidatePath('/app/stocks');
   revalidatePath('/app/next');
   revalidatePath('/app/year');
+  revalidatePath('/app/tax');
 
   return json({
     portfolio_id: portfolio.id,

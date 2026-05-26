@@ -15,6 +15,7 @@ export const DELETE = withAuth<{ id: string }>({}, async ({ params }) => {
   revalidatePath('/app/home');
   revalidatePath('/app/stocks');
   revalidatePath('/app/year');
+  revalidatePath('/app/tax');
 
   return json({ deleted: params.id });
 });
@@ -53,6 +54,7 @@ export const PATCH = withAuth<{ id: string }>({}, async ({ params, req }) => {
   revalidatePath('/app/home');
   revalidatePath('/app/stocks');
   revalidatePath('/app/year');
+  revalidatePath('/app/tax');
 
   return json({ updated: params.id });
 });
