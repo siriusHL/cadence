@@ -5,7 +5,7 @@ import { getSupabaseServer } from '@/lib/supabase/server';
 
 const ALLOWED_SCREENS = [
   'home', 'next', 'stocks', 'year', 'dashboard', 'holdings',
-  'calendar', 'forecast', 'simulator', 'performance', 'diversification', 'tax', 'alerts',
+  'dividends', 'performance', 'diversification', 'tax', 'alerts',
 ] as const;
 
 const PatchBody = z.object({

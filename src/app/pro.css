@@ -1119,6 +1119,16 @@
 .cdn-pro .irc-col.is-dim { opacity: 0.4; }
 .cdn-pro .irc-col.is-hovered { opacity: 1; }
 
+/* Forecast chart bars — same hover-dim treatment as IncomeRhythmChart. */
+.cdn-pro .fc-col { transition: opacity 220ms ease; }
+.cdn-pro .fc-col.is-dim { opacity: 0.4; }
+.cdn-pro .fc-col.is-hovered { opacity: 1; }
+.cdn-pro .fc-col:focus-visible {
+  outline: 2px solid oklch(0.55 0.10 175);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 .cdn-pro .irc-bar-stack {
   transform-origin: bottom center;
   animation: cdn-bar-grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
