@@ -89,7 +89,7 @@ function checkConcentration(holdings: HoldingView[]): AlertCard[] {
       body:      `${h.name ?? h.ticker} concentration above the ${ALERT_THRESHOLDS.positionWeightPct}% threshold — consider trimming or hedging.`,
       ticker:    h.ticker,
       occurredAt: today(),
-      action:    { label: 'View holding', href: `/app/stocks` },
+      action:    { label: 'View holding', href: `/app/holdings` },
     });
   }
   return out;
@@ -160,7 +160,7 @@ function checkExDates(args: {
       body:       `Estimated payout ${fmtMoney(expected, h.currency ?? 'EUR')} (${h.quantity} × ${d.amount_local}) on ${d.pay_date ?? d.ex_date}.`,
       ticker:     d.ticker,
       occurredAt: d.ex_date,
-      action:     { label: 'View payments', href: '/app/next' },
+      action:     { label: 'View payments', href: '/app/dividends?tab=upcoming' },
     };
   });
 }
@@ -186,7 +186,7 @@ function checkPaymentsToday(args: {
         body:       `~${fmtMoney(expected, h.currency ?? 'EUR')} expected — reconcile with your broker once it lands.`,
         ticker:     d.ticker,
         occurredAt: todayStr,
-        action:     { label: 'Log dividend', href: '/app/stocks' },
+        action:     { label: 'Log dividend', href: '/app/holdings' },
       };
     });
 }
@@ -230,7 +230,7 @@ function checkDividendDeltas(args: {
       body:      `Latest: ${ccy} ${latest.amount_local.toFixed(4)} (ex ${latest.ex_date}). Previous: ${ccy} ${prev.amount_local.toFixed(4)} (ex ${prev.ex_date}).`,
       ticker,
       occurredAt: latest.ex_date,
-      action:    { label: 'Open Coming up', href: '/app/next' },
+      action:    { label: 'Open Coming up', href: '/app/dividends?tab=upcoming' },
     });
   }
   return out;
