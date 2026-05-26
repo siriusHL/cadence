@@ -1475,22 +1475,26 @@ a.cdn-free .fnav .right .plan,
 
 /* Floating action button */
 .mob.v2b .fab {
-  /* Fixed to the viewport so the FAB stays glued to the bottom-right
-     corner regardless of how deep `.mob` is scrolled. With `.mob` now
-     being the scroll container itself (height: 100dvh + overflow-y:
-     auto), a `position: absolute` here would scroll with the content
-     instead of sticking. z-index has to clear the sticky tabbar (z=10)
-     so the FAB stays visible above it. */
-  position: fixed;
-  right: 18px;
-  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  /* Glued to the viewport bottom-right with `position: fixed`. The
+     `!important` qualifiers + high z-index are belt-and-braces: an
+     earlier iteration's `position: absolute` default leaked into HMR
+     caches in some browsers and the FAB ended up parked at the bottom
+     of `.mob`'s scroll content instead of the screen edge. With
+     `!important` the rule wins regardless of source-order accidents,
+     and `z-index: 50` clears every other mob-shell layer (tabbar=10,
+     sticky topbar=10, drawer=31) without conflict. */
+  position: fixed !important;
+  right: 18px !important;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+  top: auto !important;
+  left: auto !important;
   width: 52px; height: 52px;
   border-radius: 50%;
   background: var(--text); color: var(--surface);
   border: 0; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-  z-index: 21;
+  z-index: 50;
   text-decoration: none;
 }
 
