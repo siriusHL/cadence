@@ -13,15 +13,15 @@ export default async function SimulatorScreen() {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('tier')
-    .eq('user_id', user!.id)
-    .maybeSingle();
+  const [{ data: sub }, { data: profile }] = await Promise.all([
+    supabase.from('subscriptions').select('tier').eq('user_id', user!.id).maybeSingle(),
+    supabase.from('profiles').select('income_target').eq('id', user!.id).maybeSingle(),
+  ]);
   const tier = (sub?.tier ?? 'free') as Tier;
 
   if (!canAccessScreen(tier, 'simulator')) redirect('/upgrade');
 
+  const incomeTarget = Number(profile?.income_target ?? 30000);
   const portfolio = await getActivePortfolio(supabase, user!.id);
   if (!portfolio) {
     return (
@@ -56,6 +56,7 @@ export default async function SimulatorScreen() {
       baseValue={summary.totalValue}
       baseIncome={summary.forwardAnnualIncome}
       baseCost={summary.costBasis || summary.totalValue}
+      incomeTarget={incomeTarget}
     />
   );
 }

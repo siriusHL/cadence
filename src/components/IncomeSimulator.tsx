@@ -6,6 +6,9 @@ interface Props {
   baseValue: number;
   baseIncome: number;
   baseCost: number;
+  /** Saved target from profiles.income_target — seeds the slider but the user
+   * can drag it for what-if exploration without saving. */
+  incomeTarget: number;
 }
 
 interface Snapshot {
@@ -15,8 +18,6 @@ interface Snapshot {
   monthly: number;
 }
 
-/** Annual dividend income the user targets as "passive income covers life". */
-const PASSIVE_INCOME_TARGET_EUR = 30_000;
 const APPRECIATION = 0.045;
 
 function fmt(n: number, digits = 0): string {
@@ -51,11 +52,12 @@ function project(
   return out;
 }
 
-export function IncomeSimulator({ baseValue, baseIncome, baseCost }: Props) {
+export function IncomeSimulator({ baseValue, baseIncome, baseCost, incomeTarget }: Props) {
   const [years, setYears] = useState(25);
   const [yieldPct, setYieldPct] = useState(() => Math.min(9, Math.max(1, (baseIncome / baseValue) * 100)));
   const [growthPct, setGrowthPct] = useState(7.8);
   const [contrib, setContrib] = useState(500);
+  const [target, setTarget] = useState(incomeTarget);
 
   const series = useMemo(() => ({
     noReinvest:   project(years, yieldPct, growthPct, contrib, baseValue, baseIncome, false, false),
@@ -69,7 +71,7 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost }: Props) {
   }, [series.reinvestPlus, years]);
 
   const finalIncome = series.reinvestPlus[series.reinvestPlus.length - 1].income;
-  const targetYear = series.reinvestPlus.findIndex((p) => p.income >= PASSIVE_INCOME_TARGET_EUR);
+  const targetYear = series.reinvestPlus.findIndex((p) => p.income >= target);
 
   return (
     <div className="cdn-pro">
@@ -77,7 +79,7 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost }: Props) {
         <div>
           <div className="eyebrow">Income simulator · Compounding scenarios</div>
           <h1>
-            Hit €{fmt(PASSIVE_INCOME_TARGET_EUR)}/yr in{' '}
+            Hit €{fmt(target)}/yr in{' '}
             <span className="num" style={{ color: 'var(--accent-soft)' }}>
               {targetYear > 0 ? `${targetYear}y` : '—'}
             </span>
@@ -90,16 +92,17 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost }: Props) {
         </div>
         <div className="right-meta">
           <span className="live">Appreciation +{(APPRECIATION * 100).toFixed(1)}%</span>
-          <span>Passive income target €{fmt(PASSIVE_INCOME_TARGET_EUR)}/yr</span>
+          <span>Target €{fmt(target)}/yr {target !== incomeTarget && '· override'}</span>
           <span>Monte-Carlo off</span>
         </div>
       </div>
 
-      <div className="row-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 14 }}>
         <Slider label="Horizon"          value={years}     display={`${years} years`}                  min={5} max={40} step={1}   onChange={setYears}     hint="5 — 40 years" />
         <Slider label="Forward yield"    value={yieldPct}  display={`${yieldPct.toFixed(2)} %`}        min={1} max={9}  step={0.1} onChange={setYieldPct}  hint="Weighted blended" />
         <Slider label="Div growth"       value={growthPct} display={`${growthPct.toFixed(1)} %`}       min={0} max={15} step={0.1} onChange={setGrowthPct} hint="Annual CAGR" />
         <Slider label="Monthly contrib." value={contrib}   display={`€${fmt(contrib)}`}                min={0} max={3000} step={50} onChange={setContrib}   hint="Added each month" />
+        <Slider label="Income target"    value={target}    display={`€${fmt(target)}`}                 min={5000} max={150000} step={1000} onChange={setTarget} hint={target === incomeTarget ? 'From Settings' : 'Override (not saved)'} />
       </div>
 
       <div className="pcard" style={{ marginBottom: 14 }}>
@@ -145,7 +148,7 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost }: Props) {
             ))}
           </div>
         </div>
-        <IncomeCurves series={series} years={years} targetYear={targetYear} />
+        <IncomeCurves series={series} years={years} targetYear={targetYear} target={target} />
       </div>
 
       <div className="pcard flush">
@@ -169,7 +172,7 @@ export function IncomeSimulator({ baseValue, baseIncome, baseCost }: Props) {
               {breakdown.map((r) => {
                 const investedSoFar = baseCost + r.year * contrib * 12;
                 const yoc = investedSoFar > 0 ? (r.income / investedSoFar) * 100 : 0;
-                const goalPct = Math.min(100, (r.income / PASSIVE_INCOME_TARGET_EUR) * 100);
+                const goalPct = Math.min(100, (r.income / target) * 100);
                 return (
                   <tr key={r.year}>
                     <td className="b" style={{ color: 'var(--accent-soft)' }}>+{r.year}y</td>
@@ -240,10 +243,12 @@ function IncomeCurves({
   series,
   years,
   targetYear,
+  target,
 }: {
   series: { noReinvest: Snapshot[]; reinvest: Snapshot[]; reinvestPlus: Snapshot[] };
   years: number;
   targetYear: number;
+  target: number;
 }) {
   const W = 1180;
   const H = 240;
@@ -259,7 +264,7 @@ function IncomeCurves({
 
   const gridLines = [0, 0.25, 0.5, 0.75, 1];
   const yearMarks = [0, Math.round(years / 4), Math.round(years / 2), Math.round((years * 3) / 4), years];
-  const targetY = ys(PASSIVE_INCOME_TARGET_EUR);
+  const targetY = ys(target);
 
   return (
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
@@ -305,7 +310,7 @@ function IncomeCurves({
             stroke="var(--border-strong)" strokeDasharray="4 3" strokeWidth="1" />
       <text x={W - pad.r - 4} y={targetY - 4} textAnchor="end"
             style={{ fontSize: 10.5, fill: 'var(--text-dim)', fontWeight: 500 }}>
-        Goal €{(PASSIVE_INCOME_TARGET_EUR / 1000).toFixed(0)}k
+        Goal €{(target / 1000).toFixed(0)}k
       </text>
 
       {/* Animated layer — wiped left-to-right via the clipPath. */}

@@ -15,6 +15,7 @@ interface Props {
     contrast: Contrast;
     bgTone: BgTone;
     defaultScreen: Screen | null;
+    incomeTarget: number;
   };
   screenOptions: ScreenOption[];
 }
@@ -40,6 +41,7 @@ export function SettingsForm({ initial, screenOptions }: Props) {
   const [contrast, setContrast] = useState<Contrast>(initial.contrast);
   const [bgTone,   setBgTone]   = useState<BgTone>(initial.bgTone);
   const [defaultScreen, setDefaultScreen] = useState<Screen | ''>(initial.defaultScreen ?? '');
+  const [incomeTarget, setIncomeTarget] = useState<string>(String(initial.incomeTarget));
 
   function applyContrast(next: Contrast) {
     document.cookie = `contrast=${next}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`;
@@ -108,6 +110,27 @@ export function SettingsForm({ initial, screenOptions }: Props) {
         return;
       }
       toast('Landing screen updated.');
+      router.refresh();
+    });
+  }
+
+  function saveIncomeTarget() {
+    const n = Number(incomeTarget);
+    if (!Number.isFinite(n) || n <= 0) {
+      toast('Enter a positive number.', 'error');
+      return;
+    }
+    start(async () => {
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ income_target: n }),
+      });
+      if (!res.ok) {
+        toast('Could not save target.', 'error');
+        return;
+      }
+      toast('Passive income target updated.');
       router.refresh();
     });
   }
@@ -194,6 +217,43 @@ export function SettingsForm({ initial, screenOptions }: Props) {
                 </button>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      <div className="pcard">
+        <div className="pcard-h">
+          <div className="t">Passive income target</div>
+        </div>
+        <div style={{ padding: 16 }}>
+          <Label>Annual dividend income you&rsquo;re aiming for</Label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>€</span>
+            <input
+              type="number"
+              min={1}
+              step={1000}
+              value={incomeTarget}
+              onChange={(e) => setIncomeTarget(e.target.value)}
+              onBlur={() => {
+                if (Number(incomeTarget) !== initial.incomeTarget) saveIncomeTarget();
+              }}
+              disabled={pending}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 8,
+                fontSize: 14,
+                color: 'var(--text)',
+              }}
+            />
+            <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>/ year</span>
+          </div>
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+            Used as the goal line on the Simulator and the &quot;Passive income progress&quot; card
+            on Dashboard. Saved when you tab/click away.
           </div>
         </div>
       </div>

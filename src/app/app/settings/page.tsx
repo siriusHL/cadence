@@ -27,7 +27,7 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const [{ data: sub }, { data: profile }] = await Promise.all([
     supabase.from('subscriptions').select('tier').eq('user_id', user!.id).maybeSingle(),
-    supabase.from('profiles').select('contrast, bg_tone, default_screen').eq('id', user!.id).maybeSingle(),
+    supabase.from('profiles').select('contrast, bg_tone, default_screen, income_target').eq('id', user!.id).maybeSingle(),
   ]);
 
   const tier = (sub?.tier ?? 'free') as Tier;
@@ -51,6 +51,7 @@ export default async function SettingsPage() {
           contrast: (profile?.contrast as 'soft' | 'standard' | 'sharp' | undefined) ?? 'standard',
           bgTone:   (profile?.bg_tone  as 'cream' | 'neutral' | 'cool' | undefined) ?? 'cream',
           defaultScreen: (profile?.default_screen as Screen | null | undefined) ?? null,
+          incomeTarget:  Number(profile?.income_target ?? 30000),
         }}
         screenOptions={screenOptions}
       />

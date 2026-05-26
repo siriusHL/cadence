@@ -36,6 +36,12 @@ export default async function DashboardScreen() {
     );
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('income_target')
+    .eq('id', user!.id)
+    .maybeSingle();
+
   const held = (await getHoldingsView(supabase, portfolio.id)).filter((h) => h.quantity > 0);
   if (held.length === 0) {
     return (
@@ -73,8 +79,8 @@ export default async function DashboardScreen() {
   const topContribMax = contributors[0]?.forwardAnnualLocal ?? 0;
   const next5 = upcoming.slice(0, 5);
 
-  // Passive-income target placeholder — €30k/year as a baseline benchmark.
-  const incomeTarget = 30_000;
+  // Passive-income target from profile (Settings → Passive income target).
+  const incomeTarget = Number(profile?.income_target ?? 30_000);
   const targetPct = Math.min(100, (summary.forwardAnnualIncome / incomeTarget) * 100);
   // Naive years-to-target at assumed 8%/yr income growth
   const growth = 0.08;
