@@ -9,6 +9,7 @@ import {
   getTopContributors,
   getTopPLContributors,
   getUpcomingDividends,
+  getPerformanceSeries,
 } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
@@ -64,13 +65,37 @@ export default async function DashboardScreen() {
   const FULL_PAST = 36;
   const FULL_FUTURE = 6;
 
-  const [summary, rhythm, contributors, plContributors, upcoming] = await Promise.all([
+  const [summary, rhythm, contributors, plContributors, upcoming, perfSeries] = await Promise.all([
     getPortfolioSummary(supabase, portfolio.id),
     getIncomeRhythm(supabase, portfolio.id, FULL_PAST, FULL_FUTURE),
     getTopContributors(supabase, portfolio.id, 6),
     getTopPLContributors(supabase, portfolio.id, 6),
     getUpcomingDividends(supabase, portfolio.id, 60),
+    // Weekly perf series covering the same window as `rhythm` (36 past + 6
+    // future). 5 weeks per month ≈ 210 weeks; we trim down per-month below.
+    getPerformanceSeries(supabase, portfolio.id, (FULL_PAST + FULL_FUTURE) * 5),
   ]);
+
+  // Resample weekly perf → one cumulative P/L value per rhythm month. For each
+  // month we take the last weekly point on or before its last day; months
+  // before the first trade or in the future (no data) come back as null.
+  function lastDayOfMonth(year: number, monthIdx: number): string {
+    const d = new Date(Date.UTC(year, monthIdx + 1, 0));
+    return d.toISOString().slice(0, 10);
+  }
+  let perfCursor = 0;
+  const plLine: (number | null)[] = rhythm.map((m) => {
+    const eom = lastDayOfMonth(m.year, m.month);
+    let lastIdx = -1;
+    for (let i = perfCursor; i < perfSeries.length; i++) {
+      if (perfSeries[i].date > eom) break;
+      lastIdx = i;
+    }
+    if (lastIdx === -1) return null;
+    perfCursor = lastIdx;
+    const p = perfSeries[lastIdx];
+    return p.value - p.cost;
+  });
 
   // Index of the current month inside `rhythm` (0-based).
   const nowIndex = FULL_PAST - 1;
@@ -189,7 +214,7 @@ export default async function DashboardScreen() {
             </div>
           </div>
         </div>
-        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} />
+        <IncomeRhythmChart months={rhythm} nowIndex={nowIndex} plLine={plLine} />
       </div>
 
       {/* Top contributors — income side-by-side with P/L */}
