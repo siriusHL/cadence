@@ -603,6 +603,16 @@ a.cdn-free .fnav .right .plan,
     justify-content: flex-end;
   }
 
+  /* Settings 3-col option grids (Contrast: Soft/Standard/Sharp +
+     Background tone: Cream/Neutral/Cool) get clipped at 360px because
+     each column only has ~80px and the rightmost button's text wraps
+     hard or its border bleeds past `.mob`'s overflow-x: hidden. Stack
+     to a single column on phone — each option becomes a full-width
+     button with its title + hint reading on one line. */
+  .settings-options-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* The .cdn-free chrome (.fnav + .scroll padding) gets out of the
      way at phone size — the mobile shell owns the entire viewport. */
   .cdn-free .fnav { display: none !important; }

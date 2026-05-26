@@ -142,7 +142,7 @@ export function SettingsForm({ initial, screenOptions }: Props) {
           <div className="t">Contrast</div>
         </div>
         <div style={{ padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div className="settings-options-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {CONTRAST_OPTIONS.map((opt) => {
               const active = contrast === opt.value;
               return (
@@ -176,7 +176,7 @@ export function SettingsForm({ initial, screenOptions }: Props) {
           <div className="t">Background tone</div>
         </div>
         <div style={{ padding: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div className="settings-options-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {BG_OPTIONS.map((opt) => {
               const active = bgTone === opt.value;
               return (
