@@ -87,6 +87,55 @@ export default async function DashboardScreen() {
   );
   const next5 = upcoming.slice(0, 5);
 
+  // Portfolio-level avg dividend safety, weighted by position value. Maps the
+  // same yield buckets used on the Stocks screen to a 0–100 score: high yield
+  // = lower safety (sustainability risk goes up as yields stretch). Holdings
+  // without a known yield are excluded — they can't be scored.
+  function safetyScoreForYield(yieldPct: number | null): number | null {
+    if (yieldPct == null) return null;
+    if (yieldPct < 3) return 95;
+    if (yieldPct < 5) return 80;
+    if (yieldPct < 7) return 55;
+    return 30;
+  }
+  let safetyWeightedSum = 0;
+  let safetyWeightTotal = 0;
+  let watchCount = 0;
+  for (const h of held) {
+    const score = safetyScoreForYield(h.fwdYieldPct);
+    if (score == null) continue;
+    const value = (h.price ?? 0) * h.quantity;
+    if (value <= 0) continue;
+    safetyWeightedSum += score * value;
+    safetyWeightTotal += value;
+    if ((h.fwdYieldPct ?? 0) >= 7) watchCount += 1;
+  }
+  const avgSafety = safetyWeightTotal > 0
+    ? Math.round(safetyWeightedSum / safetyWeightTotal)
+    : null;
+  const safetyLabel = avgSafety == null
+    ? '—'
+    : avgSafety >= 85 ? 'Very safe'
+    : avgSafety >= 70 ? 'Safe'
+    : avgSafety >= 50 ? 'Mixed'
+    : 'Stretched';
+  const safetyColor = avgSafety == null
+    ? 'var(--text-dim)'
+    : avgSafety >= 70 ? 'oklch(0.48 0.08 165)'
+    : avgSafety >= 50 ? 'oklch(0.55 0.10 75)'
+    : 'oklch(0.50 0.16 25)';
+  function letterGrade(score: number | null): string {
+    if (score == null) return '–';
+    if (score >= 90) return 'A+';
+    if (score >= 80) return 'A';
+    if (score >= 70) return 'B+';
+    if (score >= 60) return 'B';
+    if (score >= 50) return 'C';
+    if (score >= 40) return 'D';
+    return 'F';
+  }
+  const safetyLetter = letterGrade(avgSafety);
+
   // Passive-income target from profile (Settings → Passive income target).
   const incomeTarget = Number(profile?.income_target ?? 30_000);
   const targetPct = Math.min(100, (summary.forwardAnnualIncome / incomeTarget) * 100);
@@ -126,8 +175,12 @@ export default async function DashboardScreen() {
         </div>
       </div>
 
-      {/* 4-tile stat strip (cash + safety from template omitted in v0) */}
-      <div className="hero-stats dash-stats cdn-anim" style={{ ['--i' as never]: 0 }}>
+      {/* Stat strip — Cadence Safety Score sits last, wider than the other
+          tiles so the ring + headline + sub fit horizontally. */}
+      <div
+        className="hero-stats dash-stats cdn-anim"
+        style={{ ['--i' as never]: 0, gridTemplateColumns: '1fr 1fr 1fr 1fr 1.6fr' }}
+      >
         <div className="tile" style={{ ['--i' as never]: 0 }}>
           <div className="l">Forward income</div>
           <div className="v"><span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}</div>
@@ -177,7 +230,40 @@ export default async function DashboardScreen() {
             position{summary.positionsCount === 1 ? '' : 's'}
           </div>
         </div>
+        <div
+          className="tile"
+          style={{
+            ['--i' as never]: 4,
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 14,
+          }}
+        >
+          <SafetyRing score={avgSafety} color={safetyColor} size={84} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="l">Cadence Safety Score</div>
+            <div
+              style={{
+                fontSize: 18,
+                fontWeight: 600,
+                letterSpacing: '-0.02em',
+                color: safetyColor,
+                marginTop: 2,
+                lineHeight: 1.1,
+              }}
+            >
+              {safetyLabel} · {safetyLetter}
+            </div>
+            <div className="d" style={{ marginTop: 4 }}>
+              {watchCount > 0
+                ? `${watchCount} high-yield risk${watchCount === 1 ? '' : 's'} (≥7%)`
+                : 'no high-yield risks'}
+            </div>
+          </div>
+        </div>
       </div>
+
 
       {/* Income rhythm chart */}
       <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
@@ -405,5 +491,88 @@ export default async function DashboardScreen() {
         <Link href="/app/stocks" style={{ color: 'inherit' }}>← Back to Your Stocks</Link>
       </div>
     </div>
+  );
+}
+
+/**
+ * Compact ring gauge for the Cadence Safety Score card — ported from the
+ * research template (templates/pro-holdings.jsx). The arc sweeps ~270° from
+ * 4 o'clock around to 8 o'clock so the open mouth sits at the bottom; score
+ * sits centred in the middle with a small "SAFETY" caption beneath.
+ */
+function SafetyRing({
+  score,
+  color,
+  size = 110,
+}: {
+  score: number | null;
+  color: string;
+  size?: number;
+}) {
+  const r = size / 2 - 8;
+  const cx = size / 2;
+  const cy = size / 2;
+  const start = -Math.PI * 0.62;
+  const end = Math.PI * 1.62;
+  const total = end - start;
+  const arc = (frac: number): [number, number] => {
+    const a = start + total * frac;
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  };
+  const ringPath = (frac: number): string => {
+    if (frac <= 0) return '';
+    const [x0, y0] = arc(0);
+    const [x1, y1] = arc(frac);
+    const large = frac > 0.5 ? 1 : 0;
+    return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+  };
+  const frac = score == null ? 0 : Math.max(0, Math.min(1, score / 100));
+  return (
+    <svg width={size} height={size} aria-hidden style={{ flexShrink: 0 }}>
+      <path
+        d={ringPath(1)}
+        fill="none"
+        stroke="rgba(0,0,0,0.06)"
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <path
+        d={ringPath(frac)}
+        fill="none"
+        stroke={color}
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <text
+        x={cx}
+        y={cy + 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fontSize: 28,
+          fontWeight: 600,
+          fill: 'var(--text)',
+          fontVariantNumeric: 'tabular-nums',
+          letterSpacing: '-0.02em',
+        }}
+      >
+        {score == null ? '—' : score}
+      </text>
+      <text
+        x={cx}
+        y={cy + 18}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{
+          fontSize: 9,
+          fill: 'var(--text-dim)',
+          fontWeight: 500,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+        }}
+      >
+        Safety
+      </text>
+    </svg>
   );
 }
