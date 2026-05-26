@@ -557,6 +557,7 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
               type="button"
               onClick={deleteHolding}
               disabled={busy}
+              aria-label={`Delete ${ticker}`}
               style={{
                 height: 32, padding: '0 14px',
                 background: 'var(--surface)',
@@ -570,7 +571,7 @@ export function HoldingEditModal({ ticker, onClose }: HoldingEditModalProps) {
               onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = 'oklch(0.96 0.04 25)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)'; }}
             >
-              Delete {ticker}
+              Delete
             </button>
           </div>
         )}

@@ -54,15 +54,22 @@ export default async function AlertsScreen() {
     );
   }
 
-  await enrichInstruments(holdings.map((h) => h.ticker));
-  await enrichWeeklyHistory(holdings.map((h) => h.ticker), 104);
+  // Run both enrichments in parallel — they hit independent cache tables and
+  // neither blocks the other. Weekly history is capped at 52 weeks (down from
+  // 104) because the only alert that reads it (drawdown) takes `series.slice(-52)`,
+  // so anything older was being fetched, written, and iterated for nothing.
+  const tickers = holdings.map((h) => h.ticker);
+  await Promise.all([
+    enrichInstruments(tickers),
+    enrichWeeklyHistory(tickers, 52),
+  ]);
 
   const residence = (profile?.tax_country as TaxResidence | null) ?? DEFAULT_RESIDENCE;
   const fiscalYear = new Date().getFullYear();
 
   const [taxSummary, performanceSeries] = await Promise.all([
     getTaxSummary(supabase, portfolio.id, fiscalYear, residence),
-    getPerformanceSeries(supabase, portfolio.id, 104),
+    getPerformanceSeries(supabase, portfolio.id, 52),
   ]);
 
   const alerts = await getActiveAlerts({
