@@ -6,6 +6,7 @@ import { NavTabs } from '@/components/NavTabs';
 import { DialogProvider } from '@/components/DialogProvider';
 import { UserMenu } from '@/components/UserMenu';
 import { PortfolioSwitcher } from '@/components/PortfolioSwitcher';
+import { AccountProvider } from '@/components/AccountContext';
 import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 
 interface NavTab { label: string; href: string; screen: Screen; }
@@ -57,32 +58,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <DialogProvider>
-      <div className="cdn-free flex flex-col min-h-screen">
-        <div className="fnav">
-          <Link href="/app" className="brand">
-            <span className="dot" /> Cadence
-          </Link>
-          <NavTabs tabs={tabs.map((t) => ({ label: t.label, href: t.href }))} />
-          <div className="right">
-            {portfolios.length > 0 && (
-              <PortfolioSwitcher
-                items={portfolios.map((p) => ({ id: p.id, name: p.name }))}
-                activeId={active?.id ?? null}
-              />
-            )}
-            {tier === 'free' && (
-              <Link href="/upgrade" className="plan pro" style={{ textDecoration: 'none' }}>
-                Upgrade
-              </Link>
-            )}
-            <span className={'plan ' + (tier === 'premium' ? 'pro' : tier === 'elite' ? 'elite' : '')}>
-              {planLabel}
-            </span>
-            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} />
+      <AccountProvider value={{ email: user.email ?? '', initials, tier }}>
+        <div className="cdn-free flex flex-col min-h-screen">
+          <div className="fnav">
+            <Link href="/app" className="brand">
+              <span className="dot" /> Cadence
+            </Link>
+            <NavTabs tabs={tabs.map((t) => ({ label: t.label, href: t.href }))} />
+            <div className="right">
+              {portfolios.length > 0 && (
+                <PortfolioSwitcher
+                  items={portfolios.map((p) => ({ id: p.id, name: p.name }))}
+                  activeId={active?.id ?? null}
+                />
+              )}
+              {tier === 'free' && (
+                <Link href="/upgrade" className="plan pro" style={{ textDecoration: 'none' }}>
+                  Upgrade
+                </Link>
+              )}
+              <span className={'plan ' + (tier === 'premium' ? 'pro' : tier === 'elite' ? 'elite' : '')}>
+                {planLabel}
+              </span>
+              <UserMenu email={user.email ?? ''} initials={initials} tier={tier} />
+            </div>
           </div>
+          <div className="scroll">{children}</div>
         </div>
-        <div className="scroll">{children}</div>
-      </div>
+      </AccountProvider>
     </DialogProvider>
   );
 }

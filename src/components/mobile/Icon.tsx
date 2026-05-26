@@ -18,6 +18,9 @@ const ICON = {
   tax:       <path d="M5 3h11l3 3v15H5V3zm2 4v2h10V7H7zm0 4v2h10v-2H7zm0 4v2h7v-2H7z" />,
   alerts:    <path d="M12 2a7 7 0 0 0-7 7v4l-2 3v2h18v-2l-2-3V9a7 7 0 0 0-7-7zm0 20a3 3 0 0 0 3-3H9a3 3 0 0 0 3 3z" />,
   settings:  <path d="M19.4 13a7.5 7.5 0 0 0 .1-1 7.5 7.5 0 0 0-.1-1l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.9 3h-3.8l-.4 2.6a8 8 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.6a7.5 7.5 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1L11.1 21h3.8l.4-2.6a8 8 0 0 0 1.7-1l2.4 1 2-3.4-2-1.6zM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7z" />,
+  card:      <path d="M3 6h18v3H3V6zm0 5h18v7H3v-7zm3 3h4v2H6v-2z" />,
+  feedback:  <path d="M4 4h16v12H7l-3 3V4zm3 3v2h10V7H7zm0 4v2h7v-2H7z" />,
+  logout:    <path d="M10 3h8v18h-8v-2h6V5h-6V3zm-4 4l-4 5 4 5v-3h7v-4H6V7z" />,
 } as const;
 
 export type MobileIconName = keyof typeof ICON;

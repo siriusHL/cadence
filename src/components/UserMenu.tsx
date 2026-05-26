@@ -10,9 +10,12 @@ interface Props {
   email: string;
   initials: string;
   tier: Tier;
+  /** Avatar button size in px. Default 28 (matches desktop topbar);
+   *  the mobile shell renders at 32 to match its other topbar buttons. */
+  size?: number;
 }
 
-export function UserMenu({ email, initials, tier }: Props) {
+export function UserMenu({ email, initials, tier, size = 28 }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -70,10 +73,10 @@ export function UserMenu({ email, initials, tier }: Props) {
         disabled={busy}
         className="avatar"
         style={{
-          width: 28, height: 28, borderRadius: '50%',
+          width: size, height: size, borderRadius: '50%',
           background: 'linear-gradient(135deg, oklch(0.85 0.06 175), oklch(0.70 0.08 195))',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: 11, fontWeight: 600,
+          color: '#fff', fontSize: size >= 32 ? 12 : 11, fontWeight: 600,
           border: 0, cursor: 'pointer', padding: 0,
           boxShadow: open ? '0 0 0 3px rgba(0,0,0,0.06)' : 'none',
           transition: 'box-shadow 120ms ease, transform 120ms ease',

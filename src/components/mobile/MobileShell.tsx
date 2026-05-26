@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Icon, type MobileIconName } from '@/components/mobile/Icon';
 import { AlertsBadge } from '@/components/AlertsBadge';
+import { useAccount } from '@/components/AccountContext';
+import { useToast } from '@/components/DialogProvider';
 
 /**
  * Shared mobile chrome — wraps every page rendered inside `.cdn-mobile-only`.
@@ -12,10 +14,13 @@ import { AlertsBadge } from '@/components/AlertsBadge';
  *   - TopBar with portfolio chip + alerts + avatar + hamburger
  *   - The scrollable content area (children)
  *   - BottomTabBar with 5 primary destinations
- *   - Drawer that opens from the hamburger
+ *   - Single left-side Drawer that opens from EITHER the hamburger OR
+ *     the avatar — one menu for navigation + account actions. Drawer
+ *     contents: email/plan header (when account is available), nav
+ *     groups (Premium/Elite/Account), then Billing/Feedback/Log out.
  *
  * All state lives here so individual pages just pass content + a `current`
- * tab key. The pattern matches templates/dashboard-mobile.jsx V1Standard.
+ * tab key.
  */
 
 interface BottomTab {
@@ -104,6 +109,13 @@ export function MobileShell({
   const BOTTOM_TABS = tabSet === 'free' ? FREE_BOTTOM_TABS : PRO_BOTTOM_TABS;
   const pathname = usePathname();
   const router = useRouter();
+  const toast = useToast();
+  // Account info comes from the app-layout-level provider. Drives the
+  // email/plan header at the top of the drawer plus the Billing/Log out
+  // items at the bottom. When missing, those sections are simply omitted
+  // (the nav groups still render).
+  const account = useAccount();
+  const [billingBusy, setBillingBusy] = useState(false);
 
   // Drawer state is keyed to the pathname so navigation auto-closes it
   // without a setState-in-effect. Same derive-don't-synchronize pattern as
@@ -115,6 +127,36 @@ export function MobileShell({
   const drawerOpen = drawerState.open && drawerState.at === pathname;
   const openDrawer = () => setDrawerState({ open: true, at: pathname });
   const closeDrawer = () => setDrawerState({ open: false, at: '' });
+
+  // Stripe customer portal — same logic as the desktop UserMenu's billing
+  // button. Free users go to the upgrade page instead.
+  async function onBilling() {
+    closeDrawer();
+    if (!account || account.tier === 'free') {
+      router.push('/upgrade');
+      return;
+    }
+    setBillingBusy(true);
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string; redirect?: string };
+        if (j.redirect) { router.push(j.redirect); return; }
+        toast(`Couldn't open billing portal: ${j.error ?? res.statusText}`, 'error');
+        return;
+      }
+      const { url } = (await res.json()) as { url: string };
+      window.location.href = url; // full nav — Stripe-hosted page
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
+  const planLabel = !account
+    ? ''
+    : account.tier === 'free' ? 'Free plan'
+    : account.tier === 'premium' ? '✦ Premium'
+    : '✦ Elite';
 
   // Derive active tab from pathname if caller didn't provide one
   const activeTab = currentTab ?? (
@@ -170,7 +212,23 @@ export function MobileShell({
               <AlertsBadge />
             </span>
           </Link>
-          <Link href="/app/profile" className="avatar" title="Profile">{avatarInitials}</Link>
+          {/* Avatar opens the same drawer as the hamburger — one menu for
+              navigation + account actions, no left-vs-right split. */}
+          {account ? (
+            <button
+              type="button"
+              className="avatar"
+              onClick={openDrawer}
+              aria-label="Account menu"
+              aria-expanded={drawerOpen}
+              title={account.email || 'Account'}
+              style={{ border: 0, padding: 0, cursor: 'pointer' }}
+            >
+              {account.initials || avatarInitials}
+            </button>
+          ) : (
+            <Link href="/app/profile" className="avatar" title="Profile">{avatarInitials}</Link>
+          )}
         </div>
       </div>
 
@@ -215,7 +273,8 @@ export function MobileShell({
         })}
       </nav>
 
-      {/* Drawer */}
+      {/* Drawer — single menu, opens from the left for both the hamburger
+          and the avatar. Combines navigation + account actions. */}
       <div
         className={'drawer-scrim' + (drawerOpen ? ' open' : '')}
         onClick={closeDrawer}
@@ -225,9 +284,25 @@ export function MobileShell({
         className={'drawer' + (drawerOpen ? ' open' : '')}
         role="dialog"
         aria-modal="true"
-        aria-label="Navigation"
+        aria-label="Menu"
       >
         <div className="brand"><span className="dot" /> Cadence</div>
+
+        {/* Account header — shown when the layout provider has user info. */}
+        {account && (
+          <div className="acct-head">
+            <div className="email">{account.email || 'Account'}</div>
+            <div
+              className={
+                'plan' +
+                (account.tier === 'premium' ? ' pro' : account.tier === 'elite' ? ' elite' : '')
+              }
+            >
+              {planLabel}
+            </div>
+          </div>
+        )}
+
         {DRAWER_GROUPS.map((g) => (
           <div key={g.h}>
             <div className="group-h">{g.h}</div>
@@ -239,6 +314,7 @@ export function MobileShell({
                   href={it.href}
                   className={'navitem' + (isActive ? ' is-active' : '')}
                   aria-current={isActive ? 'page' : undefined}
+                  onClick={closeDrawer}
                 >
                   <span className="ico"><Icon name={it.icon} size={18} /></span>
                   {it.label}
@@ -247,15 +323,56 @@ export function MobileShell({
             })}
           </div>
         ))}
-        <div className="plan-foot">
-          <Link
-            href="/app/profile"
-            style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
-          >
-            <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Account</div>
-            <div style={{ fontSize: 12, fontWeight: 500, marginTop: 2 }}>View profile →</div>
-          </Link>
-        </div>
+
+        {/* Account actions — only when we have a logged-in user. Sits below
+            the nav groups so the navigation is the primary hierarchy. */}
+        {account && (
+          <>
+            <button
+              type="button"
+              className="navitem"
+              onClick={onBilling}
+              disabled={billingBusy}
+              style={{
+                background: 'transparent',
+                border: 0,
+                width: '100%',
+                textAlign: 'left',
+                font: 'inherit',
+              }}
+            >
+              <span className="ico"><Icon name="card" size={18} /></span>
+              {account.tier === 'free' ? 'Upgrade plan' : 'Billing'}
+            </button>
+            <a
+              href="mailto:feedback@cadence.app?subject=Cadence%20feedback"
+              className="navitem"
+              onClick={closeDrawer}
+            >
+              <span className="ico"><Icon name="feedback" size={18} /></span>
+              Send feedback
+            </a>
+
+            {/* Log out — real form POST so the cookie clear lands before nav. */}
+            <form action="/api/auth/logout" method="post" style={{ marginTop: 'auto' }}>
+              <button
+                type="submit"
+                className="navitem danger"
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  width: '100%',
+                  textAlign: 'left',
+                  font: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <span className="ico"><Icon name="logout" size={18} /></span>
+                Log out
+              </button>
+            </form>
+          </>
+        )}
       </aside>
     </div>
   );
