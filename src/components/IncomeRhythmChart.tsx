@@ -252,7 +252,13 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
             />
           )}
 
-          {/* Month labels along the bottom — adaptive density */}
+          {/* Month labels along the bottom — adaptive density. Labels
+              are allowed to overflow their flex cell (no `overflow:
+              hidden`) so 3-char "Sep"/"Aug" stays fully readable on
+              narrow mobile columns where the cell itself is only
+              ~12px wide. With stride 2 the labels are ~24-50px apart,
+              plenty of room for them to overlap their gap without
+              colliding. */}
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
             display: 'flex', gap: 3, height: 18,
@@ -266,7 +272,6 @@ export function IncomeRhythmChart({ months, nowIndex }: Props) {
                   fontSize: 10,
                   color: i > nowIndexInSlice ? 'var(--text-dim)' : 'var(--text-muted)',
                   fontWeight: 500,
-                  overflow: 'hidden',
                   whiteSpace: 'nowrap',
                 }}>
                   {show ? `${MONTH_NAMES[m.month]}${slice.length > 18 ? ` ${String(m.year).slice(2)}` : ''}` : ''}
