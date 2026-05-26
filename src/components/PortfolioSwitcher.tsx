@@ -59,16 +59,16 @@ export function PortfolioSwitcher({ items, activeId }: Props) {
           alignItems: 'center',
           gap: 8,
           padding: '5px 12px',
-          background:
-            'linear-gradient(135deg, oklch(0.96 0.025 175), oklch(0.93 0.035 195))',
-          border: '1px solid oklch(0.85 0.04 185)',
+          background: 'var(--surface)',
+          border: 'none',
           borderRadius: 999,
           fontSize: 11.5,
           fontWeight: 500,
           color: 'var(--text)',
           cursor: 'pointer',
           maxWidth: 240,
-          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+          boxShadow:
+            '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04)',
         }}
         title={`Switch portfolio · current: ${active.name}`}
         aria-label={`Switch portfolio. Current portfolio: ${active.name}`}
