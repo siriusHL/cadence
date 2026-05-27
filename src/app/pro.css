@@ -80,6 +80,14 @@
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: 16px;
 }
+/* In flush cards the .pcard itself has no padding, so the header needs
+   its own to keep titles on the same 22px column as the cells below
+   (the table-edge alignment rule farther down assumes 22px). Most call
+   sites set this inline as `style={{ padding: '20px 22px 8px', margin: 0 }}`;
+   make it the default so headers can't be misaligned by forgetting it.
+   The drop-bottom (margin-bottom: 0) keeps the table flush against the
+   header's bottom edge instead of inheriting the default 16px gap. */
+.cdn-pro .pcard.flush > .pcard-h { padding: 20px 22px 8px; margin-bottom: 0; }
 .cdn-pro .pcard-h .t {
   font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.01em;
 }
@@ -221,8 +229,11 @@
 }
 .cdn-pro table.pt tfoot td {
   font-weight: 600;
-  /* Solid colour so the sticky footer doesn't show rows bleeding through. */
-  background: #f5f4f0;
+  /* Solid colour so the sticky footer doesn't show rows bleeding through.
+     Was #f5f4f0 (~4% darker than --surface) which was so faint the totals
+     row read as just another data row. Bumped to ~9% darker so Σ totals
+     clearly separates from the body. Warm cream tone to match --bg. */
+  background: #ebe7dc;
   border-top: 1px solid var(--border-strong);
   border-bottom: 0;
   position: sticky; bottom: 0;
