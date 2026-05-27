@@ -13,6 +13,7 @@ import {
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { PerformanceChart } from '@/components/PerformanceChart';
+import { InfoTooltip } from '@/components/InfoTooltip';
 
 function fmt(n: number, digits = 0): string {
   if (!Number.isFinite(n)) return '—';
@@ -231,12 +232,16 @@ export default async function PerformanceScreen() {
         </div>
         <div className="right-meta">
           {sharpeRatio !== 0 && (
-            <span>Sharpe {sharpeRatio.toFixed(2)} · Sortino {sortinoRatio.toFixed(2)}</span>
+            <span>
+              Sharpe {sharpeRatio.toFixed(2)} · Sortino {sortinoRatio.toFixed(2)}
+              <InfoTooltip label="Sharpe and Sortino both measure return-per-unit-of-risk. Above 1.0 is good, above 2.0 is excellent. Sortino is stricter — it only penalises downside volatility, ignoring the wild upside swings investors actually like." />
+            </span>
           )}
           {mdd.ddPct < 0 && (
             <span>
               Max DD {mdd.ddPct.toFixed(1)}%
               {mddRecoveredLabel && <> · recovered {mddRecoveredLabel}</>}
+              <InfoTooltip label="Maximum Drawdown — the biggest peak-to-trough drop your portfolio has suffered. -10% means you were once down 10% from your high-water mark." />
             </span>
           )}
           <span className="live">{held.length} positions · {series.length} weekly snapshots</span>
@@ -245,7 +250,10 @@ export default async function PerformanceScreen() {
 
       <div className="hero-stats dash-stats cdn-anim" style={{ gridTemplateColumns: 'repeat(6, 1fr)', ['--i' as never]: 0 }}>
         <div className="tile" style={{ ['--i' as never]: 0 }}>
-          <div className="l">YTD</div>
+          <div className="l">
+            YTD
+            <InfoTooltip label="Year-To-Date: how much your portfolio is up or down since January 1st of this year." />
+          </div>
           <div className={'v sm ' + (ytdReturn >= 0 ? 'up' : 'down')}>
             {fmtPct(ytdReturn, 2)}
           </div>
@@ -268,7 +276,10 @@ export default async function PerformanceScreen() {
           </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 1 }}>
-          <div className="l">1 year</div>
+          <div className="l">
+            1 year
+            <InfoTooltip label="Total return over the trailing 52 weeks. Useful for spotting how this year is shaping up vs your usual pace." />
+          </div>
           <div className={'v sm ' + (() => {
             const oneY = periods.find((p) => p.label === '1Y')?.portfolio ?? 0;
             return oneY >= 0 ? 'up' : 'down';
@@ -290,12 +301,21 @@ export default async function PerformanceScreen() {
           </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 2 }}>
-          <div className="l">Sharpe (1y)</div>
+          <div className="l">
+            Sharpe (1y)
+            <InfoTooltip label="Sharpe Ratio: your excess return above a 'risk-free' baseline (like government bonds), divided by your volatility. Higher is better — anything above 1.0 means you're getting paid well for the bumps in the ride." />
+          </div>
           <div className="v sm">{sharpeRatio.toFixed(2)}</div>
-          <div className="d">rf {RISK_FREE_PCT.toFixed(1)}%</div>
+          <div className="d">
+            rf {RISK_FREE_PCT.toFixed(1)}%
+            <InfoTooltip label="rf = risk-free rate. The yield you could get with zero risk (e.g. short-term government bonds). Sharpe only counts the return above this baseline as 'real' reward." />
+          </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 3 }}>
-          <div className="l">Max drawdown</div>
+          <div className="l">
+            Max drawdown
+            <InfoTooltip label="The deepest peak-to-trough fall your portfolio has experienced over the tracked window. Tells you the worst stomach-test you've actually lived through." />
+          </div>
           <div className="v sm down">{mdd.ddPct.toFixed(1)}%</div>
           <div className="d">
             {mdd.recoveredDate ? (
@@ -308,7 +328,10 @@ export default async function PerformanceScreen() {
           </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 4 }}>
-          <div className="l">Beta (1y)</div>
+          <div className="l">
+            Beta (1y)
+            <InfoTooltip label="Beta measures how much your portfolio moves when the market moves. 1.0 = same as the market, &lt;1 = less volatile (defensive), &gt;1 = amplified (rises and falls more sharply than the market)." />
+          </div>
           <div className="v sm">{primaryBench ? portBeta.toFixed(2) : '—'}</div>
           <div className="d">
             {primaryBench ? (
@@ -319,7 +342,10 @@ export default async function PerformanceScreen() {
           </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 5 }}>
-          <div className="l">Win rate</div>
+          <div className="l">
+            Win rate
+            <InfoTooltip label="The share of months your portfolio ended in the green. 60%+ is a healthy long-term consistency signal — even great investors only win ~55-65% of months." />
+          </div>
           <div className="v sm">{winRate.ratePct.toFixed(0)}%</div>
           <div className="d">{winRate.winMonths} / {winRate.totalMonths} months</div>
         </div>
@@ -328,7 +354,10 @@ export default async function PerformanceScreen() {
       <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
         <div className="pcard-h">
           <div>
-            <div className="t">Cumulative total return</div>
+            <div className="t">
+              Cumulative total return
+              <InfoTooltip label="Your portfolio's percentage gain or loss since the start of the selected range, plotted weekly. Benchmark lines (S&amp;P 500, etc.) overlay on the same scale so you can compare." />
+            </div>
             <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3 }}>
               Weekly snapshots of value vs cost basis. Returns are rebased to the start of the selected range.
             </div>
@@ -341,7 +370,10 @@ export default async function PerformanceScreen() {
         {/* Period returns */}
         <div className="pcard flush cdn-anim interactive period-returns-card" style={{ overflow: 'hidden', ['--i' as never]: 2 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
-            <div className="t">Period returns</div>
+            <div className="t">
+              Period returns
+              <InfoTooltip label="How your portfolio performed across common time windows, side-by-side with major benchmarks. Use it to spot whether you're beating or lagging the market over different horizons." />
+            </div>
             {benchmarkLines.length > 0 && <span className="tag">vs benchmarks</span>}
           </div>
           <div>
@@ -353,7 +385,12 @@ export default async function PerformanceScreen() {
                   {benchmarkLines.map((b) => (
                     <th key={b.id} className="r">{b.name}</th>
                   ))}
-                  {benchmarkLines[0] && <th className="r">vs {benchmarkLines[0].name.split(' ')[0]}</th>}
+                  {benchmarkLines[0] && (
+                    <th className="r">
+                      vs {benchmarkLines[0].name.split(' ')[0]}
+                      <InfoTooltip label="The 'pp' (percentage points) difference between your return and the benchmark's. +2pp means you beat the benchmark by 2 percentage points; -2pp means you trailed it." />
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -387,8 +424,14 @@ export default async function PerformanceScreen() {
         {/* Top winners */}
         <div className="pcard flush cdn-anim interactive winners-card" style={{ overflow: 'hidden', ['--i' as never]: 3 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
-            <div className="t">Top winners</div>
-            <span className="tag">By € P/L</span>
+            <div className="t">
+              Top winners
+              <InfoTooltip label="The five holdings driving the most positive Profit/Loss in euros — your biggest contributors to portfolio gains." />
+            </div>
+            <span className="tag">
+              By € P/L
+              <InfoTooltip label="Sorted by absolute euros made, not percentage. A €5,000 gain on a €100k position ranks above a +200% gain on a €50 position." />
+            </span>
           </div>
           <div>
             <table className="pt">
@@ -427,40 +470,53 @@ export default async function PerformanceScreen() {
         {/* Risk & ratios (rolling 1y) */}
         <div className="pcard flush cdn-anim interactive risk-card" style={{ overflow: 'hidden', ['--i' as never]: 4 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
-            <div className="t">Risk &amp; ratios</div>
+            <div className="t">
+              Risk &amp; ratios
+              <InfoTooltip label="Quant-style metrics that describe HOW you're earning your returns — how much risk you take, how much of it pays off, and how you compare to a passive benchmark. All metrics use the trailing 52 weeks." />
+            </div>
             <span className="tag">rolling 1y</span>
           </div>
           <div>
             <table className="pt">
               <tbody>
-                <RiskRow label="Volatility (σ)" value={`${volPct.toFixed(1)}%`} note="annualised" />
+                <RiskRow label="Volatility (σ)" value={`${volPct.toFixed(1)}%`} note="annualised"
+                  info="How wildly your portfolio value swings. The σ symbol means 'standard deviation'. Annualised so it's comparable to other yearly figures. 15% is roughly an average diversified equity portfolio." />
                 <RiskRow label="Sharpe" value={sharpeRatio.toFixed(2)}
                   note={`rf ${RISK_FREE_PCT.toFixed(1)}%`}
-                  good={sharpeRatio >= 1} bad={sharpeRatio < 0} />
+                  good={sharpeRatio >= 1} bad={sharpeRatio < 0}
+                  info="Excess return per unit of total volatility, after subtracting a risk-free baseline. Above 1.0 = good, above 2.0 = excellent. Below 0 = you'd have been better off in bonds." />
                 <RiskRow label="Sortino" value={sortinoRatio.toFixed(2)}
                   note="downside σ only"
-                  good={sortinoRatio >= 1} bad={sortinoRatio < 0} />
+                  good={sortinoRatio >= 1} bad={sortinoRatio < 0}
+                  info="Like Sharpe, but only penalises DOWNSIDE volatility. Big upside moves don't count as 'risk' here — many investors find this fairer than vanilla Sharpe." />
                 <RiskRow label="Calmar" value={calmar.toFixed(2)} note="rtn / max DD"
-                  good={calmar >= 0.5} />
+                  good={calmar >= 0.5}
+                  info="Annual return divided by the worst peak-to-trough drawdown. A pain-adjusted measure: high Calmar = good returns without ugly crashes. Above 0.5 is solid." />
                 {primaryBench && (
                   <>
                     <RiskRow label={`Beta vs ${primaryBench.name}`} value={portBeta.toFixed(2)}
-                      note={portBeta < 0.9 ? 'defensive' : portBeta < 1.1 ? 'market-like' : 'amplified'} />
+                      note={portBeta < 0.9 ? 'defensive' : portBeta < 1.1 ? 'market-like' : 'amplified'}
+                      info="How much your portfolio moves when the benchmark moves. 1.0 = same swings as the benchmark, 0.7 = 30% calmer, 1.3 = 30% wilder." />
                     <RiskRow label="Alpha (Jensen)" value={`${portAlpha >= 0 ? '+' : ''}${portAlpha.toFixed(2)}%`}
                       note="annualised"
-                      good={portAlpha > 0} bad={portAlpha < 0} />
+                      good={portAlpha > 0} bad={portAlpha < 0}
+                      info="The annual return you generated ABOVE what your Beta alone would predict. Positive alpha = stock-picking skill (or luck). Hard to sustain — most fund managers can't." />
                     <RiskRow label={`Correl. vs ${primaryBench.name}`} value={portCorrelation.toFixed(2)}
-                      note={Math.abs(portCorrelation) < 0.4 ? 'weak' : Math.abs(portCorrelation) < 0.7 ? 'moderate' : 'strong'} />
+                      note={Math.abs(portCorrelation) < 0.4 ? 'weak' : Math.abs(portCorrelation) < 0.7 ? 'moderate' : 'strong'}
+                      info="How closely your portfolio's weekly moves track the benchmark's. 1.0 = perfect lockstep, 0 = independent, -1 = opposite. High correlation means you're effectively holding the benchmark in disguise." />
                     <RiskRow label="Tracking error" value={`${portTrackingErr.toFixed(1)}%`}
-                      note="active risk" />
+                      note="active risk"
+                      info="How much your weekly returns deviate from the benchmark's, annualised. Low = you hug the index closely. High = you've placed real active bets that diverge from it." />
                     <RiskRow label="Info ratio" value={portInfoRatio.toFixed(2)}
                       note={portInfoRatio > 0.5 ? 'skill > noise' : 'within noise'}
-                      good={portInfoRatio > 0.5} bad={portInfoRatio < 0} />
+                      good={portInfoRatio > 0.5} bad={portInfoRatio < 0}
+                      info="Active return per unit of tracking error — measures whether your divergence from the benchmark is paying off. Above 0.5 suggests genuine skill rather than randomness." />
                   </>
                 )}
                 <RiskRow label="Max drawdown" value={`${mdd.ddPct.toFixed(1)}%`}
                   note={mdd.recoveredWeeks ? `recovered in ${mdd.recoveredWeeks}w` : mdd.troughDate ? 'not recovered' : '—'}
-                  bad={mdd.ddPct < -10} />
+                  bad={mdd.ddPct < -10}
+                  info="The biggest peak-to-trough fall in your portfolio's history. Recovery time tells you how long it took to climb back to the old high — long recoveries are an often-overlooked cost of volatility." />
               </tbody>
             </table>
           </div>
@@ -471,7 +527,10 @@ export default async function PerformanceScreen() {
       {losers.length > 0 && (
         <div className="pcard flush cdn-anim interactive losers-card" style={{ overflow: 'hidden', marginTop: 14, ['--i' as never]: 5 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
-            <div className="t">Detractors</div>
+            <div className="t">
+              Detractors
+              <InfoTooltip label="Holdings currently sitting at a loss. Worth reviewing periodically: is the original thesis still intact, or is it time to cut?" />
+            </div>
             <span className="tag">P/L &lt; 0</span>
           </div>
           <div>
@@ -509,18 +568,22 @@ export default async function PerformanceScreen() {
 }
 
 function RiskRow({
-  label, value, note, good, bad,
+  label, value, note, good, bad, info,
 }: {
   label: string;
   value: string;
   note?: string;
   good?: boolean;
   bad?: boolean;
+  info?: string;
 }) {
   const color = good ? 'oklch(0.36 0.08 165)' : bad ? 'oklch(0.50 0.16 25)' : 'var(--text)';
   return (
     <tr>
-      <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{label}</td>
+      <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+        {label}
+        {info && <InfoTooltip label={info} />}
+      </td>
       <td className="r num" style={{ color, fontWeight: 600 }}>{value}</td>
       <td style={{ color: 'var(--text-dim)', fontSize: 11, paddingLeft: 8 }}>{note}</td>
     </tr>
