@@ -658,18 +658,18 @@ async function YearTab({ portfolioId, heldCount }: { portfolioId: string; heldCo
         </div>
       </div>
 
-      <div className="pcard">
+      <div className="pcard cdn-year-dark">
         <div className="pcard-h">
           <div className="t">
             Year heatmap · ex-div by day
             <InfoTooltip label="Each square is one day of the year, shaded by how much dividend was paid that day. 'Ex-div' is short for ex-dividend — the cutoff date when a stock starts trading without the upcoming payout. Darker = bigger payout day." />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--text-dim)' }}>
+          <div className="cdn-year-legend">
             <span>Less</span>
             {[0.1, 0.3, 0.5, 0.7, 0.95].map((f, i) => (
               <span key={i} style={{
                 width: 14, height: 10, borderRadius: 3,
-                background: `color-mix(in oklab, oklch(0.55 0.10 175) ${f * 100}%, rgba(0,0,0,0.04))`,
+                background: `color-mix(in oklab, var(--heatmap-fill, oklch(0.55 0.10 175)) ${f * 100}%, var(--heatmap-empty, rgba(0,0,0,0.04)))`,
               }} />
             ))}
             <span>More</span>
