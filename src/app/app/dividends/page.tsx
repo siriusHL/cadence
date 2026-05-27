@@ -13,6 +13,7 @@ import { TickerLogo } from '@/components/TickerLogo';
 import { YearHeatmap } from '@/components/YearHeatmap';
 import { ForecastChart, type ForecastMonth } from '@/components/ForecastChart';
 import { IncomeSimulator } from '@/components/IncomeSimulator';
+import { MonthCalendar } from '@/components/MonthCalendar';
 import {
   estimateDividendTaxRate, RESIDENCE_MODELS,
   type TaxResidence,
@@ -145,7 +146,13 @@ async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; he
   const today = new Date();
   const year = today.getFullYear();
 
-  const events = await getYearEvents(supabase, portfolioId, year);
+  // Fetch this year and next so the calendar can navigate forward into Jan
+  // when the user is sitting on December (or just exploring upcoming months).
+  const [eventsThisYear, eventsNextYear] = await Promise.all([
+    getYearEvents(supabase, portfolioId, year),
+    getYearEvents(supabase, portfolioId, year + 1),
+  ]);
+  const events = [...eventsThisYear, ...eventsNextYear];
 
   const todayStr = today.toISOString().slice(0, 10);
   const horizon = new Date(today); horizon.setDate(today.getDate() + 40);
@@ -186,7 +193,16 @@ async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; he
         </div>
       </div>
 
-      <div className="pcard flush">
+      <div className="row-2" style={{ gridTemplateColumns: '1.4fr 1fr', alignItems: 'start' }}>
+        <div className="pcard flush">
+          <MonthCalendar
+            events={events}
+            initialYear={today.getFullYear()}
+            initialMonth={today.getMonth()}
+          />
+        </div>
+
+        <div className="pcard flush">
         <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
           <div>
             <div className="t">Next 40 days</div>
@@ -266,6 +282,7 @@ async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; he
               })}
             </div>
           )}
+        </div>
         </div>
       </div>
     </>

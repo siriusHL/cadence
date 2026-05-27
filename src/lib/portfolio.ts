@@ -110,6 +110,7 @@ export interface YearEvent {
   ticker: string;
   name: string | null;
   exDate: string;          // YYYY-MM-DD
+  payDate: string | null;  // YYYY-MM-DD when declared, null for projections
   amountLocal: number;     // per-share dividend amount
   quantity: number;        // qty held on ex-date
   grossLocal: number;      // amount × quantity
@@ -658,10 +659,11 @@ export async function getYearEvents(
     });
   }
 
-  // Recorded ex-dates per ticker
+  // Recorded ex-dates per ticker (pay_date is included so the calendar can
+  // surface dividend-payment days alongside ex-dates).
   const { data: divsRes } = await supabase
     .from('instrument_dividends')
-    .select('ticker, ex_date, amount_local')
+    .select('ticker, ex_date, pay_date, amount_local')
     .in('ticker', tickers)
     .order('ex_date', { ascending: false });
 
@@ -682,12 +684,13 @@ export async function getYearEvents(
   const todayStr = today.toISOString().slice(0, 10);
 
   // Per-ticker map of ex-dates (declared first, then projection fills gaps)
-  type Entry = { date: Date; amount: number; declared: boolean };
+  type Entry = { date: Date; payDate: string | null; amount: number; declared: boolean };
   const byTicker = new Map<string, Entry[]>();
   for (const row of divsRes ?? []) {
     if (!byTicker.has(row.ticker)) byTicker.set(row.ticker, []);
     byTicker.get(row.ticker)!.push({
       date: new Date(row.ex_date),
+      payDate: row.pay_date ?? null,
       amount: Number(row.amount_local),
       declared: true,
     });
@@ -705,7 +708,7 @@ export async function getYearEvents(
     let d = new Date(anchor.date);
     while (d <= yearEnd) {
       if (d >= yearStart && !known.some((k) => sameDay(k.date, d))) {
-        known.push({ date: new Date(d), amount: anchor.amount, declared: false });
+        known.push({ date: new Date(d), payDate: null, amount: anchor.amount, declared: false });
       }
       d = addMonths(d, interval);
     }
@@ -713,7 +716,7 @@ export async function getYearEvents(
     d = addMonths(new Date(anchor.date), -interval);
     while (d >= yearStart) {
       if (d <= yearEnd && !known.some((k) => sameDay(k.date, d))) {
-        known.push({ date: new Date(d), amount: anchor.amount, declared: false });
+        known.push({ date: new Date(d), payDate: null, amount: anchor.amount, declared: false });
       }
       d = addMonths(d, -interval);
     }
@@ -734,6 +737,7 @@ export async function getYearEvents(
         ticker,
         name: nameByT.get(ticker) ?? null,
         exDate: exStr,
+        payDate: e.payDate,
         amountLocal: e.amount,
         quantity: qty,
         grossLocal: e.amount * qty,
