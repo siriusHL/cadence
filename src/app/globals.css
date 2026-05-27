@@ -623,7 +623,11 @@ a.cdn-free .fnav .right .plan,
   content: '';
   position: absolute;
   top: 100%;
-  left: 50%;
+  /* --arrow-offset is set on the bubble inline (px); 0 means centred under
+     the icon. When the bubble has been shifted away from the trigger to keep
+     it on-screen, the arrow shifts the other way to keep pointing at the
+     icon. Clamp so the arrow can't escape the bubble's rounded corners. */
+  left: clamp(12px, calc(50% + var(--arrow-offset, 0px)), calc(100% - 12px));
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-top-color: #1d1d1f;
