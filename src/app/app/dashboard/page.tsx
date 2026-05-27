@@ -14,6 +14,7 @@ import { enrichInstruments } from '@/lib/marketdata/enrich';
 import { EmptyState } from '@/components/EmptyState';
 import { TickerLogo } from '@/components/TickerLogo';
 import { IncomeRhythmChart } from '@/components/IncomeRhythmChart';
+import { InfoTooltip } from '@/components/InfoTooltip';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -182,17 +183,29 @@ export default async function DashboardScreen() {
         style={{ ['--i' as never]: 0, gridTemplateColumns: '1fr 1fr 1fr 1fr 1.6fr' }}
       >
         <div className="tile" style={{ ['--i' as never]: 0 }}>
-          <div className="l">Forward income</div>
+          <div className="l">
+            Forward income
+            <InfoTooltip label="Estimated dividend cash you'll receive over the next 12 months, based on each holding's current declared dividend rate and your share count." />
+          </div>
           <div className="v"><span className="cur">€</span>{fmt(summary.forwardAnnualIncome)}</div>
           <div className="d">over the next 12 months</div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 1 }}>
-          <div className="l">Forward yield</div>
+          <div className="l">
+            Forward yield
+            <InfoTooltip label="Forward income divided by today's portfolio value, shown as a percentage. It tells you what yearly income you're getting per €100 invested at current prices." />
+          </div>
           <div className="v">{summary.forwardYieldPct.toFixed(2)}<span style={{ fontSize: 16, color: 'var(--text-dim)', fontWeight: 400 }}>%</span></div>
-          <div className="d">YoC <b style={{ color: 'var(--text)' }}>{summary.yieldOnCostPct.toFixed(2)}%</b></div>
+          <div className="d">
+            YoC <b style={{ color: 'var(--text)' }}>{summary.yieldOnCostPct.toFixed(2)}%</b>
+            <InfoTooltip label="Yield on Cost: forward income divided by what you originally paid (your cost basis). As dividends grow over time, your YoC climbs above the market yield." />
+          </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 2 }}>
-          <div className="l">Total return</div>
+          <div className="l">
+            Total return
+            <InfoTooltip label="The paper profit or loss on your holdings — current market value minus what you paid. 'Unrealized' means you haven't sold yet, so it can still move." />
+          </div>
           <div
             className="v"
             style={{
@@ -223,7 +236,10 @@ export default async function DashboardScreen() {
           </div>
         </div>
         <div className="tile" style={{ ['--i' as never]: 3 }}>
-          <div className="l">Capital deployed</div>
+          <div className="l">
+            Capital deployed
+            <InfoTooltip label="The total cash you've put into your current holdings — your cost basis. It excludes positions you've fully sold." />
+          </div>
           <div className="v"><span className="cur">€</span>{fmt(summary.costBasis)}</div>
           <div className="d">
             across <b style={{ color: 'var(--text)' }}>{summary.positionsCount}</b>{' '}
@@ -242,7 +258,10 @@ export default async function DashboardScreen() {
         >
           <SafetyRing score={avgSafety} color={safetyColor} size={84} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="l">Cadence Safety Score</div>
+            <div className="l">
+              Cadence Safety Score
+              <InfoTooltip label="A 0–100 rating of how sustainable your dividends look, weighted by position size. Very high yields (≥7%) often signal stress, so they lower the score. Higher is safer." />
+            </div>
             <div
               style={{
                 fontSize: 18,
@@ -269,7 +288,10 @@ export default async function DashboardScreen() {
       <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 1 }}>
         <div className="pcard-h">
           <div>
-            <div className="t">Income rhythm</div>
+            <div className="t">
+              Income rhythm
+              <InfoTooltip label="Monthly view of dividends already paid (past) and the ones projected to land (future). Hover a month to see which stocks contribute." />
+            </div>
             <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3 }}>
               Dividends received and expected. Hover any month for the breakdown.
             </div>
@@ -283,8 +305,14 @@ export default async function DashboardScreen() {
         {/* Top income contributors */}
         <div className="pcard cdn-anim interactive contributors-card" style={{ ['--i' as never]: 2 }}>
           <div className="pcard-h">
-            <div className="t">Top income contributors</div>
-            <span className="tag">Forward 12M</span>
+            <div className="t">
+              Top income contributors
+              <InfoTooltip label="The holdings paying you the most cash over the next year. Bars are sized relative to the biggest payer." />
+            </div>
+            <span className="tag">
+              Forward 12M
+              <InfoTooltip label="Forward 12 months — the projected dividends from now through the next year, based on each stock's current dividend rate." />
+            </span>
           </div>
           {contributors.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 0' }}>
@@ -326,8 +354,14 @@ export default async function DashboardScreen() {
         {/* Top P/L contributors — peer card surfacing growth/non-payers */}
         <div className="pcard cdn-anim interactive contributors-card" style={{ ['--i' as never]: 3 }}>
           <div className="pcard-h">
-            <div className="t">Top P/L contributors</div>
-            <span className="tag">Unrealized</span>
+            <div className="t">
+              Top P/L contributors
+              <InfoTooltip label="P/L means Profit and Loss. These holdings are driving the biggest gains and losses in your portfolio right now. Green = up, red = down." />
+            </div>
+            <span className="tag">
+              Unrealized
+              <InfoTooltip label="Unrealized means on paper only — you still own the shares. The gain or loss only becomes 'realized' when you sell." />
+            </span>
           </div>
           {plContributors.length === 0 ? (
             <div style={{ fontSize: 12, color: 'var(--text-dim)', padding: '20px 0' }}>
@@ -386,7 +420,10 @@ export default async function DashboardScreen() {
         {/* Coming up */}
         <div className="pcard cdn-anim interactive upcoming-card" style={{ ['--i' as never]: 3 }}>
           <div className="pcard-h">
-            <div className="t">Coming up · next 5</div>
+            <div className="t">
+              Coming up · next 5
+              <InfoTooltip label="Your next 5 dividend payments by ex-dividend date. To receive a dividend you must own the stock before its ex-date — the date the share starts trading without the upcoming payout." />
+            </div>
             <span className="tag">{next5.length === 0 ? '—' : `next ${next5[next5.length - 1]?.daysUntil ?? 0}d`}</span>
           </div>
           {next5.length === 0 ? (
@@ -439,7 +476,10 @@ export default async function DashboardScreen() {
         {/* Passive-income progress */}
         <div className="pcard cdn-anim interactive fire-card" style={{ ['--i' as never]: 4 }}>
           <div className="pcard-h">
-            <div className="t">Passive income progress</div>
+            <div className="t">
+              Passive income progress
+              <InfoTooltip label="How close your forward dividend income is to the yearly target you set in Settings. The years-to-target estimate assumes ~8% income growth per year." />
+            </div>
             <span className="tag">€{(incomeTarget / 1000).toFixed(0)}k / yr target</span>
           </div>
           <div className="num" style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', lineHeight: 1.05 }}>
@@ -474,7 +514,10 @@ export default async function DashboardScreen() {
           </div>
 
           <div style={{ marginTop: 18, padding: '10px 12px', background: 'var(--surface-2)', borderRadius: 10 }}>
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 2 }}>YTD received</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 2, display: 'inline-flex', alignItems: 'center' }}>
+              YTD received
+              <InfoTooltip label="Year-To-Date: the total dividends paid into your account since January 1st of this year." />
+            </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
               <span className="num" style={{ fontSize: 18, fontWeight: 600 }}>€{fmt(summary.ytdReceived)}</span>
               <span style={{ marginLeft: 'auto', fontSize: 10.5, color: 'var(--text-dim)' }}>

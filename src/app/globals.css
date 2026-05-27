@@ -570,3 +570,68 @@ a.cdn-free .fnav .right .plan,
 }
 
 .cdn-fade-in { animation: cdn-fade-in 180ms ease-out both; }
+
+/* ─────────────────────────────────────────────────────────
+   InfoTooltip — small "i" icon with a hover explanation.
+   Used to make finance jargon accessible to beginners.
+   ───────────────────────────────────────────────────────── */
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 5px;
+  color: var(--text-dim);
+  cursor: help;
+  border-radius: 999px;
+  outline: none;
+  transition: color 140ms ease;
+}
+.info-tip:hover,
+.info-tip:focus-visible {
+  color: var(--text);
+}
+.info-tip:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+/* Rendered into a portal at document.body so it escapes overflow:hidden
+   ancestors (e.g. the dashboard's .hero-stats). Coords come from the
+   trigger's getBoundingClientRect, so positioning is viewport-fixed. */
+.info-tip-bubble {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 8px));
+  min-width: 180px;
+  max-width: 260px;
+  padding: 8px 10px;
+  background: #1d1d1f;
+  color: #f5f5f7;
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  z-index: 9999;
+  animation: info-tip-pop 140ms ease-out both;
+}
+.info-tip-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1d1d1f;
+}
+@keyframes info-tip-pop {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 4px)); }
+  to   { opacity: 1; transform: translate(-50%, calc(-100% - 8px)); }
+}
+@media (max-width: 640px) {
+  .info-tip-bubble { min-width: 160px; max-width: 220px; }
+}
