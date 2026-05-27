@@ -6,6 +6,7 @@ import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich'
 import { getTaxSummary, DEFAULT_RESIDENCE, type TaxResidence } from '@/lib/tax';
 import { getActiveAlerts, type AlertCard, type AlertSeverity } from '@/lib/alerts';
 import { EmptyState } from '@/components/EmptyState';
+import { InfoTooltip } from '@/components/InfoTooltip';
 
 const SEVERITY_COLOR: Record<AlertSeverity, string> = {
   negative: 'oklch(0.50 0.16 25)',
@@ -90,7 +91,10 @@ export default async function AlertsScreen() {
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
-          <div className="eyebrow">Watching {holdings.length} position{holdings.length === 1 ? '' : 's'}</div>
+          <div className="eyebrow">
+            Watching {holdings.length} position{holdings.length === 1 ? '' : 's'}
+            <InfoTooltip label="Cadence scans your portfolio on every page load — no rules to set up. It watches upcoming ex-dates, dividend cuts and raises, concentration risk, drawdowns, and reclaimable foreign tax." />
+          </div>
           <h1>
             {alerts.length === 0
               ? <>All clear <span className="light">— nothing needs your attention</span></>
@@ -100,6 +104,7 @@ export default async function AlertsScreen() {
                   </span>{' '}
                   <span className="light">
                     alert{alerts.length === 1 ? '' : 's'} to review
+                    <InfoTooltip label="Each alert carries a severity: red ! = needs action (dividend cut, drawdown), amber ⚠ = warning (concentration, ex-date soon), green ↑ = positive (raise, reclaim opportunity), blue i = informational." />
                   </span>
                 </>}
           </h1>
@@ -151,11 +156,40 @@ export default async function AlertsScreen() {
           fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.6,
         }}
       >
-        <b style={{ color: 'var(--text)' }}>Thresholds:</b>{' '}
-        Ex-dates surfaced within 7 days · dividend cuts &amp; raises at ≥5% change ·
-        single-position concentration at ≥10% of portfolio ·
-        HHI ≥1500 · reclaimable foreign WTH ≥€50 ·
-        1-year drawdown ≤−10%.
+        <b style={{ color: 'var(--text)' }}>
+          Thresholds
+          <InfoTooltip label="The trigger levels Cadence uses to decide what's worth alerting on. These are sensible defaults — they aren't user-configurable yet but will be in a future release." />
+        </b>:{' '}
+        <span>
+          Ex-dates surfaced within 7 days
+          <InfoTooltip label="An ex-dividend date is the cutoff: you must own the stock before that date to receive the upcoming payout. Cadence flags any holding whose ex-date lands in the next week so you don't miss it." />
+        </span>
+        {' · '}
+        <span>
+          dividend cuts &amp; raises at ≥5% change
+          <InfoTooltip label="A 'cut' is when a company reduces its dividend per share (often a stress signal); a 'raise' is the opposite. Cadence flags moves of 5% or more in either direction — smaller adjustments are usually just rounding." />
+        </span>
+        {' · '}
+        <span>
+          single-position concentration at ≥10% of portfolio
+          <InfoTooltip label="When any single holding grows past 10% of your portfolio's value, an outsized loss on that name can dominate your returns. A common rule-of-thumb cap." />
+        </span>
+        {' · '}
+        <span>
+          HHI ≥1500
+          <InfoTooltip label="Herfindahl-Hirschman Index — a 0–10,000 concentration score that sums the square of each position's weight. Above 1,500 is the classic 'moderately concentrated' threshold borrowed from antitrust analysis." />
+        </span>
+        {' · '}
+        <span>
+          reclaimable foreign WTH ≥€50
+          <InfoTooltip label="Foreign withholding tax you over-paid that you could file to claim back. Cadence only flags it when the recoverable amount is worth the paperwork (€50 or more)." />
+        </span>
+        {' · '}
+        <span>
+          1-year drawdown ≤−10%
+          <InfoTooltip label="A drawdown is a peak-to-trough drop in portfolio value. Cadence raises a flag once the rolling 1-year drawdown crosses -10%, so a meaningful slump doesn't go unnoticed." />
+        </span>
+        .
       </div>
     </div>
   );
