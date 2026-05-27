@@ -152,9 +152,11 @@ export function YearHeatmap({ events, year }: Props) {
                 const cell = grid[mi][di];
                 const isToday = isCurrentYear && mi === todayMonth && (di + 1) === todayDate;
                 const pct = cell.sum > 0 ? Math.max(15, Math.min(100, (cell.sum / maxDay) * 100)) : 0;
+                // Both fill and empty colors come from CSS variables so a parent
+                // can re-theme the heatmap (see .cdn-year-dark in pro.css).
                 const bg = cell.sum > 0
-                  ? `color-mix(in oklab, oklch(0.55 0.10 175) ${pct}%, rgba(0,0,0,0.04))`
-                  : 'rgba(0,0,0,0.04)';
+                  ? `color-mix(in oklab, var(--heatmap-fill, oklch(0.55 0.10 175)) ${pct}%, var(--heatmap-empty, rgba(0,0,0,0.04)))`
+                  : 'var(--heatmap-empty, rgba(0,0,0,0.04))';
                 const isPulsing = pulseAt != null && pulseAt.m === mi && pulseAt.d === di;
                 const hasEvents = cell.sum > 0;
                 return (
