@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { TickerLogo } from '@/components/TickerLogo';
 import { HoldingEditModal } from '@/components/HoldingEditModal';
 import { useConfirm, useToast } from '@/components/DialogProvider';
+import { InfoTooltip } from '@/components/InfoTooltip';
 
 export interface HoldingRow {
   ticker: string;
@@ -319,17 +320,29 @@ export function HoldingsTable({ rows }: Props) {
                   />
                 </th>
                 <Th field="ticker" label="Ticker" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="price"  label="Price"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="change" label="Day"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                <Th field="price"  label="Price"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="Latest market price per share. Updates with the live quote feed during market hours." />
+                <Th field="change" label="Day"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="How much the share price has moved today, as a percentage. Green = up, red = down. Resets each trading day." />
                 <Th field="shares" label="Shares" align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="value"  label="Value"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="weight" label="Weight" align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="pl"     label="P/L"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="plPct"  label="P/L %"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="yield"  label="Yield"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="yoc"    label="YoC"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <Th field="fwd"    label="Fwd income" align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
-                <th className="c">Freq</th>
+                <Th field="value"  label="Value"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="Current market value of this position — share price × shares you own, converted to euros." />
+                <Th field="weight" label="Weight" align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="What share of your total portfolio this holding represents. Helps you spot concentration — one stock at 30% means a lot of your money rides on it." />
+                <Th field="pl"     label="P/L"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="Profit and Loss: current value minus what you paid. Unrealized — only becomes real when you sell." />
+                <Th field="plPct"  label="P/L %"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="The same Profit/Loss expressed as a percentage of your cost basis, so positions of any size are comparable." />
+                <Th field="yield"  label="Yield"  align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="Forward dividend yield: expected yearly dividend divided by today's price. Tells you the cash return you'd get buying the stock right now." />
+                <Th field="yoc"    label="YoC"    align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="Yield on Cost: yearly dividend divided by what you originally paid per share. Tends to climb above the market yield as dividends grow over the years." />
+                <Th field="fwd"    label="Fwd income" align="r" sortField={sortField} sortDir={sortDir} onClick={toggleSort}
+                  info="The cash dividends this position is expected to pay over the next 12 months, based on the current declared dividend." />
+                <th className="c">
+                  Freq
+                  <InfoTooltip label="Payout frequency — how often this stock pays its dividend. Mon = monthly, Qtr = quarterly (every 3 months), Semi = twice a year, Ann = once a year." />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -569,13 +582,14 @@ function SelectionActionBar({
   );
 }
 
-function Th({ field, label, align, sortField, sortDir, onClick }: {
+function Th({ field, label, align, sortField, sortDir, onClick, info }: {
   field: SortField;
   label: string;
   align?: 'r' | 'c';
   sortField: SortField;
   sortDir: 'asc' | 'desc';
   onClick: (f: SortField) => void;
+  info?: string;
 }) {
   const active = sortField === field;
   const arrow = active ? (sortDir === 'asc' ? '↑' : '↓') : '';
@@ -589,6 +603,11 @@ function Th({ field, label, align, sortField, sortDir, onClick }: {
       onClick={() => onClick(field)}
     >
       {label}{arrow && <span style={{ marginLeft: 4 }}>{arrow}</span>}
+      {info && (
+        <span onClick={(e) => e.stopPropagation()}>
+          <InfoTooltip label={info} />
+        </span>
+      )}
     </th>
   );
 }

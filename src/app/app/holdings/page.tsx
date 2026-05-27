@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { HoldingsTable, type HoldingRow } from '@/components/HoldingsTable';
 import { AddHoldingTrigger } from '@/components/AddHoldingTrigger';
 import { ImportCsvButton } from '@/components/ImportCsvButton';
+import { InfoTooltip } from '@/components/InfoTooltip';
 import { can, type Tier } from '@/lib/tiers';
 
 interface InstrumentMeta {
@@ -144,10 +145,22 @@ export default async function HoldingsScreen() {
           </h1>
           <div className="sub">
             <b>€{Math.round(totalValue).toLocaleString('en-IE')}</b> across {countries.size} countr{countries.size === 1 ? 'y' : 'ies'}
-            {cadenceParts.length > 0 && <> · {cadenceParts.join(', ')}</>}
+            {cadenceParts.length > 0 && (
+              <>
+                {' '}·{' '}
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  {cadenceParts.join(', ')}
+                  <InfoTooltip label="Payout cadence — how often each stock pays its dividend. Monthly payers smooth your income, quarterly is the most common, semi-annual and annual lump up payments." />
+                </span>
+              </>
+            )}
             {nonPayerCount > 0 && (
               <>
-                {' '}· <b>{nonPayerCount}</b> non-payer{nonPayerCount === 1 ? '' : 's'}
+                {' '}·{' '}
+                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <b>{nonPayerCount}</b>&nbsp;non-payer{nonPayerCount === 1 ? '' : 's'}
+                  <InfoTooltip label="Holdings that don't currently pay a dividend (often growth or tech stocks). They can still drive returns through price appreciation, but contribute nothing to your forward income." />
+                </span>
               </>
             )}
             .
