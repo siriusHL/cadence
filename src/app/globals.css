@@ -597,10 +597,12 @@ a.cdn-free .fnav .right .plan,
 }
 /* Rendered into a portal at document.body so it escapes overflow:hidden
    ancestors (e.g. the dashboard's .hero-stats). Coords come from the
-   trigger's getBoundingClientRect, so positioning is viewport-fixed. */
+   trigger's getBoundingClientRect, so positioning is viewport-fixed.
+   Placement (top|bottom) is decided in JS and applied as a modifier class:
+     .placement-top    — bubble sits above the trigger, arrow points down
+     .placement-bottom — bubble sits below the trigger, arrow points up   */
 .info-tip-bubble {
   position: fixed;
-  transform: translate(-50%, calc(-100% - 8px));
   min-width: 180px;
   max-width: 260px;
   padding: 8px 10px;
@@ -617,12 +619,18 @@ a.cdn-free .fnav .right .plan,
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   pointer-events: none;
   z-index: 9999;
-  animation: info-tip-pop 140ms ease-out both;
+}
+.info-tip-bubble.placement-top {
+  transform: translate(-50%, calc(-100% - 8px));
+  animation: info-tip-pop-top 140ms ease-out both;
+}
+.info-tip-bubble.placement-bottom {
+  transform: translate(-50%, 8px);
+  animation: info-tip-pop-bottom 140ms ease-out both;
 }
 .info-tip-bubble::after {
   content: '';
   position: absolute;
-  top: 100%;
   /* --arrow-offset is set on the bubble inline (px); 0 means centred under
      the icon. When the bubble has been shifted away from the trigger to keep
      it on-screen, the arrow shifts the other way to keep pointing at the
@@ -630,11 +638,22 @@ a.cdn-free .fnav .right .plan,
   left: clamp(12px, calc(50% + var(--arrow-offset, 0px)), calc(100% - 12px));
   transform: translateX(-50%);
   border: 5px solid transparent;
+}
+.info-tip-bubble.placement-top::after {
+  top: 100%;
   border-top-color: #1d1d1f;
 }
-@keyframes info-tip-pop {
+.info-tip-bubble.placement-bottom::after {
+  bottom: 100%;
+  border-bottom-color: #1d1d1f;
+}
+@keyframes info-tip-pop-top {
   from { opacity: 0; transform: translate(-50%, calc(-100% - 4px)); }
   to   { opacity: 1; transform: translate(-50%, calc(-100% - 8px)); }
+}
+@keyframes info-tip-pop-bottom {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to   { opacity: 1; transform: translate(-50%, 8px); }
 }
 @media (max-width: 640px) {
   .info-tip-bubble { min-width: 160px; max-width: 220px; }
