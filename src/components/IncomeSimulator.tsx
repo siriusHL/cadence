@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { COUNTRY_NAMES, type TaxResidence } from '@/lib/tax';
+import { InfoTooltip } from '@/components/InfoTooltip';
 
 interface Props {
   baseValue: number;
@@ -98,7 +99,10 @@ export function IncomeSimulator({
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
-          <div className="eyebrow">Income simulator · Compounding scenarios</div>
+          <div className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            Income simulator · Compounding scenarios
+            <InfoTooltip label="Compounding is when the income from your investments earns more income — reinvested dividends buy more shares, which pay more dividends, which buy more shares. The longer the horizon, the more dramatic the effect." />
+          </div>
           <h1>
             Hit €{fmt(target)}/yr net in{' '}
             <span className="num" style={{ color: 'var(--accent-soft)' }}>
@@ -130,11 +134,16 @@ export function IncomeSimulator({
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12, marginBottom: 14 }}>
-        <Slider label="Horizon"          value={years}     display={`${years} years`}                  min={5} max={40} step={1}   onChange={setYears}     hint="5 — 40 years" />
-        <Slider label="Forward yield"    value={yieldPct}  display={`${yieldPct.toFixed(2)} %`}        min={1} max={9}  step={0.1} onChange={setYieldPct}  hint="Weighted blended" />
-        <Slider label="Div growth"       value={growthPct} display={`${growthPct.toFixed(1)} %`}       min={0} max={15} step={0.1} onChange={setGrowthPct} hint="Annual CAGR" />
-        <Slider label="Monthly contrib." value={contrib}   display={`€${fmt(contrib)}`}                min={0} max={3000} step={50} onChange={setContrib}   hint="Added each month" />
-        <Slider label="Income target"    value={target}    display={`€${fmt(target)}`}                 min={5000} max={150000} step={1000} onChange={setTarget} hint={target === incomeTarget ? 'From Settings' : 'Override (not saved)'} />
+        <Slider label="Horizon"          value={years}     display={`${years} years`}                  min={5} max={40} step={1}   onChange={setYears}     hint="5 — 40 years"
+          info="How many years out the simulator projects. Longer horizons let compounding do more work — but small percentage tweaks also become huge swings far out." />
+        <Slider label="Forward yield"    value={yieldPct}  display={`${yieldPct.toFixed(2)} %`}        min={1} max={9}  step={0.1} onChange={setYieldPct}  hint="Weighted blended"
+          info="The assumed dividend yield on new money put to work — both reinvested dividends and your monthly contributions. Starts at your portfolio's current blended yield." />
+        <Slider label="Div growth"       value={growthPct} display={`${growthPct.toFixed(1)} %`}       min={0} max={15} step={0.1} onChange={setGrowthPct} hint="Annual CAGR"
+          info="How much you assume your dividends grow per year. CAGR stands for Compound Annual Growth Rate — the steady yearly rate that would get you from start to end. Healthy dividend stocks historically grow 5–10%/yr." />
+        <Slider label="Monthly contrib." value={contrib}   display={`€${fmt(contrib)}`}                min={0} max={3000} step={50} onChange={setContrib}   hint="Added each month"
+          info="New cash you plan to invest every month on top of dividends. This is what most retail investors call DCA — Dollar/Euro Cost Averaging." />
+        <Slider label="Income target"    value={target}    display={`€${fmt(target)}`}                 min={5000} max={150000} step={1000} onChange={setTarget} hint={target === incomeTarget ? 'From Settings' : 'Override (not saved)'}
+          info="The annual net dividend income you're aiming for. The hero card shows how many years it takes the 'Reinvest + contributions' scenario to reach it." />
       </div>
 
       <div className="pcard" style={{ marginBottom: 14 }}>
@@ -189,17 +198,26 @@ export function IncomeSimulator({
       <div className="pcard flush">
         <div className="pcard-h">
           <div className="t">Year-by-year breakdown</div>
-          <span className="tag">Reinvest + contributions scenario</span>
+          <span className="tag" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            Reinvest + contributions scenario
+            <InfoTooltip label="The table assumes the most aggressive scenario: every dividend reinvested AND your monthly contribution kept up. Drop either of those in real life and the path shifts toward the other curves on the chart above." />
+          </span>
         </div>
         <div style={{ overflow: 'auto' }}>
           <table className="pt">
             <thead>
               <tr>
                 <th style={{ width: 60 }}>Year</th>
-                <th className="r">Portfolio</th>
+                <th className="r">
+                  Portfolio
+                  <InfoTooltip label="Total portfolio value in that year — original capital plus contributions plus assumed 4.5%/yr price appreciation plus reinvested dividends." />
+                </th>
                 <th className="r">Annual income (net)</th>
                 <th className="r">Monthly</th>
-                <th className="r">YoC</th>
+                <th className="r">
+                  YoC
+                  <InfoTooltip label="Yield on Cost: that year's income divided by the total cash you've invested by then (original cost + cumulative contributions). Tends to climb fast under reinvestment." />
+                </th>
                 <th>Goal progress</th>
               </tr>
             </thead>
@@ -249,14 +267,18 @@ interface SliderProps {
   step: number;
   onChange: (v: number) => void;
   hint: string;
+  info?: string;
 }
 
-function Slider({ label, display, value, min, max, step, onChange, hint }: SliderProps) {
+function Slider({ label, display, value, min, max, step, onChange, hint, info }: SliderProps) {
   const progress = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return (
     <div className="pcard" style={{ padding: '12px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-        <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500, display: 'inline-flex', alignItems: 'center' }}>
+          {label}
+          {info && <InfoTooltip label={info} />}
+        </span>
         <span className="num" style={{ fontSize: 16, fontWeight: 600 }}>{display}</span>
       </div>
       <input

@@ -14,6 +14,7 @@ import { YearHeatmap } from '@/components/YearHeatmap';
 import { ForecastChart, type ForecastMonth } from '@/components/ForecastChart';
 import { IncomeSimulator } from '@/components/IncomeSimulator';
 import { MonthCalendar } from '@/components/MonthCalendar';
+import { InfoTooltip } from '@/components/InfoTooltip';
 import {
   estimateDividendTaxRate, RESIDENCE_MODELS,
   type TaxResidence,
@@ -176,7 +177,10 @@ async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; he
     <>
       <div className="pro-hero">
         <div>
-          <div className="eyebrow">Upcoming dividends · next 40 days</div>
+          <div className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            Upcoming dividends · next 40 days
+            <InfoTooltip label="Dividends with an ex-date in the next 40 days. The ex-date is the cutoff: you must own the stock before that date to be entitled to the payout." />
+          </div>
           <h1>
             €{fmt(next40Gross)} <span className="light">expected</span>
           </h1>
@@ -205,8 +209,11 @@ async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; he
         <div className="pcard flush">
         <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
           <div>
-            <div className="t">Next 40 days</div>
-            <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2 }}>
+            <div className="t" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              Next 40 days
+              <InfoTooltip label="Each row shows a dividend payment ordered by ex-date. Gross is the amount declared, Net is what lands in your account after estimated withholding tax. WH shows that withholding rate." />
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 0 }}>
               {next40.length} payment{next40.length === 1 ? '' : 's'} · €{fmt(next40Gross)} gross
             </div>
           </div>
@@ -380,8 +387,9 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
     <>
       <div className="pro-hero">
         <div>
-          <div className="eyebrow">
+          <div className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center' }}>
             12-month forecast · {MONTH_NAMES[currentMonth]} {String(year).slice(2)} → {MONTH_NAMES[(currentMonth + 11) % 12]} {String(year + (currentMonth >= 1 ? 1 : 0)).slice(2)}
+            <InfoTooltip label="Projected dividends for the next 12 months. Confirmed payments use declared amounts; future months are estimated from each stock's normal payment cadence." />
           </div>
           <h1>€{fmt(total12)} <span className="light">expected</span></h1>
           <div className="sub">
@@ -392,15 +400,28 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
         </div>
         <div className="right-meta">
           <span className="live">Forward · enriched just now</span>
-          {peak && <span>Peak: {MONTH_NAMES[peak.month]} {String(peak.year).slice(2)} · €{fmt(peak.total)}</span>}
-          {trough && <span>Lightest: {MONTH_NAMES[trough.month]} {String(trough.year).slice(2)} · €{fmt(trough.total)}</span>}
+          {peak && (
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              Peak: {MONTH_NAMES[peak.month]} {String(peak.year).slice(2)} · €{fmt(peak.total)}
+              <InfoTooltip label="The month with the largest expected dividend total in the next 12 months. Most portfolios are 'lumpy' — a few months pay much more than others." />
+            </span>
+          )}
+          {trough && (
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              Lightest: {MONTH_NAMES[trough.month]} {String(trough.year).slice(2)} · €{fmt(trough.total)}
+              <InfoTooltip label="The month with the smallest expected dividend total. Spotting your lightest month helps you decide whether to add a monthly payer to smooth income." />
+            </span>
+          )}
         </div>
       </div>
 
       <div className="pcard cdn-anim interactive" style={{ ['--i' as never]: 0 }}>
         <div className="pcard-h">
           <div>
-            <div className="t">Forward monthly income + cumulative</div>
+            <div className="t" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              Forward monthly income + cumulative
+              <InfoTooltip label="Bars: dividends expected per month. Line: the cumulative total, adding each month onto the last — handy for seeing how fast your income builds across the year." />
+            </div>
             <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 3 }}>
               Bars are per-month gross. Line tracks the running total over the selected range.
             </div>
@@ -412,7 +433,10 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
       <div className="row-2" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
         <div className="pcard flush cdn-anim interactive forecast-holdings-card" style={{ ['--i' as never]: 1 }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
-            <div className="t">Income by holding · forward 12M</div>
+            <div className="t" style={{ display: 'inline-flex', alignItems: 'center' }}>
+              Income by holding · forward 12M
+              <InfoTooltip label="Which stocks are paying you the most cash over the next year. Concentration here is fine if you trust the business — but a single name driving 30%+ of income is a risk to watch." />
+            </div>
             <span className="tag">Top {byTicker.length}</span>
           </div>
           <div>
@@ -420,10 +444,22 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
               <thead>
                 <tr>
                   <th>Ticker</th>
-                  <th className="r">Payments</th>
-                  <th className="r">Per pay</th>
-                  <th className="r">12M €</th>
-                  <th>Share</th>
+                  <th className="r">
+                    Payments
+                    <InfoTooltip label="How many dividend payments this stock is expected to make in the next 12 months. Quarterly payers = 4, monthly = 12." />
+                  </th>
+                  <th className="r">
+                    Per pay
+                    <InfoTooltip label="The average cash you'd receive per individual dividend payment from this holding." />
+                  </th>
+                  <th className="r">
+                    12M €
+                    <InfoTooltip label="Total dividends expected from this stock over the next 12 months — payments × per-pay amount." />
+                  </th>
+                  <th>
+                    Share
+                    <InfoTooltip label="What percentage of your total forward dividend income comes from this single holding." />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -463,11 +499,18 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="pcard cdn-anim interactive cashflow-card" style={{ ['--i' as never]: 2 }}>
             <div className="pcard-h">
-              <div className="t">Cashflow projections</div>
+              <div className="t" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                Cashflow projections
+                <InfoTooltip label="Rollups of expected dividend income across common time windows — month, quarter, year, and the full forward 12 months. Everything except 'received' is an estimate." />
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <CashRow label={`This month · ${MONTH_NAMES[currentMonth]}`} value={`€${fmt(thisMonthTotal)}`} />
-              <CashRow label="This quarter" value={`€${fmt(thisQuarterTotal)}`} />
+              <CashRow
+                label="This quarter"
+                value={`€${fmt(thisQuarterTotal)}`}
+                tip="Dividends expected before this calendar quarter ends. Quarters are Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec."
+              />
               <CashRow
                 label={`This year · ${year}`}
                 value={`€${fmt(thisYearTotal)}`}
@@ -478,6 +521,7 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
                 label={`Net after tax (${taxLabel})`}
                 value={`€${fmt(total12Net)}`}
                 hint={`@ ${(taxRate * 100).toFixed(0)}% effective rate`}
+                tip="What's left after your country's dividend tax. Withholding taxes from foreign companies are already deducted at source — this rate covers what your home country adds on top."
               />
             </div>
           </div>
@@ -486,8 +530,9 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
             className="pcard cdn-anim interactive growth-card"
             style={{ background: 'linear-gradient(135deg, oklch(0.97 0.01 175), oklch(0.94 0.03 195))', ['--i' as never]: 3 }}
           >
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 4 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginBottom: 4, display: 'inline-flex', alignItems: 'center' }}>
               If every holding raises 5%
+              <InfoTooltip label="A 'dividend raise' is when a company increases the cash it pays per share. This card shows what your annual income would gain if every holding raised by 5% — typical for healthy dividend stocks." />
             </div>
             <div className="num" style={{
               fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em',
@@ -507,8 +552,8 @@ async function ForecastTab({ portfolioId, userId }: { portfolioId: string; userI
   );
 }
 
-function CashRow({ label, value, hint, emphasized }: {
-  label: string; value: string; hint?: string; emphasized?: boolean;
+function CashRow({ label, value, hint, emphasized, tip }: {
+  label: string; value: string; hint?: string; emphasized?: boolean; tip?: string;
 }) {
   return (
     <div style={{
@@ -516,7 +561,10 @@ function CashRow({ label, value, hint, emphasized }: {
       gap: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)',
     }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{label}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>
+          {label}
+          {tip && <InfoTooltip label={tip} />}
+        </div>
         {hint && <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 2 }}>{hint}</div>}
       </div>
       <div className="num" style={{
@@ -612,7 +660,10 @@ async function YearTab({ portfolioId, heldCount }: { portfolioId: string; heldCo
 
       <div className="pcard">
         <div className="pcard-h">
-          <div className="t">Year heatmap · ex-div by day</div>
+          <div className="t" style={{ display: 'inline-flex', alignItems: 'center' }}>
+            Year heatmap · ex-div by day
+            <InfoTooltip label="Each square is one day of the year, shaded by how much dividend was paid that day. 'Ex-div' is short for ex-dividend — the cutoff date when a stock starts trading without the upcoming payout. Darker = bigger payout day." />
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: 'var(--text-dim)' }}>
             <span>Less</span>
             {[0.1, 0.3, 0.5, 0.7, 0.95].map((f, i) => (
