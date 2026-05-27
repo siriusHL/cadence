@@ -495,10 +495,16 @@ export default async function DashboardScreen() {
 }
 
 /**
- * Compact ring gauge for the Cadence Safety Score card — ported from the
- * research template (templates/pro-holdings.jsx). The arc sweeps ~270° from
- * 4 o'clock around to 8 o'clock so the open mouth sits at the bottom; score
- * sits centred in the middle with a small "SAFETY" caption beneath.
+ * Compact ring gauge for the Cadence Safety Score card. The arc sweeps a
+ * clean 270° clockwise from 7 o'clock around the top to 5 o'clock, leaving
+ * a 90° "open mouth" centred on the bottom; score sits in the middle.
+ *
+ * Note: the source SafetyRing in templates/pro-holdings.jsx shipped with
+ * start=-0.62π, end=1.62π, which is total ≈ 2.24π (≈ 403°, more than a
+ * full revolution). That makes the filled endpoint for any score above
+ * ~67% land back near the start, so the SVG large-arc draws nearly a
+ * closed ring with no visible mouth — the gauge stops conveying score.
+ * Use start=0.75π, end=2.25π (total = 1.5π = 270°) to fix it.
  */
 function SafetyRing({
   score,
@@ -512,8 +518,8 @@ function SafetyRing({
   const r = size / 2 - 8;
   const cx = size / 2;
   const cy = size / 2;
-  const start = -Math.PI * 0.62;
-  const end = Math.PI * 1.62;
+  const start = Math.PI * 0.75;
+  const end = Math.PI * 2.25;
   const total = end - start;
   const arc = (frac: number): [number, number] => {
     const a = start + total * frac;
@@ -545,7 +551,7 @@ function SafetyRing({
       />
       <text
         x={cx}
-        y={cy + 2}
+        y={cy}
         textAnchor="middle"
         dominantBaseline="middle"
         style={{
@@ -557,21 +563,6 @@ function SafetyRing({
         }}
       >
         {score == null ? '—' : score}
-      </text>
-      <text
-        x={cx}
-        y={cy + 18}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        style={{
-          fontSize: 9,
-          fill: 'var(--text-dim)',
-          fontWeight: 500,
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-        }}
-      >
-        Safety
       </text>
     </svg>
   );
