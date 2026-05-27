@@ -195,58 +195,76 @@ async function UpcomingTab({ portfolioId, heldCount }: { portfolioId: string; he
             </div>
           </div>
         </div>
-        <div style={{ maxHeight: 600, overflow: 'auto' }}>
+        <div style={{ maxHeight: 600, overflow: 'auto', padding: '0 22px 8px' }}>
           {next40.length === 0 ? (
             <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-dim)', fontSize: 13 }}>
               No payments scheduled in the next 40 days.
             </div>
           ) : (
-            <table className="pt">
-              <thead>
-                <tr>
-                  <th style={{ width: 60 }}>Date</th>
-                  <th>Ticker</th>
-                  <th className="r">Gross</th>
-                  <th className="r">Net</th>
-                  <th className="c">WH</th>
-                </tr>
-              </thead>
-              <tbody>
-                {next40.map((e) => {
-                  const d = new Date(e.exDate);
-                  const daysAway = Math.ceil((d.getTime() - today.getTime()) / 86_400_000);
-                  const isSoon = daysAway >= 0 && daysAway <= 7;
-                  const wh = withholdingByCountry(countryByT.get(e.ticker) ?? null);
-                  return (
-                    <tr key={`${e.ticker}-${e.exDate}`}>
-                      <td>
-                        <div style={{
-                          fontSize: 12, fontWeight: 600,
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {next40.map((e, i) => {
+                const d = new Date(e.exDate);
+                const daysAway = Math.ceil((d.getTime() - today.getTime()) / 86_400_000);
+                const isSoon = daysAway >= 0 && daysAway <= 7;
+                const wh = withholdingByCountry(countryByT.get(e.ticker) ?? null);
+                const net = e.grossLocal * (1 - wh);
+                return (
+                  <div
+                    key={`${e.ticker}-${e.exDate}`}
+                    className="upcoming-row"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0',
+                      borderBottom: i < next40.length - 1 ? '1px solid rgba(0,0,0,0.04)' : 'none',
+                    }}
+                  >
+                    {/* Big date block — day on top, month below, mirrors the Dashboard "Coming up" card. */}
+                    <div style={{ width: 44, textAlign: 'center', flexShrink: 0 }}>
+                      <div
+                        className="num"
+                        style={{
+                          fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em',
                           color: isSoon ? 'oklch(0.36 0.08 175)' : 'var(--text)',
-                        }}>
-                          {d.toLocaleDateString('en', { month: 'short', day: 'numeric' })}
-                        </div>
+                        }}
+                      >
+                        {String(d.getDate()).padStart(2, '0')}
+                      </div>
+                      <div style={{ fontSize: 9.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                        {MONTH_NAMES[d.getMonth()]}
+                      </div>
+                    </div>
+                    <TickerLogo ticker={e.ticker} size={28} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>
+                        {e.ticker}
                         {e.isProjected && (
-                          <div style={{ fontSize: 9.5, color: 'var(--text-dim)' }}>est.</div>
+                          <span style={{ fontSize: 10, color: 'var(--text-dim)', fontWeight: 400, marginLeft: 6 }}>· est.</span>
                         )}
-                      </td>
-                      <td className="ticker">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <TickerLogo ticker={e.ticker} size={24} />
-                          <div>
-                            {e.ticker}
-                            <span className="name">{e.name ?? ''}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="r">€{fmt(e.grossLocal, 2)}</td>
-                      <td className="r b">€{fmt(e.grossLocal * (1 - wh), 2)}</td>
-                      <td className="c muted" style={{ fontSize: 11 }}>{(wh * 100).toFixed(0)}%</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.name ?? e.ticker}
+                      </div>
+                    </div>
+                    {/* Gross — secondary column, muted */}
+                    <div style={{ textAlign: 'right', minWidth: 72 }} className="num">
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500 }}>Gross</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>€{fmt(e.grossLocal, 2)}</div>
+                    </div>
+                    {/* Net — primary amount, bold */}
+                    <div style={{ textAlign: 'right', minWidth: 80 }} className="num">
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 500 }}>Net</div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600 }}>€{fmt(net, 2)}</div>
+                    </div>
+                    {/* WH % + days-away — small meta column */}
+                    <div style={{ textAlign: 'right', minWidth: 56 }} className="num">
+                      <div style={{ fontSize: 10.5, color: 'var(--text-dim)' }}>
+                        {daysAway === 0 ? 'today' : `in ${daysAway}d`}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>WH {(wh * 100).toFixed(0)}%</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
