@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import { InfoTooltip } from './InfoTooltip';
 
 interface Slice { key: string; value: number; }
 
@@ -21,6 +22,8 @@ interface Props {
   formatValue?: (v: number) => string;
   /** Animation order — used to stagger card entry. */
   index?: number;
+  /** Optional plain-language explanation rendered as a hover tooltip next to the title. */
+  info?: string;
 }
 
 const SIZE = 130;
@@ -71,6 +74,7 @@ export function DonutCard({
   legendCount = 6,
   formatValue = (v) => `${v.toFixed(1)}%`,
   index = 0,
+  info,
 }: Props) {
   const [hovered, setHovered] = useState<number | null>(null);
   const reactId = useId();
@@ -122,7 +126,10 @@ export function DonutCard({
       style={{ ['--i' as never]: index }}
     >
       <div className="pcard-h">
-        <div className="t">{title}</div>
+        <div className="t">
+          {title}
+          {info && <InfoTooltip label={info} />}
+        </div>
         <span className="tag">{tag}</span>
       </div>
       <div

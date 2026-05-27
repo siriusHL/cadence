@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { InfoTooltip } from './InfoTooltip';
 
 interface SectorRow {
   key: string;
@@ -37,8 +38,14 @@ export function SectorDetailTable({
         className="pcard-h"
         style={{ padding: '20px 22px 8px', margin: 0 }}
       >
-        <div className="t">Sector detail · vs benchmark</div>
-        <span className="tag">+ / − pp</span>
+        <div className="t">
+          Sector detail · vs benchmark
+          <InfoTooltip label="Per-sector breakdown of your portfolio with three lenses: share of total value, share of forward income, and current yield. The right-most bar shows how far you are over- or under-weighted vs the STOXX 600 European benchmark." />
+        </div>
+        <span className="tag">
+          + / − pp
+          <InfoTooltip label="Percentage points difference from the benchmark weight. +5pp in Tech means you hold 5 percentage points more Tech than the benchmark does." />
+        </span>
       </div>
       <div
         style={{ maxHeight: 320, overflow: 'auto' }}
@@ -48,10 +55,22 @@ export function SectorDetailTable({
           <thead>
             <tr>
               <th>Sector</th>
-              <th className="r">% value</th>
-              <th className="r">% income</th>
-              <th className="r">Yield</th>
-              <th style={{ width: 200 }}>vs STOXX 600</th>
+              <th className="r">
+                % value
+                <InfoTooltip label="What share of your total portfolio value sits in this sector." />
+              </th>
+              <th className="r">
+                % income
+                <InfoTooltip label="What share of your forward dividend income comes from this sector. A sector can be a tiny weight by value but a big chunk of your income (or vice versa)." />
+              </th>
+              <th className="r">
+                Yield
+                <InfoTooltip label="The forward dividend yield within this sector — how much income each €100 invested in this sector is producing." />
+              </th>
+              <th style={{ width: 200 }}>
+                vs STOXX 600
+                <InfoTooltip label="STOXX 600 is a broad index of 600 large European stocks. Comparing your sector weights against it shows where you're betting differently from the European market average." />
+              </th>
             </tr>
           </thead>
           <tbody>

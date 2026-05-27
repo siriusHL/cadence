@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { DonutCard } from './DonutCard';
 import { SectorDetailTable } from './SectorDetailTable';
 import { ConcentrationCheck } from './ConcentrationCheck';
+import { InfoTooltip } from './InfoTooltip';
 
 export interface DiversificationPos {
   ticker: string;
@@ -233,7 +234,10 @@ export function DiversificationView({ positions }: { positions: DiversificationP
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
-          <div className="eyebrow">Diversification · {weightingTag}</div>
+          <div className="eyebrow">
+            Diversification · {weightingTag}
+            <InfoTooltip label="How spread out your holdings are across sectors, countries, and currencies. Diversification reduces the impact of any single stock, industry, or region having a bad year. Switch 'Weight by' between Value and Forward income to view either lens." />
+          </div>
           {emptyMessage ? (
             <>
               <h1>{emptyMessage.headline}</h1>
@@ -249,7 +253,9 @@ export function DiversificationView({ positions }: { positions: DiversificationP
                 </span>
               </h1>
               <div className="sub">
-                HHI of{' '}
+                HHI
+                <InfoTooltip label="Herfindahl-Hirschman Index: a 0–10,000 concentration score. One stock holding everything = 10,000. 100 equal positions = 100. Below 1,500 is well diversified; above 2,500 is concentrated." />
+                {' '}of{' '}
                 <b style={{ color: view.concColor }}>{view.hhi.toFixed(0)}</b>{' '}
                 {view.concGood
                   ? 'is comfortably below'
@@ -284,6 +290,7 @@ export function DiversificationView({ positions }: { positions: DiversificationP
           <span>
             Effective N ={' '}
             {isEmpty ? '—' : view.effectiveN.toFixed(1)}
+            <InfoTooltip label="Effective number of positions: roughly how many equal-sized holdings your portfolio behaves like. If you have 30 stocks but a few of them dominate, your Effective N might be only 8 — a warning that you're less diversified than the position count suggests." />
           </span>
         </div>
       </div>
@@ -303,6 +310,7 @@ export function DiversificationView({ positions }: { positions: DiversificationP
         <DonutCard
           title="Sectors"
           tag={`GICS · ${weightingTag}`}
+          info="How your money is split across industries (tech, healthcare, financials, etc.). GICS is the industry-standard classification used by S&P. Heavy weighting in one sector means your portfolio rises and falls with that sector's fate."
           data={view.sectorDonut}
           colors={SECTOR_COLORS}
           centerValue={view.bySector.length}
@@ -318,6 +326,7 @@ export function DiversificationView({ positions }: { positions: DiversificationP
         <DonutCard
           title="Geography"
           tag={`Domicile · ${weightingTag}`}
+          info="Where your holdings are legally headquartered (their 'domicile'), not where they do business. A US-domiciled tech giant may earn most of its revenue in Europe and Asia — geography here is about regulatory exposure, not customer base."
           data={view.geoDonut}
           colors={GEO_COLORS}
           centerValue={view.byCountry.length}
@@ -329,6 +338,7 @@ export function DiversificationView({ positions }: { positions: DiversificationP
         <DonutCard
           title="Currencies"
           tag="By forward income"
+          info="Which currencies pay your dividends. High non-EUR share = your income is exposed to exchange-rate swings (a strong dollar boosts USD dividends in euros; a weak dollar shrinks them)."
           data={view.ccyByIncome}
           colors={CCY_COLORS}
           centerValue={view.byCurrency.length}

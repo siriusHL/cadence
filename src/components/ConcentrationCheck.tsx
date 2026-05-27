@@ -1,5 +1,7 @@
 'use client';
 
+import { InfoTooltip } from './InfoTooltip';
+
 interface Props {
   hhi: number;
   concColor: string;
@@ -25,7 +27,10 @@ export function ConcentrationCheck({
       style={{ ['--i' as never]: index }}
     >
       <div className="pcard-h">
-        <div className="t">Concentration check</div>
+        <div className="t">
+          Concentration check
+          <InfoTooltip label="Four signals for whether your portfolio is over-reliant on a small number of positions. Lower percentages and lower HHI = more spread out, more resilient to any single stock blowing up." />
+        </div>
         <span className="tag">thresholds</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -36,17 +41,7 @@ export function ConcentrationCheck({
           caption="2500 (high)"
           color={concColor}
           delay={260}
-          tip={
-            <>
-              <b>Herfindahl-Hirschman Index.</b> Sum of each position&rsquo;s squared
-              weight (in %). One stock holding everything scores{' '}
-              <span className="mono">10,000</span>; 100 equal positions score{' '}
-              <span className="mono">100</span>. Below{' '}
-              <span className="mono">1,500</span> is well-diversified, above{' '}
-              <span className="mono">2,500</span> is concentrated. You:{' '}
-              <b>{hhi.toFixed(0)}</b>.
-            </>
-          }
+          tip={`Herfindahl-Hirschman Index. Sum of each position's squared weight (in %). One stock holding everything scores 10,000; 100 equal positions score 100. Below 1,500 is well diversified; above 2,500 is concentrated. You: ${hhi.toFixed(0)}.`}
         />
         <Metric
           label="Top 5 weight"
@@ -55,6 +50,7 @@ export function ConcentrationCheck({
           caption="Target < 40%"
           color="var(--text)"
           delay={340}
+          tip="What share of your portfolio sits in your five largest holdings. A healthy mix usually keeps this under 40% — above that, your top names are doing most of the driving."
         />
         <Metric
           label="Top 10 weight"
@@ -63,6 +59,7 @@ export function ConcentrationCheck({
           caption="Target < 60%"
           color="var(--text)"
           delay={420}
+          tip="Same idea as Top 5, but for your ten largest. Under 60% is comfortable; higher means everything outside the top 10 is barely moving the needle."
         />
         <Metric
           label="Single largest"
@@ -71,20 +68,10 @@ export function ConcentrationCheck({
           caption="Target < 10%"
           color={largestColor}
           delay={500}
+          tip="Weight of your single biggest position. A common rule: cap any single stock at 10% of the portfolio so one bad earnings call can't crater your whole net worth."
         />
       </div>
     </div>
-  );
-}
-
-function InfoTip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="info" tabIndex={0} role="button" aria-label="What does this mean?">
-      i
-      <span className="pop" role="tooltip">
-        {children}
-      </span>
-    </span>
   );
 }
 
@@ -102,7 +89,7 @@ function Metric({
   pct: number;
   caption: string;
   color: string;
-  tip?: React.ReactNode;
+  tip?: string;
   delay: number;
 }) {
   const clamped = Math.min(100, Math.max(0, pct));
@@ -117,7 +104,7 @@ function Metric({
       >
         <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 500 }}>
           {label}
-          {tip && <InfoTip>{tip}</InfoTip>}
+          {tip && <InfoTooltip label={tip} />}
         </span>
         <span
           className="num metric-value"
