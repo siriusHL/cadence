@@ -365,9 +365,9 @@ function ExportSection({
       ) : (
         <>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-            One file per stream, per year. Dividends and capital-gains rows
-            live in separate CSVs because most tax forms ask for them
-            independently. Open in Excel, Numbers, or Google Sheets.
+            Per-stream CSVs map onto individual tax forms; the Tax pack
+            workbook bundles both streams into one .xlsx with separate
+            sheets — useful when handing the whole year to an accountant.
           </div>
           <div
             style={{
@@ -400,14 +400,21 @@ function ExportSection({
                   <DownloadButton
                     href={`/api/export/dividends?year=${y.year}`}
                     filename={`dividends-${y.year}.csv`}
-                    label="Dividends"
+                    label="Dividends CSV"
                     enabled={y.hasDividends}
                   />
                   <DownloadButton
                     href={`/api/export/capital-gains?year=${y.year}`}
                     filename={`capital-gains-${y.year}.csv`}
-                    label="Capital gains"
+                    label="Gains CSV"
                     enabled={y.hasSales}
+                  />
+                  <DownloadButton
+                    href={`/api/export/tax-pack?year=${y.year}`}
+                    filename={`tax-pack-${y.year}.xlsx`}
+                    label="Tax pack XLSX"
+                    enabled={y.hasDividends || y.hasSales}
+                    variant="strong"
                   />
                 </div>
               </div>
@@ -420,9 +427,13 @@ function ExportSection({
 }
 
 function DownloadButton({
-  href, filename, label, enabled,
+  href, filename, label, enabled, variant,
 }: {
   href: string; filename: string; label: string; enabled: boolean;
+  /** "strong" pulls the chip into a filled (accent) style — used for the
+   *  "Tax pack XLSX" button so the workbook variant reads as the primary
+   *  download next to the per-stream CSVs. */
+  variant?: 'default' | 'strong';
 }) {
   if (!enabled) {
     return (
@@ -441,16 +452,22 @@ function DownloadButton({
       </span>
     );
   }
+  const strong = variant === 'strong';
   return (
     <a
       href={href}
       download={filename}
-      className="chip"
+      className={strong ? undefined : 'chip'}
       style={{
         height: 28, padding: '0 12px',
         display: 'inline-flex', alignItems: 'center', gap: 6,
-        fontSize: 11.5, fontWeight: 500,
+        fontSize: 11.5, fontWeight: strong ? 600 : 500,
         textDecoration: 'none',
+        ...(strong ? {
+          background: 'var(--text)',
+          color: 'var(--surface)',
+          borderRadius: 999,
+        } : {}),
       }}
     >
       ↓ {label}
