@@ -174,7 +174,7 @@ export default async function TaxScreen() {
         </div>
       </div>
 
-      <div className="row-2" style={{ gridTemplateColumns: '1.5fr 1fr', marginTop: 14 }}>
+      <div className="row-2" style={{ gridTemplateColumns: '1.5fr 1fr', marginTop: 14, alignItems: 'start' }}>
         {/* Withholding by jurisdiction */}
         <div className="pcard flush" style={{ overflow: 'hidden' }}>
           <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
@@ -200,7 +200,7 @@ export default async function TaxScreen() {
                     <th className="r">Effective</th>
                     <th className="r">Withheld €</th>
                     <th className="r">Net €</th>
-                    <th>Status</th>
+                    <th className="r">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -224,24 +224,29 @@ export default async function TaxScreen() {
                           {r.withheldEur > 0 ? `−€${fmtMoney(r.withheldEur, 2)}` : '—'}
                         </td>
                         <td className="r b up">€{fmtMoney(r.netEur, 2)}</td>
-                        <td><StatusChip row={r} /></td>
+                        <td className="r"><StatusChip row={r} /></td>
                       </tr>
                     );
                   })}
                 </tbody>
-                <tfoot>
-                  <tr style={{ background: 'var(--surface-2)' }}>
-                    <td className="b" colSpan={2} style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-dim)' }}>
-                      Σ totals
-                    </td>
-                    <td className="r b">€{fmtMoney(summary.totalGrossEur, 2)}</td>
-                    <td className="r muted" colSpan={2}></td>
-                    <td className="r b">{fmtPct(summary.effectiveRatePct)}</td>
-                    <td className="r b down">−€{fmtMoney(summary.totalWithheldEur, 2)}</td>
-                    <td className="r b up">€{fmtMoney(summary.totalNetEur, 2)}</td>
-                    <td></td>
-                  </tr>
-                </tfoot>
+                {/* Totals only when ≥2 countries — for a single jurisdiction
+                    the totals row is just a duplicate of the data row with
+                    awkward empty gaps for Statutory/Treaty/Status. */}
+                {summary.rows.length > 1 && (
+                  <tfoot>
+                    <tr style={{ background: 'var(--surface-2)' }}>
+                      <td className="b" colSpan={2} style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                        Σ totals
+                      </td>
+                      <td className="r b">€{fmtMoney(summary.totalGrossEur, 2)}</td>
+                      <td className="r muted" colSpan={2}></td>
+                      <td className="r b">{fmtPct(summary.effectiveRatePct)}</td>
+                      <td className="r b down">−€{fmtMoney(summary.totalWithheldEur, 2)}</td>
+                      <td className="r b up">€{fmtMoney(summary.totalNetEur, 2)}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           )}
