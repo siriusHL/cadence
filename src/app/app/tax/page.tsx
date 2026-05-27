@@ -11,6 +11,7 @@ import {
 } from '@/lib/tax';
 import { getActivityYears } from '@/lib/export';
 import { EmptyState } from '@/components/EmptyState';
+import { InfoTooltip } from '@/components/InfoTooltip';
 
 function fmtMoney(n: number, digits = 0): string {
   if (!Number.isFinite(n)) return '—';
@@ -94,8 +95,15 @@ export default async function TaxScreen() {
         <div>
           <div className="eyebrow">
             Withholding · {fiscalYear} · resident in {residenceName}
+            <InfoTooltip label="Withholding tax (WHT) is the slice the source country keeps before a foreign dividend reaches your account. The US, for example, withholds 30% on dividends unless a tax treaty lowers the rate. This page shows what's been withheld and what you owe your home country on top." />
             {summary.projected && hasAnyData && (
-              <>{' '}<span className="tag" style={{ marginLeft: 6 }}>projected</span></>
+              <>
+                {' '}
+                <span className="tag" style={{ marginLeft: 6 }}>
+                  projected
+                  <InfoTooltip label="No actual dividend payments are logged for this year yet, so the figures are estimated from your current holdings and their upcoming ex-dates. They'll be replaced with real numbers as payments land." />
+                </span>
+              </>
             )}
           </div>
           <h1>
@@ -130,19 +138,28 @@ export default async function TaxScreen() {
       {/* 5-tile hero strip — gross → foreign WTH → domestic → final net → reclaim */}
       <div className="hero-stats" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="tile">
-          <div className="l">Gross dividends · YTD</div>
+          <div className="l">
+            Gross dividends · YTD
+            <InfoTooltip label="Total dividends declared in your favour this year, before any tax is withheld. Year-to-date means from January 1st until today." />
+          </div>
           <div className="v sm">€{fmtMoney(summary.totalGrossEur)}</div>
           <div className="d">
             {summary.rows.length} jurisdiction{summary.rows.length === 1 ? '' : 's'}
           </div>
         </div>
         <div className="tile">
-          <div className="l">Foreign WTH</div>
+          <div className="l">
+            Foreign WTH
+            <InfoTooltip label="Withholding tax already taken by the source country before the dividend hit your account. A US stock paying $100 may arrive as $85 after 15% US withholding." />
+          </div>
           <div className="v sm down">€{fmtMoney(summary.totalWithheldEur)}</div>
           <div className="d">{summary.effectiveRatePct.toFixed(1)}% at source</div>
         </div>
         <div className="tile">
-          <div className="l">{residenceName} tax</div>
+          <div className="l">
+            {residenceName} tax
+            <InfoTooltip label="The tax your home country charges on top of any foreign withholding. Most countries give a credit for foreign WTH already paid, so you don't get double-taxed on the same dividend." />
+          </div>
           <div className={'v sm ' + (domestic.finalEur > 0.5 ? 'down' : '')}>
             €{fmtMoney(domestic.finalEur)}
           </div>
@@ -153,7 +170,10 @@ export default async function TaxScreen() {
           </div>
         </div>
         <div className="tile">
-          <div className="l">Net after all taxes</div>
+          <div className="l">
+            Net after all taxes
+            <InfoTooltip label="What actually lands in your pocket — gross dividends minus both foreign withholding and your home-country tax. This is the number that matters for your real income." />
+          </div>
           <div className="v sm up">€{fmtMoney(finalNetEur)}</div>
           <div className="d">
             {summary.totalGrossEur > 0
@@ -162,7 +182,10 @@ export default async function TaxScreen() {
           </div>
         </div>
         <div className="tile">
-          <div className="l">Reclaimable</div>
+          <div className="l">
+            Reclaimable
+            <InfoTooltip label="Foreign tax you over-paid that you could claim back. If a country withholds 35% but the tax treaty with your country caps it at 15%, the extra 20% is reclaimable — usually by filing a form with the source country." />
+          </div>
           <div className={'v sm ' + (summary.totalReclaimableEur > 1 ? 'up' : '')}>
             €{fmtMoney(summary.totalReclaimableEur)}
           </div>
@@ -195,12 +218,24 @@ export default async function TaxScreen() {
                     <th>Country</th>
                     <th>CCY</th>
                     <th className="r">Gross €</th>
-                    <th className="r">Statutory</th>
-                    <th className="r">Treaty</th>
-                    <th className="r">Effective</th>
+                    <th className="r">
+                      Statutory
+                      <InfoTooltip label="The default withholding rate the source country applies to foreign investors with no tax treaty in place. Often the worst-case scenario — most EU residents get a lower treaty rate." />
+                    </th>
+                    <th className="r">
+                      Treaty
+                      <InfoTooltip label="The reduced rate negotiated in the tax treaty between your country of residence and the source country. To get it, the right paperwork (W-8BEN for the US, etc.) usually has to be on file with your broker." />
+                    </th>
+                    <th className="r">
+                      Effective
+                      <InfoTooltip label="The rate you actually paid, based on real withholding on this year's dividends. Compare against Treaty — if it's higher, you're being over-withheld and may be able to reclaim the difference." />
+                    </th>
                     <th className="r">Withheld €</th>
                     <th className="r">Net €</th>
-                    <th className="r">Status</th>
+                    <th className="r">
+                      Status
+                      <InfoTooltip label="Treaty ✓ = withheld at the treaty rate, nothing to do. Reclaim = over-withheld, money on the table. Final = treaty already applied, no recovery available. No WTH = country doesn't withhold (e.g. UK)." />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -272,7 +307,10 @@ export default async function TaxScreen() {
         {/* Reclaim opportunities */}
         <div className="pcard">
           <div className="pcard-h">
-            <div className="t">Reclaim opportunities</div>
+            <div className="t">
+              Reclaim opportunities
+              <InfoTooltip label="Countries where you paid more withholding tax than your tax treaty actually allows. Each card below tells you which form to file with which tax authority to claim the over-payment back." />
+            </div>
             <span className="tag">treaty vs effective</span>
           </div>
           {reclaimable.length === 0 ? (
@@ -353,7 +391,10 @@ function ExportSection({
   return (
     <div className="pcard" style={{ marginTop: 14 }}>
       <div className="pcard-h">
-        <div className="t">Export tax data</div>
+        <div className="t">
+          Export tax data
+          <InfoTooltip label="Download year-by-year tax data formatted for filing. The 'Tax pack' XLSX bundles dividends and capital gains into one workbook with separate sheets — easiest format to hand off to an accountant." />
+        </div>
         <span className="tag">CSV · per fiscal year</span>
       </div>
       {years.length === 0 ? (
@@ -494,8 +535,14 @@ function CapitalGainsSection({
       {/* Realized sales table */}
       <div className="pcard flush" style={{ overflow: 'hidden' }}>
         <div className="pcard-h" style={{ padding: '20px 22px 8px', margin: 0 }}>
-          <div className="t">Capital gains · {fiscalYear}</div>
-          <span className="tag">FIFO · EUR equiv.</span>
+          <div className="t">
+            Capital gains · {fiscalYear}
+            <InfoTooltip label="Profits or losses from selling shares — separate from dividends. Tax authorities treat these very differently, often with their own rates, allowances, and loss carry-forward rules." />
+          </div>
+          <span className="tag">
+            FIFO · EUR equiv.
+            <InfoTooltip label="FIFO = First In, First Out. When you sell shares, the cost basis is taken from your oldest buy lots first. This is the default for most European tax systems." />
+          </span>
         </div>
         {!hasSales ? (
           <div style={{ padding: '20px 22px 22px', color: 'var(--text-dim)', fontSize: 13, lineHeight: 1.55 }}>
@@ -510,10 +557,19 @@ function CapitalGainsSection({
                   <th>Date</th>
                   <th>Ticker</th>
                   <th className="r">Qty</th>
-                  <th className="r">Proceeds €</th>
-                  <th className="r">Cost basis €</th>
+                  <th className="r">
+                    Proceeds €
+                    <InfoTooltip label="What you actually received from the sale — shares sold × sale price, after any broker commission, converted to euros at the trade-date FX." />
+                  </th>
+                  <th className="r">
+                    Cost basis €
+                    <InfoTooltip label="What you originally paid for the shares you sold. Calculated FIFO — oldest shares are matched first. The difference between proceeds and cost basis is your realized gain or loss." />
+                  </th>
                   <th className="r">Gain/Loss €</th>
-                  <th>Held</th>
+                  <th>
+                    Held
+                    <InfoTooltip label="How long you owned the shares before selling. Some tax regimes apply different rates to long-term holdings (typically 1+ year), so the holding period can change what you owe." />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -574,7 +630,10 @@ function CapitalGainsSection({
       {/* CGT estimate */}
       <div className="pcard">
         <div className="pcard-h">
-          <div className="t">{residenceName} CGT · {fiscalYear}</div>
+          <div className="t">
+            {residenceName} CGT · {fiscalYear}
+            <InfoTooltip label="Capital Gains Tax estimate for your country of residence. Takes your realized gains and losses for the year, subtracts any allowance and prior-year losses, and applies the local tax regime to whatever remains." />
+          </div>
           <span className="tag">{cgtModelTag(breakdown.model)}</span>
         </div>
         {!hasSales ? (
@@ -620,6 +679,7 @@ function CapitalGainsSection({
                       <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
                         ({oldestCarryYearLabel(summary)})
                       </span>
+                      <InfoTooltip label="Unused losses from previous years offsetting this year's gains. Most countries let you 'carry forward' losses for several years so a bad year can lower the tax on a future good year." />
                     </td>
                     <td className="r num" style={{ fontSize: 12, color: 'oklch(0.36 0.08 165)' }}>
                       −€{fmtMoney(breakdown.carryForwardUsedEur, 2)}
@@ -632,6 +692,7 @@ function CapitalGainsSection({
                       {(breakdown.model.kind === 'flat' || breakdown.model.kind === 'progressive') && breakdown.model.allowanceLabel
                         ? breakdown.model.allowanceLabel
                         : 'Annual exemption'}
+                      <InfoTooltip label="A tax-free amount granted each year by your country's CGT regime. Gains below this threshold aren't taxed at all — only the excess is. The exact amount varies by country and changes over time." />
                     </td>
                     <td className="r num" style={{ fontSize: 12, color: 'oklch(0.36 0.08 165)' }}>
                       −€{fmtMoney(breakdown.allowanceUsedEur, 2)}
@@ -640,7 +701,10 @@ function CapitalGainsSection({
                 )}
                 {breakdown.taxableGainEur > 0 && (
                   <tr>
-                    <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>Taxable gain</td>
+                    <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+                      Taxable gain
+                      <InfoTooltip label="What's left after subtracting prior-year losses and your annual allowance from the net realized gain. This is the figure the tax rate is actually applied to." />
+                    </td>
                     <td className="r num" style={{ fontSize: 12 }}>
                       €{fmtMoney(breakdown.taxableGainEur, 2)}
                     </td>
