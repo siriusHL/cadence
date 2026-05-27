@@ -98,42 +98,40 @@ function DividendsTabs({ active }: { active: Tab }) {
     { id: 'year',      label: 'Year view' },
   ];
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div
-        role="tablist"
-        style={{
-          display: 'inline-flex',
-          padding: 4,
-          background: 'var(--surface-2)',
-          borderRadius: 999,
-          gap: 2,
-        }}
-      >
-        {TABS.map((t) => {
-          const isActive = active === t.id;
-          return (
-            <Link
-              key={t.id}
-              href={t.id === 'upcoming' ? '/app/dividends' : `/app/dividends?tab=${t.id}`}
-              role="tab"
-              aria-selected={isActive}
-              style={{
-                padding: '7px 18px',
-                borderRadius: 999,
-                fontSize: 13,
-                fontWeight: 500,
-                color: isActive ? 'var(--text)' : 'var(--text-muted)',
-                background: isActive ? 'var(--surface)' : 'transparent',
-                boxShadow: isActive ? '0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.04)' : 'none',
-                textDecoration: 'none',
-                transition: 'color 160ms ease, background 160ms ease',
-              }}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
-      </div>
+    <div
+      role="tablist"
+      style={{
+        display: 'flex',
+        gap: 24,
+        borderBottom: '1px solid var(--border)',
+        marginBottom: 24,
+      }}
+    >
+      {TABS.map((t) => {
+        const isActive = active === t.id;
+        return (
+          <Link
+            key={t.id}
+            href={t.id === 'upcoming' ? '/app/dividends' : `/app/dividends?tab=${t.id}`}
+            role="tab"
+            aria-selected={isActive}
+            style={{
+              padding: '8px 0',
+              fontSize: 13,
+              fontWeight: 500,
+              color: isActive ? 'var(--text)' : 'var(--text-muted)',
+              textDecoration: 'none',
+              // -1px margin so the 2px active underline sits *on* the
+              // container's hairline border rather than below it.
+              borderBottom: isActive ? '2px solid var(--accent-soft)' : '2px solid transparent',
+              marginBottom: -1,
+              transition: 'color 160ms ease, border-color 160ms ease',
+            }}
+          >
+            {t.label}
+          </Link>
+        );
+      })}
     </div>
   );
 }
