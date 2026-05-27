@@ -1266,3 +1266,180 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────
+   Month calendar (Upcoming tab)
+   ───────────────────────────────────────────────────────── */
+.cdn-pro .cdn-month-cal {
+  --cal-ex: oklch(0.55 0.10 175);
+  --cal-pay: oklch(0.66 0.14 60);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 18px;
+}
+.cdn-pro .cdn-cal-h {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.cdn-pro .cdn-cal-h .title {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  letter-spacing: -0.01em;
+}
+.cdn-pro .cdn-cal-h .title .yr {
+  color: var(--text-dim); font-weight: 400;
+}
+.cdn-pro .cdn-cal-h .meta {
+  font-size: 11.5px; color: var(--text-dim); margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.cdn-pro .cdn-cal-h .nav {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 3px; background: var(--surface-2);
+  border-radius: 999px;
+}
+.cdn-pro .cdn-cal-h .nav button {
+  appearance: none; border: none; background: transparent;
+  width: 28px; height: 28px; border-radius: 999px;
+  font-size: 16px; line-height: 1; color: var(--text-muted);
+  cursor: pointer;
+  transition: background 140ms, color 140ms;
+  padding: 0;
+}
+.cdn-pro .cdn-cal-h .nav button:hover {
+  background: var(--surface); color: var(--text);
+}
+.cdn-pro .cdn-cal-h .nav button.today {
+  width: auto; padding: 0 12px; font-size: 11.5px; font-weight: 500;
+  color: var(--text);
+}
+.cdn-pro .cdn-cal-h .nav button.today:disabled {
+  color: var(--text-dim); cursor: default;
+}
+.cdn-pro .cdn-cal-h .nav button.today:disabled:hover {
+  background: transparent;
+}
+
+.cdn-pro .cdn-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.cdn-pro .cdn-cal-grid .dow {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-dim); font-weight: 500;
+  text-align: center;
+  padding: 4px 0 6px;
+}
+.cdn-pro .cdn-cal-grid .day {
+  appearance: none;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 6px 4px;
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  cursor: default;
+  text-align: left;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+  font: inherit;
+}
+.cdn-pro .cdn-cal-grid .day.is-blank {
+  background: transparent;
+  pointer-events: none;
+}
+.cdn-pro .cdn-cal-grid .day.has-events {
+  cursor: pointer;
+  background: var(--surface);
+  border-color: var(--border);
+}
+.cdn-pro .cdn-cal-grid .day.has-events:hover {
+  border-color: color-mix(in oklab, var(--cal-ex) 35%, var(--border));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.cdn-pro .cdn-cal-grid .day.is-today {
+  border-color: var(--cal-ex);
+  background: color-mix(in oklab, var(--cal-ex) 6%, var(--surface));
+}
+.cdn-pro .cdn-cal-grid .day .num {
+  font-size: 11.5px; font-weight: 600; color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.cdn-pro .cdn-cal-grid .day.is-today .num {
+  color: var(--cal-ex);
+}
+.cdn-pro .cdn-cal-grid .day .chips {
+  display: flex; flex-direction: column; gap: 2px;
+  overflow: hidden;
+}
+.cdn-pro .cdn-cal-grid .day .chip {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+.cdn-pro .cdn-cal-grid .day .chip.ex {
+  background: color-mix(in oklab, var(--cal-ex) 16%, transparent);
+  color: color-mix(in oklab, var(--cal-ex) 75%, var(--text));
+}
+.cdn-pro .cdn-cal-grid .day .chip.pay {
+  background: color-mix(in oklab, var(--cal-pay) 18%, transparent);
+  color: color-mix(in oklab, var(--cal-pay) 70%, var(--text));
+}
+.cdn-pro .cdn-cal-grid .day .chip.more {
+  background: transparent;
+  color: var(--text-dim);
+  padding: 1px 4px;
+  font-weight: 500;
+}
+
+.cdn-pro .cdn-cal-legend {
+  display: flex; gap: 14px;
+  font-size: 11px; color: var(--text-dim);
+  padding-top: 2px;
+  align-items: center;
+}
+.cdn-pro .cdn-cal-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.cdn-pro .cdn-cal-legend .dot,
+.cdn-modal .cdn-cal-section-h .dot {
+  display: inline-block;
+  width: 8px; height: 8px; border-radius: 999px;
+}
+.cdn-pro .cdn-cal-legend .dot.ex,
+.cdn-modal .cdn-cal-section-h .dot.ex {
+  background: oklch(0.55 0.10 175);
+}
+.cdn-pro .cdn-cal-legend .dot.pay,
+.cdn-modal .cdn-cal-section-h .dot.pay {
+  background: oklch(0.66 0.14 60);
+}
+
+/* Section grouping inside the day modal (reuses existing cdn-modal-* shell). */
+.cdn-modal .cdn-cal-section + .cdn-cal-section {
+  margin-top: 10px;
+}
+.cdn-modal .cdn-cal-section-h {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 4px 4px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cdn-modal .cdn-cal-section-h .muted {
+  margin-left: auto;
+  font-size: 11px; font-weight: 500; color: var(--text-dim);
+  text-transform: none; letter-spacing: normal;
+  font-variant-numeric: tabular-nums;
+}
+
