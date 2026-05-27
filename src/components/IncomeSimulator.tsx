@@ -303,7 +303,14 @@ function IncomeCurves({
   const yearMarks = [0, Math.round(years / 4), Math.round(years / 2), Math.round((years * 3) / 4), years];
   const targetY = ys(target);
 
+  // Position of the "Goal +Ny" pill expressed as % of the SVG's viewBox, so
+  // it can be rendered as an HTML overlay (HTML text rasterises at device
+  // pixels, sidestepping the viewBox-scale blur the SVG version suffered).
+  const goalLeftPct = targetYear > 0 ? (Math.round(xs(targetYear)) / W) * 100 : 0;
+  const goalTopPct = ((pad.t + 4) / H) * 100;
+
   return (
+    <div style={{ position: 'relative' }}>
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ display: 'block' }}>
       <defs>
         <linearGradient id="g-drip" x1="0" y1="0" x2="0" y2="1">
@@ -322,45 +329,14 @@ function IncomeCurves({
         </clipPath>
       </defs>
 
-      {gridLines.map((g, i) => {
-        const value = Math.round((incMax * (1 - g)) / 1000) * 1000;
-        return (
-          <g key={i}>
-            <line x1={pad.l} x2={W - pad.r} y1={pad.t + ih * g} y2={pad.t + ih * g}
-                  stroke="rgba(0,0,0,0.05)" strokeWidth="1" />
-            <text x={pad.l - 6} y={pad.t + ih * g + 3} textAnchor="end"
-                  style={{ fontSize: 10.5, fill: 'var(--text-dim)', fontWeight: 500 }}>
-              €{(value / 1000).toFixed(0)}k
-            </text>
-          </g>
-        );
-      })}
-
-      {yearMarks.map((y, i) => (
-        <text key={i} x={xs(y)} y={H - 8} textAnchor="middle"
-              style={{ fontSize: 10.5, fill: 'var(--text-dim)', fontWeight: 500 }}>
-          +{y}y
-        </text>
+      {gridLines.map((g, i) => (
+        <line key={i} x1={pad.l} x2={W - pad.r} y1={pad.t + ih * g} y2={pad.t + ih * g}
+              stroke="rgba(0,0,0,0.05)" strokeWidth="1" />
       ))}
 
       <line x1={pad.l} x2={W - pad.r} y1={targetY} y2={targetY}
             stroke="var(--border-strong)" strokeDasharray="4 3" strokeWidth="1" />
-      <text
-        x={W - pad.r - 4}
-        y={targetY - 4}
-        textAnchor="end"
-        style={{
-          fontSize: 10.5,
-          fill: 'var(--text-dim)',
-          fontWeight: 500,
-          paintOrder: 'stroke',
-          stroke: 'var(--surface)',
-          strokeWidth: 4,
-          strokeLinejoin: 'round',
-        }}
-      >
-        Goal €{(target / 1000).toFixed(0)}k
-      </text>
+      {/* "Goal €Xk" label rendered as HTML overlay below — see axis-label block. */}
 
       {/* Animated layer — wiped left-to-right via the clipPath. */}
       <g clipPath="url(#drip-clip)">
@@ -371,52 +347,142 @@ function IncomeCurves({
         <path d={pathFor(series.reinvestPlus)} fill="none" stroke="oklch(0.55 0.10 175)" strokeWidth="2.4" strokeLinecap="round" />
       </g>
 
-      {/* Endpoint dots — pop in once the line reaches them. Labels sit
-          inside the plot just left of each dot so the chart can use the
-          full container width. A surface-coloured stroke painted UNDER
-          the fill (paint-order: stroke) gives each label a halo so the
-          chart lines never bleed through the text. */}
+      {/* Endpoint dots only — the €xx.xk labels render as HTML below so they
+          stay at CSS-pixel size instead of inheriting the SVG viewBox scale. */}
       <g className="drip-endpoints">
         {[
           { p: series.noReinvest[years],   c: 'rgba(0,0,0,0.5)' },
           { p: series.reinvest[years],     c: 'oklch(0.40 0.06 235)' },
           { p: series.reinvestPlus[years], c: 'oklch(0.55 0.10 175)' },
         ].map((s, i) => (
-          <g key={i}>
-            <circle cx={xs(s.p.year)} cy={ys(s.p.income)} r="4" fill="var(--surface)" stroke={s.c} strokeWidth="2" />
-            <text
-              x={xs(s.p.year) - 8}
-              y={ys(s.p.income) + 4}
-              textAnchor="end"
-              style={{
-                fontSize: 11,
-                fill: s.c,
-                fontWeight: 600,
-                fontVariantNumeric: 'tabular-nums',
-                paintOrder: 'stroke',
-                stroke: 'var(--surface)',
-                strokeWidth: 4,
-                strokeLinejoin: 'round',
-              }}
-            >
-              €{(s.p.income / 1000).toFixed(1)}k
-            </text>
-          </g>
+          <circle key={i} cx={xs(s.p.year)} cy={ys(s.p.income)} r="4"
+                  fill="var(--surface)" stroke={s.c} strokeWidth="2" />
         ))}
       </g>
 
       {targetYear > 0 && (
+        // Only the vertical guideline stays in SVG — it needs to scale with
+        // the chart. The pill itself is an HTML overlay rendered below.
         <g className="drip-fire-marker">
-          <line x1={xs(targetYear)} x2={xs(targetYear)} y1={pad.t} y2={pad.t + ih}
+          <line x1={Math.round(xs(targetYear))} x2={Math.round(xs(targetYear))} y1={pad.t} y2={pad.t + ih}
                 stroke="oklch(0.55 0.10 175)" strokeOpacity="0.4" />
-          <rect x={xs(targetYear) - 30} y={pad.t + 4} width="60" height="18" rx="9"
-                fill="oklch(0.55 0.10 175)" />
-          <text x={xs(targetYear)} y={pad.t + 16} textAnchor="middle"
-                style={{ fontSize: 10.5, fill: '#fff', fontWeight: 600 }}>
-            Goal +{targetYear}y
-          </text>
         </g>
       )}
     </svg>
+    {/* Axis labels live in HTML so they render at device-pixel resolution
+        regardless of the SVG's viewBox-to-CSS upscale. With viewBox W=1180
+        rendered at full container width (~1600-2000px on desktop) the
+        SVG-rendered fontSize 10.5 was upscaled to ~16-18px actual, dwarfing
+        the 10.5-12px text in cards next to it. Positioned by % of the
+        wrapper div, which sizes to the SVG. */}
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        // Match the 12px used by .cdn-pro table.pt cells in the Year-by-year
+        // breakdown right below, so the chart axes don't read smaller than
+        // the table next to them.
+        fontSize: 12,
+        color: 'var(--text-dim)',
+        fontWeight: 500,
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      {gridLines.map((g, i) => {
+        const value = Math.round((incMax * (1 - g)) / 1000) * 1000;
+        return (
+          <div
+            key={`y${i}`}
+            style={{
+              position: 'absolute',
+              right: `${((W - (pad.l - 6)) / W) * 100}%`,
+              top: `${((pad.t + ih * g) / H) * 100}%`,
+              transform: 'translateY(-50%)',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            €{(value / 1000).toFixed(0)}k
+          </div>
+        );
+      })}
+      {yearMarks.map((y, i) => (
+        <div
+          key={`x${i}`}
+          style={{
+            position: 'absolute',
+            left: `${(xs(y) / W) * 100}%`,
+            top: `${((H - 14) / H) * 100}%`,
+            transform: 'translateX(-50%)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          +{y}y
+        </div>
+      ))}
+      {/* "Goal €Xk" label sitting above the dashed goal line, right edge.
+          textShadow gives a soft cream halo so the dashed line doesn't bleed
+          through — much cleaner than the SVG paintOrder:stroke approach. */}
+      <div
+        style={{
+          position: 'absolute',
+          right: `${(pad.r / W) * 100}%`,
+          top: `${((targetY - 4) / H) * 100}%`,
+          transform: 'translateY(-100%)',
+          whiteSpace: 'nowrap',
+          textShadow: '0 0 3px var(--surface), 0 0 3px var(--surface), 0 0 3px var(--surface)',
+        }}
+      >
+        Goal €{(target / 1000).toFixed(0)}k
+      </div>
+      {/* Endpoint amount labels — sit just left of each endpoint dot.
+          Soft text-shadow halo so the chart lines don't render through the
+          text where they pass behind it. */}
+      {[
+        { p: series.noReinvest[years],   c: 'rgba(0,0,0,0.5)' },
+        { p: series.reinvest[years],     c: 'oklch(0.40 0.06 235)' },
+        { p: series.reinvestPlus[years], c: 'oklch(0.55 0.10 175)' },
+      ].map((s, i) => (
+        <div
+          key={`pt${i}`}
+          style={{
+            position: 'absolute',
+            right: `${((W - (xs(s.p.year) - 8)) / W) * 100}%`,
+            top: `${((ys(s.p.income) + 4) / H) * 100}%`,
+            transform: 'translateY(-50%)',
+            fontSize: 11,
+            color: s.c,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            textShadow: '0 0 3px var(--surface), 0 0 3px var(--surface), 0 0 3px var(--surface)',
+          }}
+        >
+          €{(s.p.income / 1000).toFixed(1)}k
+        </div>
+      ))}
+    </div>
+    {targetYear > 0 && (
+      <div
+        className="drip-fire-pill"
+        style={{
+          position: 'absolute',
+          left: `${goalLeftPct}%`,
+          top: `${goalTopPct}%`,
+          transform: 'translate(-50%, 0)',
+          padding: '3px 10px',
+          background: 'oklch(0.55 0.10 175)',
+          color: '#fff',
+          fontSize: 11,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          borderRadius: 999,
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+        }}
+      >
+        Goal +{targetYear}y
+      </div>
+    )}
+    </div>
   );
 }
