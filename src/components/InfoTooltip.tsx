@@ -15,16 +15,29 @@ type Props = {
  * The bubble renders through a portal so it escapes parent overflow:hidden
  * (the dashboard's .hero-stats uses overflow:hidden to mask grid-gap corners).
  */
+// Conservative bubble half-width used to keep the bubble inside the viewport
+// even before we've measured it. Matches the CSS max-width / 2.
+const BUBBLE_HALF = 130;
+const VIEWPORT_PAD = 12;
+
 export function InfoTooltip({ label, size = 13, className, style }: Props) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLSpanElement>(null);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const bubbleRef = useRef<HTMLSpanElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number; arrowOffset: number } | null>(null);
 
   const updatePosition = useCallback(() => {
     const el = triggerRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    setCoords({ top: r.top, left: r.left + r.width / 2 });
+    const center = r.left + r.width / 2;
+    // Clamp the bubble's center so it never spills past the viewport edges.
+    const minCenter = BUBBLE_HALF + VIEWPORT_PAD;
+    const maxCenter = window.innerWidth - BUBBLE_HALF - VIEWPORT_PAD;
+    const clamped = Math.max(minCenter, Math.min(maxCenter, center));
+    // arrowOffset = how far the icon center is from the bubble center, so we
+    // can keep the little arrow pointing at the trigger even after clamping.
+    setCoords({ top: r.top, left: clamped, arrowOffset: center - clamped });
   }, []);
 
   useLayoutEffect(() => {
@@ -37,6 +50,25 @@ export function InfoTooltip({ label, size = 13, className, style }: Props) {
       window.removeEventListener('resize', updatePosition);
     };
   }, [open, updatePosition]);
+
+  // After the bubble renders, measure it and tighten the clamp using the
+  // ACTUAL width (often less than the 260px max). Also nudge the arrow back
+  // toward the trigger if the measurement allowed more headroom.
+  useLayoutEffect(() => {
+    if (!open || !coords) return;
+    const el = bubbleRef.current;
+    const trigger = triggerRef.current;
+    if (!el || !trigger) return;
+    const r = trigger.getBoundingClientRect();
+    const center = r.left + r.width / 2;
+    const half = el.offsetWidth / 2;
+    const minCenter = half + VIEWPORT_PAD;
+    const maxCenter = window.innerWidth - half - VIEWPORT_PAD;
+    const clamped = Math.max(minCenter, Math.min(maxCenter, center));
+    if (clamped !== coords.left || center - clamped !== coords.arrowOffset) {
+      setCoords({ top: r.top, left: clamped, arrowOffset: center - clamped });
+    }
+  }, [open, coords]);
 
   const show = () => setOpen(true);
   const hide = () => setOpen(false);
@@ -68,9 +100,16 @@ export function InfoTooltip({ label, size = 13, className, style }: Props) {
       {open && coords && typeof document !== 'undefined'
         ? createPortal(
             <span
+              ref={bubbleRef}
               className="info-tip-bubble"
               role="tooltip"
-              style={{ top: coords.top, left: coords.left }}
+              style={{
+                top: coords.top,
+                left: coords.left,
+                // expose the arrow offset to CSS so the ::after pointer
+                // tracks the icon, not the bubble's geometric centre.
+                ['--arrow-offset' as string]: `${coords.arrowOffset}px`,
+              }}
             >
               {label}
             </span>,
