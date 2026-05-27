@@ -99,7 +99,7 @@ export function IncomeSimulator({
     <div className="cdn-pro">
       <div className="pro-hero">
         <div>
-          <div className="eyebrow" style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <div className="eyebrow">
             Income simulator · Compounding scenarios
             <InfoTooltip label="Compounding is when the income from your investments earns more income — reinvested dividends buy more shares, which pay more dividends, which buy more shares. The longer the horizon, the more dramatic the effect." />
           </div>
