@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { type Tier } from '@/lib/tiers';
 import { useToast } from './DialogProvider';
+import { useUnreadMessages } from './useUnreadMessages';
 
 interface Props {
   email: string;
@@ -17,6 +18,7 @@ export function UserMenu({ email, initials, tier }: Props) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const unreadMessages = useUnreadMessages();
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   // Close on outside click + Escape
@@ -120,6 +122,25 @@ export function UserMenu({ email, initials, tier }: Props) {
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 
           <MenuLink href="/app/profile" onSelect={() => setOpen(false)}>Profile</MenuLink>
+          <MenuLink href="/app/messages" onSelect={() => setOpen(false)}>
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              Messages
+              {unreadMessages > 0 && (
+                <span
+                  aria-hidden
+                  style={{
+                    minWidth: 16, height: 16, padding: '0 4px',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    borderRadius: 999,
+                    background: 'var(--danger, oklch(0.50 0.16 25))', color: '#fff',
+                    fontSize: 10, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
+            </span>
+          </MenuLink>
           <MenuLink href="/app/portfolios" onSelect={() => setOpen(false)}>Portfolios</MenuLink>
           <MenuButton onClick={onBilling} disabled={busy}>
             {tier === 'free' ? 'Upgrade plan' : 'Billing'}

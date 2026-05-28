@@ -18,6 +18,7 @@ export type Screen =
   | 'home' | 'next' | 'stocks' | 'year'
   | 'add'                                       // action — available to all tiers, RLS-capped
   | 'profile' | 'settings' | 'account' | 'portfolios'  // account pages — accessible to every tier
+  | 'messages'                                  // support inbox — accessible to every tier
   | 'dashboard' | 'holdings' | 'stock'
   | 'calendar' | 'forecast' | 'dividends' | 'simulator'
   | 'performance' | 'diversification'
@@ -44,7 +45,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     dividendFreshnessHours: 168,
     fundamentalsFreshnessHours: 168,
     fxFreshnessMin: 60,
-    screens: ['home', 'next', 'stocks', 'year', 'add', 'profile', 'settings', 'account', 'portfolios'],
+    screens: ['home', 'next', 'stocks', 'year', 'add', 'profile', 'settings', 'account', 'portfolios', 'messages'],
     features: {
       multiCurrency: false, drip: false, calendar: false, forecast: false,
       performance: false, diversification: false, taxReport: false,
@@ -63,7 +64,7 @@ export const TIERS: Record<Tier, TierConfig> = {
      // year) for the data-dense pro versions (dashboard / holdings / dividends /
      // performance / diversification). Simulator lives inside Dividends as a tab.
     screens: [
-      'add', 'profile', 'settings', 'account', 'portfolios',
+      'add', 'profile', 'settings', 'account', 'portfolios', 'messages',
       'dashboard', 'holdings', 'stock',
       'dividends',
       'performance', 'diversification',
@@ -84,7 +85,7 @@ export const TIERS: Record<Tier, TierConfig> = {
     fxFreshnessMin: 15,
     // Same exclusions as Premium — the free-tier screens stay free-only.
     screens: [
-      'add', 'profile', 'settings', 'account', 'portfolios',
+      'add', 'profile', 'settings', 'account', 'portfolios', 'messages',
       'dashboard', 'holdings', 'stock',
       'dividends',
       'performance', 'diversification',
