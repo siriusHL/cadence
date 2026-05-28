@@ -17,7 +17,25 @@ const PatchBody = z.object({
   bg_tone:         z.enum(['cream', 'neutral', 'cool']).optional(),
   default_screen:  z.enum(ALLOWED_SCREENS).nullable().optional(),
   income_target:   z.coerce.number().positive().max(10_000_000).optional(),
+
+  // Personal details (Profile page). All nullable — never required.
+  first_name:          z.string().trim().max(60).nullable().optional(),
+  last_name:           z.string().trim().max(60).nullable().optional(),
+  birth_date:          z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  phone:               z.string().trim().max(32).regex(/^[+\d][\d\s()./-]{3,}$/).nullable().optional(),
+  sex:                 z.enum(['female', 'male']).nullable().optional(),
+  address_line1:       z.string().trim().max(120).nullable().optional(),
+  address_line2:       z.string().trim().max(120).nullable().optional(),
+  address_city:        z.string().trim().max(80).nullable().optional(),
+  address_postal_code: z.string().trim().max(20).nullable().optional(),
+  address_country:     z.string().trim().length(2).regex(/^[A-Z]{2}$/i).nullable().optional(),
 });
+
+// Free-text personal fields: empty string collapses to null, otherwise trimmed.
+const TEXT_FIELDS = [
+  'first_name', 'last_name', 'birth_date', 'phone',
+  'address_line1', 'address_line2', 'address_city', 'address_postal_code',
+] as const;
 
 export const PATCH = withAuth({}, async ({ userId, req }) => {
   const parsed = PatchBody.safeParse(await req.json().catch(() => ({})));
@@ -34,6 +52,15 @@ export const PATCH = withAuth({}, async ({ userId, req }) => {
   if ('bg_tone'        in parsed.data) patch.bg_tone        = parsed.data.bg_tone;
   if ('default_screen' in parsed.data) patch.default_screen = parsed.data.default_screen;
   if ('income_target'  in parsed.data) patch.income_target  = parsed.data.income_target;
+
+  for (const f of TEXT_FIELDS) {
+    if (f in parsed.data) patch[f] = parsed.data[f]?.trim() || null;
+  }
+  if ('sex'             in parsed.data) patch.sex             = parsed.data.sex ?? null;
+  if ('address_country' in parsed.data) patch.address_country = parsed.data.address_country
+    ? parsed.data.address_country.toUpperCase()
+    : null;
+
   if (Object.keys(patch).length === 0) return json({ ok: true });
 
   const supabase = await getSupabaseServer();
@@ -60,7 +87,7 @@ export const GET = withAuth({}, async ({ userId, tier }) => {
     { count: portfolioCount },
     { data: holdingRows },
   ] = await Promise.all([
-    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen, income_target').eq('id', userId).single(),
+    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen, income_target, first_name, last_name, birth_date, phone, sex, address_line1, address_line2, address_city, address_postal_code, address_country').eq('id', userId).single(),
     supabase.from('portfolios').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     // RLS already scopes to caller's portfolios; selecting holdings.id is enough to count.
     supabase.from('holdings').select('id'),
