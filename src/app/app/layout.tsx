@@ -5,6 +5,8 @@ import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
 import { NavTabs } from '@/components/NavTabs';
 import { DialogProvider } from '@/components/DialogProvider';
 import { UserMenu } from '@/components/UserMenu';
+import { MailNavIcon } from '@/components/MailNavIcon';
+import { MessagesRealtime } from '@/components/MessagesRealtime';
 import { PortfolioSwitcher } from '@/components/PortfolioSwitcher';
 import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 
@@ -57,6 +59,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <DialogProvider>
+      <MessagesRealtime />
       <div className="cdn-free flex flex-col min-h-screen">
         <div className="fnav">
           <Link href="/app" className="brand">
@@ -78,6 +81,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <span className={'plan ' + (tier === 'premium' ? 'pro' : tier === 'elite' ? 'elite' : '')}>
               {planLabel}
             </span>
+            <MailNavIcon />
             <UserMenu email={user.email ?? ''} initials={initials} tier={tier} />
           </div>
         </div>
