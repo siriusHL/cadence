@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getHoldingsView } from '@/lib/portfolio';
@@ -13,6 +14,8 @@ import { getActivityYears } from '@/lib/export';
 import { EmptyState } from '@/components/EmptyState';
 import { InfoTooltip } from '@/components/InfoTooltip';
 
+export const dynamic = 'force-dynamic';
+
 function fmtMoney(n: number, digits = 0): string {
   if (!Number.isFinite(n)) return '—';
   return n.toLocaleString('en-IE', { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -22,7 +25,11 @@ function fmtPct(n: number, digits = 1): string {
   return `${n.toFixed(digits)}%`;
 }
 
-export default async function TaxScreen() {
+export default async function TaxScreen({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string }>;
+}) {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -59,12 +66,28 @@ export default async function TaxScreen() {
   await enrichInstruments(held.map((h) => h.ticker));
 
   const residence = (profile?.tax_country as TaxResidence | null) ?? DEFAULT_RESIDENCE;
-  const fiscalYear = new Date().getFullYear();
+
+  // Fiscal year is driven by the ?year= search param, defaulting to the current
+  // calendar year. Clamped to a sane range so a junk param can't break the page.
+  const currentYear = new Date().getFullYear();
+  const requestedYear = Number((await searchParams)?.year);
+  const fiscalYear =
+    Number.isInteger(requestedYear) && requestedYear >= 2000 && requestedYear <= currentYear + 1
+      ? requestedYear
+      : currentYear;
+  const isCurrentYear = fiscalYear === currentYear;
+
   const [summary, capitalGains, activityYears] = await Promise.all([
     getTaxSummary(supabase, portfolio.id, fiscalYear, residence),
     getCapitalGainsSummary(supabase, portfolio.id, fiscalYear, residence),
     getActivityYears(supabase, portfolio.id),
   ]);
+
+  // Year options for the switcher: the current year is always offered, plus any
+  // year with recorded dividend/sale activity, plus whatever's selected now.
+  const yearOptions = Array.from(
+    new Set<number>([currentYear, fiscalYear, ...activityYears.map((y) => y.year)]),
+  ).sort((a, b) => b - a);
   const cgt = computeCapitalGainsTax(capitalGains);
 
   // Domestic tax: residence-side layer (final tax minus foreign credit).
@@ -135,12 +158,14 @@ export default async function TaxScreen() {
         </div>
       </div>
 
+      <TaxYearSwitcher years={yearOptions} active={fiscalYear} currentYear={currentYear} />
+
       {/* 5-tile hero strip — gross → foreign WTH → domestic → final net → reclaim */}
       <div className="hero-stats" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="tile">
           <div className="l">
-            Gross dividends · YTD
-            <InfoTooltip label="Total dividends declared in your favour this year, before any tax is withheld. Year-to-date means from January 1st until today." />
+            Gross dividends · {isCurrentYear ? 'YTD' : fiscalYear}
+            <InfoTooltip label="Total dividends declared in your favour for the selected fiscal year, before any tax is withheld. For the current year this is year-to-date (Jan 1 until today); for past years it's the full year." />
           </div>
           <div className="v sm">€{fmtMoney(summary.totalGrossEur)}</div>
           <div className="d">
@@ -379,6 +404,50 @@ export default async function TaxScreen() {
 
       {/* ─── Export tax data ─────────────────────────────────────────── */}
       <ExportSection years={activityYears} />
+    </div>
+  );
+}
+
+// Year selector driving the whole page's fiscal year. Server-rendered pills
+// (plain <Link>s) — no client JS needed, mirrors the dividends tab nav. The
+// current year links to the bare /app/tax so it stays the canonical default.
+function TaxYearSwitcher({
+  years, active, currentYear,
+}: {
+  years: number[];
+  active: number;
+  currentYear: number;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0 16px', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>Tax year</span>
+      <div role="tablist" aria-label="Tax year" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {years.map((y) => {
+          const isActive = y === active;
+          return (
+            <Link
+              key={y}
+              href={y === currentYear ? '/app/tax' : `/app/tax?year=${y}`}
+              role="tab"
+              aria-selected={isActive}
+              className="num"
+              style={{
+                padding: '5px 12px',
+                fontSize: 12.5,
+                fontWeight: 600,
+                borderRadius: 999,
+                textDecoration: 'none',
+                border: '1px solid ' + (isActive ? 'var(--text)' : 'var(--border)'),
+                background: isActive ? 'var(--text)' : 'var(--surface)',
+                color: isActive ? 'var(--surface)' : 'var(--text-muted)',
+                transition: 'background 140ms ease, color 140ms ease, border-color 140ms ease',
+              }}
+            >
+              {y}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
