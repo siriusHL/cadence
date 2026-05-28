@@ -8,6 +8,9 @@ type Props = {
   size?: number;
   className?: string;
   style?: CSSProperties;
+  /** Lighten the bubble for use on dark surfaces (e.g. the year-heatmap card),
+   *  where the default near-black bubble would blend into the background. */
+  onDark?: boolean;
 };
 
 type Placement = 'top' | 'bottom';
@@ -38,7 +41,7 @@ const ANCHOR_GAP = 8;
  * Placement flips top↔bottom when the preferred side would push the bubble
  * past the viewport edge.
  */
-export function InfoTooltip({ label, size = 13, className, style }: Props) {
+export function InfoTooltip({ label, size = 13, className, style, onDark }: Props) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLSpanElement>(null);
   const bubbleRef = useRef<HTMLSpanElement>(null);
@@ -139,7 +142,7 @@ export function InfoTooltip({ label, size = 13, className, style }: Props) {
         ? createPortal(
             <span
               ref={bubbleRef}
-              className={`info-tip-bubble placement-${coords.placement}`}
+              className={`info-tip-bubble placement-${coords.placement}${onDark ? ' info-tip-bubble--on-dark' : ''}`}
               role="tooltip"
               style={{
                 top: coords.anchor,

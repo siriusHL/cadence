@@ -662,7 +662,7 @@ async function YearTab({ portfolioId, heldCount }: { portfolioId: string; heldCo
         <div className="pcard-h">
           <div className="t">
             Year heatmap · ex-div by day
-            <InfoTooltip label="Each square is one day of the year, shaded by how much dividend was paid that day. 'Ex-div' is short for ex-dividend — the cutoff date when a stock starts trading without the upcoming payout. Darker = bigger payout day." />
+            <InfoTooltip onDark label="Each square is one day of the year, shaded by how much dividend was paid that day. 'Ex-div' is short for ex-dividend — the cutoff date when a stock starts trading without the upcoming payout. Darker = bigger payout day." />
           </div>
           <div className="cdn-year-legend">
             <span>Less</span>
