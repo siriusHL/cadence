@@ -125,6 +125,7 @@ export function UserMenu({ email, initials, tier }: Props) {
             {tier === 'free' ? 'Upgrade plan' : 'Billing'}
           </MenuButton>
           <MenuLink href="/app/settings" onSelect={() => setOpen(false)}>Settings</MenuLink>
+          <MenuLink href="/app/account" onSelect={() => setOpen(false)}>Account &amp; security</MenuLink>
           <MenuLink href="mailto:feedback@cadence.app?subject=Cadence%20feedback" onSelect={() => setOpen(false)}>
             Send feedback
           </MenuLink>

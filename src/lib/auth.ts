@@ -1,4 +1,5 @@
 import { type NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { TIERS, type Tier, type Feature, can } from '@/lib/tiers';
 
@@ -62,6 +63,19 @@ export function json(body: unknown, status = 200, headers: HeadersInit = {}) {
     status,
     headers: { 'content-type': 'application/json', ...headers },
   });
+}
+
+// Re-verify a user's current password before sensitive account changes
+// (email/password change, account deletion). Uses a throwaway non-persisting
+// client so the active session's cookies are never touched.
+export async function verifyPassword(email: string, password: string): Promise<boolean> {
+  const probe = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+  const { error } = await probe.auth.signInWithPassword({ email, password });
+  return !error;
 }
 
 export function tierLimits(tier: Tier) {
