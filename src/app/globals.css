@@ -647,6 +647,19 @@ a.cdn-free .fnav .right .plan,
   bottom: 100%;
   border-bottom-color: #1d1d1f;
 }
+/* On dark surfaces (e.g. the year-heatmap card) the default #1d1d1f bubble
+   shares the card's background and disappears. Lighten the fill and add a
+   hairline border so it stays distinct; the arrow follows the lighter fill. */
+.info-tip-bubble--on-dark {
+  background: #2c2c2e;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.info-tip-bubble--on-dark.placement-top::after {
+  border-top-color: #2c2c2e;
+}
+.info-tip-bubble--on-dark.placement-bottom::after {
+  border-bottom-color: #2c2c2e;
+}
 @keyframes info-tip-pop-top {
   from { opacity: 0; transform: translate(-50%, calc(-100% - 4px)); }
   to   { opacity: 1; transform: translate(-50%, calc(-100% - 8px)); }
