@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from './DialogProvider';
+import { ALERTS_CHANGED_EVENT } from './AlertsBadge';
 import type { AlertSuppression } from '@/lib/alerts';
 
 const KIND_LABEL: Record<string, string> = {
@@ -61,6 +62,7 @@ export function MutedAlertsFooter({ mutes }: Props) {
       });
       if (!res.ok) throw new Error('unmute_failed');
       toast('Mute removed.');
+      window.dispatchEvent(new CustomEvent(ALERTS_CHANGED_EVENT));
       startTransition(() => router.refresh());
     } catch {
       toast('Could not un-mute — please retry.', 'error');

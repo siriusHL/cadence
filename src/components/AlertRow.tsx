@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from './DialogProvider';
+import { ALERTS_CHANGED_EVENT } from './AlertsBadge';
 import type { AlertCard, AlertKind, AlertSeverity, SuppressedAlertCard } from '@/lib/alerts';
 
 const SEVERITY_COLOR: Record<AlertSeverity, string> = {
@@ -80,6 +81,7 @@ export function AlertRow(props: Props) {
       });
       if (!res.ok) throw new Error('save_failed');
       toast(opts.successMsg);
+      window.dispatchEvent(new CustomEvent(ALERTS_CHANGED_EVENT));
       startTransition(() => router.refresh());
     } catch {
       toast('Could not save — please retry.', 'error');
@@ -101,6 +103,7 @@ export function AlertRow(props: Props) {
       });
       if (!res.ok) throw new Error('restore_failed');
       toast('Alert restored.');
+      window.dispatchEvent(new CustomEvent(ALERTS_CHANGED_EVENT));
       startTransition(() => router.refresh());
     } catch {
       toast('Could not restore — please retry.', 'error');
@@ -167,7 +170,7 @@ export function AlertRow(props: Props) {
                     successMsg: `Snoozed for ${SNOOZE_DAYS} days.`,
                   })}
                 >
-                  💤
+                  <SnoozeIcon />
                 </IconButton>
                 <IconButton
                   title="Dismiss this alert"
@@ -177,7 +180,7 @@ export function AlertRow(props: Props) {
                     successMsg: 'Alert dismissed.',
                   })}
                 >
-                  ✕
+                  <DismissIcon />
                 </IconButton>
                 <IconButton
                   title={alert.ticker
@@ -193,7 +196,7 @@ export function AlertRow(props: Props) {
                       : `${kindNoun} alerts muted.`,
                   })}
                 >
-                  🔕
+                  <MuteIcon />
                 </IconButton>
               </div>
             )}
@@ -253,6 +256,49 @@ function suppressedCaption(card: SuppressedAlertCard): string {
   if (!card.expiresAt) return 'Dismissed.';
   const days = Math.max(0, Math.ceil((new Date(card.expiresAt).getTime() - Date.now()) / 86_400_000));
   return days === 0 ? 'Snoozed — expires today.' : `Snoozed — back in ${days} day${days === 1 ? '' : 's'}.`;
+}
+
+const ICON_PROPS = {
+  width: 15,
+  height: 15,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.8,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+
+/** Snooze: a clock with a small "z" to read as "snooze" rather than a plain timer. */
+function SnoozeIcon() {
+  return (
+    <svg {...ICON_PROPS} aria-hidden>
+      <circle cx="11" cy="13" r="7" />
+      <path d="M11 10v3l2 1.5" />
+      <path d="M16 3h4l-4 5h4" strokeWidth={1.4} />
+    </svg>
+  );
+}
+
+/** Dismiss: a plain X. */
+function DismissIcon() {
+  return (
+    <svg {...ICON_PROPS} aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+/** Mute: a bell with a slash through it. */
+function MuteIcon() {
+  return (
+    <svg {...ICON_PROPS} aria-hidden>
+      <path d="M9 17a3 3 0 0 0 6 0" />
+      <path d="M6 8a6 6 0 0 1 9.5-4.5" />
+      <path d="M18 12v-1M6 9v3c0 2-1 3-2 5h12" />
+      <path d="M3 3l18 18" />
+    </svg>
+  );
 }
 
 function IconButton({

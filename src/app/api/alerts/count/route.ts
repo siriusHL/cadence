@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { getActivePortfolio } from '@/lib/activePortfolio';
 import { getHoldingsView, getPerformanceSeries } from '@/lib/portfolio';
+import { enrichInstruments, enrichWeeklyHistory } from '@/lib/marketdata/enrich';
 import { getTaxSummary, DEFAULT_RESIDENCE, type TaxResidence } from '@/lib/tax';
 import { getActiveAlerts } from '@/lib/alerts';
 
 /**
- * Lightweight count endpoint for the nav badge. Re-uses the same engine the
- * Alerts page renders, but skips upstream enrichment (data freshness is the
- * Alerts page's job; the badge can lag by a few hours without harm).
+ * Count endpoint for the nav badge. Mirrors the Alerts page exactly — same
+ * enrichment and the same 52-week performance window — so the badge number
+ * always matches the page's "N alerts to review". The badge fetches async
+ * outside initial paint, so the enrichment cost delays only when the badge
+ * appears, not page render.
  *
  * Returns:
  *   total    — every active alert across all severities
@@ -35,12 +38,18 @@ export async function GET() {
     return NextResponse.json({ total: 0, negative: 0 });
   }
 
+  const tickers = holdings.map((h) => h.ticker);
+  await Promise.all([
+    enrichInstruments(tickers),
+    enrichWeeklyHistory(tickers, 52),
+  ]);
+
   const residence = (profile?.tax_country as TaxResidence | null) ?? DEFAULT_RESIDENCE;
   const fiscalYear = new Date().getFullYear();
 
   const [taxSummary, performanceSeries] = await Promise.all([
     getTaxSummary(supabase, portfolio.id, fiscalYear, residence),
-    getPerformanceSeries(supabase, portfolio.id, 104),
+    getPerformanceSeries(supabase, portfolio.id, 52),
   ]);
 
   const { active } = await getActiveAlerts({

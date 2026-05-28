@@ -157,6 +157,8 @@ export default async function AlertsScreen() {
         </details>
       )}
 
+      <MutedAlertsFooter mutes={mutes} />
+
       {/* Thresholds footer — makes the page's logic legible */}
       <div
         style={{
@@ -200,8 +202,6 @@ export default async function AlertsScreen() {
         </span>
         .
       </div>
-
-      <MutedAlertsFooter mutes={mutes} />
     </div>
   );
 }
