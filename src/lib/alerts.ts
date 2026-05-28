@@ -56,6 +56,31 @@ export interface AlertCard {
   amountEur?: number;
 }
 
+/**
+ * Selectors a card can be hidden by. Order matters for `matchedSelector`
+ * resolution: most-specific first so the displayed "why is this hidden?"
+ * reason maps to the action the user actually took.
+ */
+export function selectorsFor(card: AlertCard): string[] {
+  const out = [`id:${card.id}`, `kind:${card.kind}`];
+  if (card.ticker) out.push(`kind_ticker:${card.kind}:${card.ticker}`);
+  return out;
+}
+
+/** A row from alert_suppressions — what the engine reads to filter cards. */
+export interface AlertSuppression {
+  selector:   string;
+  expires_at: string | null;
+}
+
+/** Same shape as AlertCard plus the selector that hid it (for the Undo button). */
+export interface SuppressedAlertCard extends AlertCard {
+  /** The user-managed selector currently hiding this card. */
+  matchedSelector: string;
+  /** Snooze expiry, ISO string. NULL means dismissed / muted forever. */
+  expiresAt: string | null;
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -263,10 +288,51 @@ export interface AlertInputs {
   holdings: HoldingView[];
   taxSummary: TaxSummary;
   performanceSeries: PerformancePoint[];
+  /** Caller's user id — used to load alert_suppressions; pass null to skip. */
+  userId?: string | null;
 }
 
-export async function getActiveAlerts(inputs: AlertInputs): Promise<AlertCard[]> {
-  const { supabase, portfolioId, holdings, taxSummary, performanceSeries } = inputs;
+export interface AlertResult {
+  /** Cards the user should see right now — suppressions already applied. */
+  active: AlertCard[];
+  /**
+   * Cards that *would* be active but are currently hidden by an `id:`
+   * selector (specific dismiss/snooze). Surfaced in the collapsible
+   * "Hidden" section so users can Undo. Cards hidden by a `kind:` or
+   * `kind_ticker:` mute are NOT included — those mutes are managed in
+   * the bottom "Muted" footer.
+   */
+  suppressed: SuppressedAlertCard[];
+  /**
+   * Every permanent suppression on the user's account, including ones whose
+   * underlying card is no longer being generated. Lets the footer show
+   * "you muted X" with an Undo even when X isn't currently triggering.
+   */
+  mutes: AlertSuppression[];
+}
+
+/**
+ * Load the user's currently-in-effect suppressions and proactively drop
+ * snoozes whose expiry has passed. Returns rows as-is; callers convert to
+ * the selector → expires_at map they need for filtering.
+ */
+async function loadActiveSuppressions(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<AlertSuppression[]> {
+  const { data } = await supabase
+    .from('alert_suppressions')
+    .select('selector, expires_at')
+    .eq('user_id', userId);
+  if (!data) return [];
+  const nowIso = new Date().toISOString();
+  return data
+    .filter((r) => r.expires_at === null || r.expires_at > nowIso)
+    .map((r) => ({ selector: r.selector as string, expires_at: r.expires_at as string | null }));
+}
+
+export async function getActiveAlerts(inputs: AlertInputs): Promise<AlertResult> {
+  const { supabase, holdings, taxSummary, performanceSeries, userId } = inputs;
   const tickers = holdings.map((h) => h.ticker);
 
   // One round-trip for the dividend rows used by ex-date / payment / cut-raise checks.
@@ -278,7 +344,11 @@ export async function getActiveAlerts(inputs: AlertInputs): Promise<AlertCard[]>
         .in('ticker', tickers)
         .order('ex_date', { ascending: false });
 
-  const { data: divsData } = await divsPromise;
+  const [{ data: divsData }, suppressions] = await Promise.all([
+    divsPromise,
+    userId ? loadActiveSuppressions(supabase, userId) : Promise.resolve([] as AlertSuppression[]),
+  ]);
+
   const divs = (divsData ?? []).map((d) => ({
     ticker:       d.ticker,
     ex_date:      d.ex_date,
@@ -313,8 +383,34 @@ export async function getActiveAlerts(inputs: AlertInputs): Promise<AlertCard[]>
     return b.occurredAt.localeCompare(a.occurredAt);
   });
 
-  // Stable id-unique just in case.
+  // De-dupe just in case two checks emit the same id (defence-in-depth).
   const seen = new Set<string>();
-  return cards.filter((c) => seen.has(c.id) ? false : (seen.add(c.id), true));
+  const deduped = cards.filter((c) => seen.has(c.id) ? false : (seen.add(c.id), true));
+
+  // Split into active vs suppressed using the selector map.
+  const bySelector = new Map(suppressions.map((s) => [s.selector, s.expires_at]));
+  const active: AlertCard[] = [];
+  const suppressed: SuppressedAlertCard[] = [];
+  for (const card of deduped) {
+    const selectors = selectorsFor(card);
+    const match = selectors.find((s) => bySelector.has(s));
+    if (!match) {
+      active.push(card);
+      continue;
+    }
+    // Only surface cards whose suppression is a specific id: dismiss/snooze.
+    // kind/kind_ticker mutes are managed in the footer instead.
+    if (match.startsWith('id:')) {
+      suppressed.push({ ...card, matchedSelector: match, expiresAt: bySelector.get(match) ?? null });
+    }
+  }
+
+  // Standing mutes the user has applied (permanent, not snoozes) — used by
+  // the footer to let them un-mute kinds whose cards aren't currently firing.
+  const mutes = suppressions.filter(
+    (s) => s.expires_at === null && !s.selector.startsWith('id:'),
+  );
+
+  return { active, suppressed, mutes };
 }
 
