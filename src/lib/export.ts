@@ -95,19 +95,20 @@ interface DivExportSourceRow {
 async function fetchDividendRows(
   supabase: SupabaseClient,
   portfolioId: string,
-  fiscalYear: number,
+  // A specific fiscal year, or null to pull every year (all-years export).
+  fiscalYear: number | null,
 ): Promise<DividendRow[]> {
-  const yearStart = `${fiscalYear}-01-01`;
-  const yearEnd   = `${fiscalYear}-12-31`;
-
-  const { data } = await supabase
+  let query = supabase
     .from('transactions')
     .select('ticker, occurred_on, quantity, price_local, withholding_local, fx_to_base')
     .eq('portfolio_id', portfolioId)
-    .eq('kind', 'dividend')
-    .gte('occurred_on', yearStart)
-    .lte('occurred_on', yearEnd)
-    .order('occurred_on', { ascending: true });
+    .eq('kind', 'dividend');
+  if (fiscalYear != null) {
+    query = query
+      .gte('occurred_on', `${fiscalYear}-01-01`)
+      .lte('occurred_on', `${fiscalYear}-12-31`);
+  }
+  const { data } = await query.order('occurred_on', { ascending: true });
 
   const rows = (data ?? []) as unknown as DivExportSourceRow[];
   if (rows.length === 0) return [];
@@ -203,13 +204,14 @@ const CGT_CSV_COLUMNS = [
   'Holding period (days)',
 ];
 
-export async function buildDividendsCsv(
-  supabase: SupabaseClient,
-  portfolioId: string,
-  fiscalYear: number,
-): Promise<string> {
-  const rows = await fetchDividendRows(supabase, portfolioId, fiscalYear);
-  const records = rows.map((r) => ({
+// All-years exports prepend a "Fiscal year" column so the combined sheets
+// stay pivot-/filter-friendly when rows from several years sit together.
+const DIV_ALL_CSV_COLUMNS = ['Fiscal year', ...DIV_CSV_COLUMNS];
+const CGT_ALL_CSV_COLUMNS = ['Fiscal year', ...CGT_CSV_COLUMNS];
+
+// Shared row→record mappers so per-year and all-years exports stay identical.
+function divCsvRecord(r: DividendRow): Record<string, string> {
+  return {
     'Date':                       r.date,
     'Ticker':                     r.ticker,
     'Name':                       r.name,
@@ -225,18 +227,11 @@ export async function buildDividendsCsv(
     'Gross (EUR)':                fmt(r.grossEur, 2),
     'Withholding (EUR)':          fmt(r.withholdingEur, 2),
     'Net (EUR)':                  fmt(r.netEur, 2),
-  }));
-  return UTF8_BOM + Papa.unparse(records, { columns: DIV_CSV_COLUMNS });
+  };
 }
 
-export async function buildCapitalGainsCsv(
-  supabase: SupabaseClient,
-  portfolioId: string,
-  fiscalYear: number,
-  residence: TaxResidence,
-): Promise<string> {
-  const rows = await fetchCapitalGainsRows(supabase, portfolioId, fiscalYear, residence);
-  const records = rows.map((r) => ({
+function cgtCsvRecord(r: CapitalGainsRow): Record<string, string> {
+  return {
     'Sale date':                r.saleDate,
     'Ticker':                   r.ticker,
     'Name':                     r.name,
@@ -248,8 +243,64 @@ export async function buildCapitalGainsCsv(
     'Cost basis (EUR, FIFO)':   fmt(r.costBasisEur, 2),
     'Realized gain/loss (EUR)': fmt(r.realizedGainEur, 2),
     'Holding period (days)':    fmt(r.holdingDays, 0),
-  }));
-  return UTF8_BOM + Papa.unparse(records, { columns: CGT_CSV_COLUMNS });
+  };
+}
+
+export async function buildDividendsCsv(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  fiscalYear: number,
+): Promise<string> {
+  const rows = await fetchDividendRows(supabase, portfolioId, fiscalYear);
+  return UTF8_BOM + Papa.unparse(rows.map(divCsvRecord), { columns: DIV_CSV_COLUMNS });
+}
+
+export async function buildCapitalGainsCsv(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  fiscalYear: number,
+  residence: TaxResidence,
+): Promise<string> {
+  const rows = await fetchCapitalGainsRows(supabase, portfolioId, fiscalYear, residence);
+  return UTF8_BOM + Papa.unparse(rows.map(cgtCsvRecord), { columns: CGT_CSV_COLUMNS });
+}
+
+// ─── All-years CSV builders ────────────────────────────────────────────
+
+export async function buildAllYearsDividendsCsv(
+  supabase: SupabaseClient,
+  portfolioId: string,
+): Promise<string> {
+  const rows = await fetchDividendRows(supabase, portfolioId, null);
+  const records = rows.map((r) => ({ 'Fiscal year': r.date.slice(0, 4), ...divCsvRecord(r) }));
+  return UTF8_BOM + Papa.unparse(records, { columns: DIV_ALL_CSV_COLUMNS });
+}
+
+export async function buildAllYearsCapitalGainsCsv(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  residence: TaxResidence,
+): Promise<string> {
+  const rows = await fetchAllYearsCapitalGainsRows(supabase, portfolioId, residence);
+  const records = rows.map((r) => ({ 'Fiscal year': r.saleDate.slice(0, 4), ...cgtCsvRecord(r) }));
+  return UTF8_BOM + Papa.unparse(records, { columns: CGT_ALL_CSV_COLUMNS });
+}
+
+// Capital-gains is computed per fiscal year (FIFO + loss carry-forward windows
+// are year-bound), so the all-years set is the per-year results concatenated.
+async function fetchAllYearsCapitalGainsRows(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  residence: TaxResidence,
+): Promise<CapitalGainsRow[]> {
+  const years = (await getActivityYears(supabase, portfolioId))
+    .filter((y) => y.hasSales)
+    .map((y) => y.year)
+    .sort((a, b) => a - b);
+  const perYear = await Promise.all(
+    years.map((y) => fetchCapitalGainsRows(supabase, portfolioId, y, residence)),
+  );
+  return perYear.flat();
 }
 
 // ─── XLSX builder (two-sheet workbook per year) ────────────────────────
@@ -275,8 +326,20 @@ export async function buildTaxPackXlsx(
 
   const wb = XLSX.utils.book_new();
 
-  // Dividends sheet
-  const divRecords = divRows.map((r) => ({
+  const divSheet = XLSX.utils.json_to_sheet(divRows.map(divXlsxRecord), { header: DIV_CSV_COLUMNS });
+  divSheet['!cols'] = divColWidths();
+  XLSX.utils.book_append_sheet(wb, divSheet, 'Dividends');
+
+  const gainSheet = XLSX.utils.json_to_sheet(gainRows.map(cgtXlsxRecord), { header: CGT_CSV_COLUMNS });
+  gainSheet['!cols'] = cgtColWidths();
+  XLSX.utils.book_append_sheet(wb, gainSheet, 'Capital gains');
+
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+// XLSX record-makers — raw numbers (no formatting) so Excel keeps cells numeric.
+function divXlsxRecord(r: DividendRow): Record<string, string | number> {
+  return {
     'Date':                       r.date,
     'Ticker':                     r.ticker,
     'Name':                       r.name,
@@ -292,13 +355,11 @@ export async function buildTaxPackXlsx(
     'Gross (EUR)':                r.grossEur,
     'Withholding (EUR)':          r.withholdingEur,
     'Net (EUR)':                  r.netEur,
-  }));
-  const divSheet = XLSX.utils.json_to_sheet(divRecords, { header: DIV_CSV_COLUMNS });
-  divSheet['!cols'] = divColWidths();
-  XLSX.utils.book_append_sheet(wb, divSheet, 'Dividends');
+  };
+}
 
-  // Capital gains sheet
-  const gainRecords = gainRows.map((r) => ({
+function cgtXlsxRecord(r: CapitalGainsRow): Record<string, string | number> {
+  return {
     'Sale date':                r.saleDate,
     'Ticker':                   r.ticker,
     'Name':                     r.name,
@@ -310,9 +371,40 @@ export async function buildTaxPackXlsx(
     'Cost basis (EUR, FIFO)':   r.costBasisEur,
     'Realized gain/loss (EUR)': r.realizedGainEur,
     'Holding period (days)':    r.holdingDays,
+  };
+}
+
+/**
+ * All-years tax pack — one .xlsx with the same two sheets, but spanning every
+ * fiscal year with activity. A leading "Fiscal year" column (numeric) lets the
+ * accountant pivot/group by year while keeping a single combined dataset.
+ */
+export async function buildAllYearsTaxPackXlsx(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  residence: TaxResidence,
+): Promise<Buffer> {
+  const [divRows, gainRows] = await Promise.all([
+    fetchDividendRows(supabase, portfolioId, null),
+    fetchAllYearsCapitalGainsRows(supabase, portfolioId, residence),
+  ]);
+
+  const wb = XLSX.utils.book_new();
+
+  const divRecords = divRows.map((r) => ({
+    'Fiscal year': Number(r.date.slice(0, 4)),
+    ...divXlsxRecord(r),
   }));
-  const gainSheet = XLSX.utils.json_to_sheet(gainRecords, { header: CGT_CSV_COLUMNS });
-  gainSheet['!cols'] = cgtColWidths();
+  const divSheet = XLSX.utils.json_to_sheet(divRecords, { header: DIV_ALL_CSV_COLUMNS });
+  divSheet['!cols'] = [{ wch: 11 }, ...divColWidths()];
+  XLSX.utils.book_append_sheet(wb, divSheet, 'Dividends');
+
+  const gainRecords = gainRows.map((r) => ({
+    'Fiscal year': Number(r.saleDate.slice(0, 4)),
+    ...cgtXlsxRecord(r),
+  }));
+  const gainSheet = XLSX.utils.json_to_sheet(gainRecords, { header: CGT_ALL_CSV_COLUMNS });
+  gainSheet['!cols'] = [{ wch: 11 }, ...cgtColWidths()];
   XLSX.utils.book_append_sheet(wb, gainSheet, 'Capital gains');
 
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });

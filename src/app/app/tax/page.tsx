@@ -457,6 +457,11 @@ function ExportSection({
 }: {
   years: { year: number; hasDividends: boolean; hasSales: boolean }[];
 }) {
+  // Offer a combined "all years" export only when there's more than one year of
+  // activity — for a single year the per-year row already covers everything.
+  const showAllYears = years.length > 1;
+  const anyDividends = years.some((y) => y.hasDividends);
+  const anySales = years.some((y) => y.hasSales);
   return (
     <div className="pcard" style={{ marginTop: 14 }}>
       <div className="pcard-h">
@@ -484,6 +489,44 @@ function ExportSection({
               border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden',
             }}
           >
+            {showAllYears && (
+              <div
+                style={{
+                  display: 'grid', gridTemplateColumns: '80px 1fr auto',
+                  gap: 14, alignItems: 'center',
+                  padding: '12px 14px',
+                  background: 'var(--surface-2)',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                  All years
+                </div>
+                <div style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+                  every fiscal year combined · one file
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <DownloadButton
+                    href="/api/export/dividends-all"
+                    filename="dividends-all-years.csv"
+                    label="Dividends CSV"
+                    enabled={anyDividends}
+                  />
+                  <DownloadButton
+                    href="/api/export/capital-gains-all"
+                    filename="capital-gains-all-years.csv"
+                    label="Gains CSV"
+                    enabled={anySales}
+                  />
+                  <DownloadButton
+                    href="/api/export/tax-pack-all"
+                    filename="tax-pack-all-years.xlsx"
+                    label="Tax pack XLSX"
+                    enabled={anyDividends || anySales}
+                    variant="strong"
+                  />
+                </div>
+              </div>
+            )}
             {years.map((y, i) => (
               <div
                 key={y.year}
@@ -491,7 +534,7 @@ function ExportSection({
                   display: 'grid', gridTemplateColumns: '80px 1fr auto',
                   gap: 14, alignItems: 'center',
                   padding: '12px 14px',
-                  borderTop: i === 0 ? 0 : '1px solid var(--border)',
+                  borderTop: i === 0 && !showAllYears ? 0 : '1px solid var(--border)',
                 }}
               >
                 <div
