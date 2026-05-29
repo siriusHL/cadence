@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { withAuth, json, verifyPassword } from '@/lib/auth';
 import { getSupabaseServer } from '@/lib/supabase/server';
+import { getUserRole, isSupportRole } from '@/lib/roles';
 
 const Body = z.object({
   new_email:        z.string().trim().email(),
@@ -11,6 +12,10 @@ const Body = z.object({
 // sends a confirmation link to the new address — the change only takes
 // effect once that link is clicked.
 export const POST = withAuth({}, async ({ req }) => {
+  // Staff can't change their sign-in email — managed out-of-band.
+  const { role } = await getUserRole();
+  if (isSupportRole(role)) return json({ error: 'forbidden' }, 403);
+
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: 'invalid_body', detail: parsed.error.format() }, 400);
 

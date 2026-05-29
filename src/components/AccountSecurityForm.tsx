@@ -15,26 +15,39 @@ function explain(code: string | undefined, fallback: string) {
   return (code && ERROR_COPY[code]) || fallback;
 }
 
-export function AccountSecurityForm({ currentEmail }: { currentEmail: string }) {
+// `passwordOnly` is used by the staff support area: staff may only change their
+// password — email changes and account deletion are disabled (and also blocked
+// server-side in the matching API routes).
+export function AccountSecurityForm({
+  currentEmail,
+  passwordOnly = false,
+}: {
+  currentEmail: string;
+  passwordOnly?: boolean;
+}) {
   return (
     <>
-      <div className="pcard">
-        <div className="pcard-h"><div className="t">Email address</div></div>
-        <EmailSection currentEmail={currentEmail} />
-      </div>
+      {!passwordOnly && (
+        <div className="pcard">
+          <div className="pcard-h"><div className="t">Email address</div></div>
+          <EmailSection currentEmail={currentEmail} />
+        </div>
+      )}
 
       <div className="pcard">
         <div className="pcard-h"><div className="t">Password</div></div>
         <PasswordSection />
       </div>
 
-      <div
-        className="pcard"
-        style={{ borderColor: 'color-mix(in oklch, var(--danger) 35%, var(--border))' }}
-      >
-        <div className="pcard-h"><div className="t" style={{ color: 'var(--danger)' }}>Delete account</div></div>
-        <DeleteSection />
-      </div>
+      {!passwordOnly && (
+        <div
+          className="pcard"
+          style={{ borderColor: 'color-mix(in oklch, var(--danger) 35%, var(--border))' }}
+        >
+          <div className="pcard-h"><div className="t" style={{ color: 'var(--danger)' }}>Delete account</div></div>
+          <DeleteSection />
+        </div>
+      )}
     </>
   );
 }

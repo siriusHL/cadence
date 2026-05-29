@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { withAuth, json, verifyPassword } from '@/lib/auth';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { getUserRole, isSupportRole } from '@/lib/roles';
 
 const Body = z.object({
   current_password: z.string().min(1),
@@ -11,6 +12,10 @@ const Body = z.object({
 // password. Deleting the auth user cascades to profiles, subscriptions,
 // portfolios, holdings, transactions and alerts via "on delete cascade".
 export const DELETE = withAuth({}, async ({ userId, req }) => {
+  // Staff accounts can't be self-deleted — managed out-of-band.
+  const { role } = await getUserRole();
+  if (isSupportRole(role)) return json({ error: 'forbidden' }, 403);
+
   const parsed = Body.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: 'invalid_body', detail: parsed.error.format() }, 400);
 
