@@ -12,9 +12,10 @@ interface Props {
   initials: string;
   tier: Tier;
   isSupport?: boolean;
+  isAdmin?: boolean;
 }
 
-export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
+export function UserMenu({ email, initials, tier, isSupport = false, isAdmin = false }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -156,6 +157,13 @@ export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
             <>
               <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
               <MenuLink href="/support/messages" onSelect={() => setOpen(false)}>Support board</MenuLink>
+            </>
+          )}
+
+          {isAdmin && (
+            <>
+              <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+              <MenuLink href="/admin" onSelect={() => setOpen(false)}>Admin dashboard</MenuLink>
             </>
           )}
 

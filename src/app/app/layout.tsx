@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
+import { canAccessScreen, type Screen } from '@/lib/tiers';
+import { effectiveTier } from '@/lib/effectiveTier';
+import { isAdminEmail } from '@/lib/admin';
 import { NavTabs } from '@/components/NavTabs';
 import { DialogProvider } from '@/components/DialogProvider';
 import { UserMenu } from '@/components/UserMenu';
@@ -39,20 +41,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!user) redirect('/login');
 
   const [{ data: sub }, { data: profile }] = await Promise.all([
-    supabase.from('subscriptions').select('tier').eq('user_id', user.id).single(),
+    supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user.id).single(),
     supabase.from('profiles').select('role').eq('id', user.id).single(),
   ]);
-  const tier = (sub?.tier ?? 'free') as Tier;
+  const tier = effectiveTier(sub);
   const isSupport = isSupportRole((profile?.role ?? 'user') as Role);
+  const isAdmin = isAdminEmail(user.email);
 
   const tabs = [...FREE_TABS, ...PRO_TABS, ...ELITE_TABS].filter((t) =>
     canAccessScreen(tier, t.screen),
   );
 
-  const [portfolios, active] = await Promise.all([
+  const [portfolios, active, { data: site }] = await Promise.all([
     listOwnedPortfolios(supabase, user.id),
     getActivePortfolio(supabase, user.id),
+    supabase.from('site_settings').select('announcement, announcement_active').eq('id', 1).maybeSingle(),
   ]);
+  const banner = site?.announcement_active ? site.announcement : null;
 
   const initials =
     (user.email ?? '??').slice(0, 2).toUpperCase();
@@ -83,9 +88,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {planLabel}
             </span>
             <MailNavIcon />
-            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} isSupport={isSupport} />
+            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} isSupport={isSupport} isAdmin={isAdmin} />
           </div>
         </div>
+        {banner && (
+          <div role="status" style={{ padding: '8px 16px', background: 'var(--accent-soft)', color: 'var(--text)',
+            fontSize: 13, fontWeight: 500, textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
+            {banner}
+          </div>
+        )}
         <div className="scroll">{children}</div>
       </div>
     </DialogProvider>

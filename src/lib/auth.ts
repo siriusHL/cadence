@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { TIERS, type Tier, type Feature, can } from '@/lib/tiers';
+import { effectiveTier } from '@/lib/effectiveTier';
 
 export interface AuthCtx<P = Record<string, string>> {
   userId: string;
@@ -34,11 +35,11 @@ export function withAuth<P = Record<string, string>>(
 
     const { data: sub } = await supabase
       .from('subscriptions')
-      .select('tier')
+      .select('tier, admin_tier_override')
       .eq('user_id', user.id)
       .single();
 
-    const tier = (sub?.tier ?? 'free') as Tier;
+    const tier = effectiveTier(sub);
 
     if (opts.minTier && TIER_RANK[tier] < TIER_RANK[opts.minTier]) {
       return json(
