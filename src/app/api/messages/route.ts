@@ -85,7 +85,9 @@ export const POST = withAuth({}, async ({ userId, req }) => {
       .eq('id', resolvedThreadId);
   }
 
-  // Best-effort notification — never blocks or fails the request.
+  // Best-effort notification — never blocks or fails the request. The support
+  // board updates live via Realtime (RLS-scoped postgres_changes), so no extra
+  // server push is needed here.
   const { data: { user } } = await supabase.auth.getUser();
   if (user?.email) {
     await notifySupportOfMessage({
