@@ -1,18 +1,18 @@
-"""Shared pytest fixtures for the Cadence Selenium E2E suite.
+"""Shared pytest fixtures + self-contained HTML reporting for the Cadence
+Selenium E2E suite.
 
-Configuration is read from environment variables (CI) falling back to a
-local `env.txt` / `.env.local` at the repo root so the suite runs the same
-way locally and in GitHub Actions:
+Configuration is read from environment variables (CI) with a local fallback
+to env.txt / .env.local at the repo root and the seeded
+`tests/e2e/test-users.json` (free / premium / elite). Selenium 4.6+
+auto-provisions chromedriver via Selenium Manager, so no driver binary is
+needed.
 
-    E2E_BASE_URL    base URL of the running app   (default http://localhost:3000)
-    E2E_EMAIL       login email for the test user
-    E2E_PASSWORD    login password for the test user
-    E2E_HEADLESS    "0" to watch the browser locally (default headless)
-
-Selenium 4.6+ auto-provisions chromedriver via Selenium Manager, so no
-driver binary needs to be on PATH.
+    E2E_BASE_URL   base URL of the running app  (default http://localhost:3000)
+    E2E_EMAIL      login email (CI; overrides the seed file for E2E_TIER)
+    E2E_PASSWORD   login password (CI)
+    E2E_TIER       which tier `authed` logs in as (default elite)
+    E2E_HEADLESS   "0" to watch the browser locally (default headless)
 """
-
 from __future__ import annotations
 
 import json
@@ -29,10 +29,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-# Make the sibling `_report` module importable regardless of pytest's
-# rootdir / import-mode, then pull in the standalone HTML report renderer.
+# Make the sibling `_report` module and `helpers` package importable
+# regardless of pytest's import-mode / rootdir.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _report import render as render_report, render_markdown  # noqa: E402
+from helpers.waits import DEFAULT_TIMEOUT  # noqa: E402
+
+# Re-exported so the legacy flat tests still import cleanly during migration.
+from helpers.console import drain_console, severe_console_errors  # noqa: E402,F401
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -56,36 +60,31 @@ def _load_env_files() -> None:
 _load_env_files()
 
 
-def _creds_from_seed_file() -> dict | None:
-    """Fall back to the seeded credentials in tests/e2e/test-users.json
-    (written by scripts/seed-e2e-users.mjs) when E2E_EMAIL isn't set.
-
-    Defaults to the `elite` user so the authed + chart tests can reach
-    every screen; override with E2E_TIER=free|premium|elite.
-    """
+def _seeded_users() -> dict:
+    """All seeded tier users from tests/e2e/test-users.json (gitignored)."""
     f = Path(__file__).resolve().parent / "test-users.json"
     if not f.exists():
-        return None
+        return {}
     try:
-        users = json.loads(f.read_text(encoding="utf-8"))
+        return json.loads(f.read_text(encoding="utf-8"))
     except (ValueError, OSError):
-        return None
-    tier = os.environ.get("E2E_TIER", "elite")
-    return users.get(tier) or next(iter(users.values()), None)
+        return {}
 
 
+SEEDED = _seeded_users()
 BASE_URL = os.environ.get("E2E_BASE_URL", "http://localhost:3000").rstrip("/")
-E2E_EMAIL = os.environ.get("E2E_EMAIL", "")
-E2E_PASSWORD = os.environ.get("E2E_PASSWORD", "")
+DEFAULT_TIER = os.environ.get("E2E_TIER", "elite")
+_ENV_EMAIL = os.environ.get("E2E_EMAIL", "")
+_ENV_PASSWORD = os.environ.get("E2E_PASSWORD", "")
 
-# Local convenience: if no creds in the environment, use the seeded
-# users file. CI always provides E2E_EMAIL/PASSWORD via secrets, which
-# take precedence.
-if not E2E_EMAIL:
-    _seeded = _creds_from_seed_file()
-    if _seeded:
-        E2E_EMAIL = _seeded["email"]
-        E2E_PASSWORD = _seeded["password"]
+
+def creds_for(tier: str) -> tuple[str, str]:
+    """(email, password) for a tier. Explicit env creds win for the default
+    tier (the CI path); otherwise fall back to the seeded users file."""
+    if _ENV_EMAIL and tier == DEFAULT_TIER:
+        return _ENV_EMAIL, _ENV_PASSWORD
+    u = SEEDED.get(tier) or {}
+    return u.get("email", ""), u.get("password", "")
 
 
 @pytest.fixture(scope="session")
@@ -102,112 +101,105 @@ def driver():
     opts.add_argument("--no-sandbox")
     opts.add_argument("--disable-dev-shm-usage")
     opts.add_argument("--disable-gpu")
-    # Capture the browser console so smoke tests can assert "no errors".
+    # Capture the browser console so we can assert "no SEVERE errors".
     opts.set_capability("goog:loggingPrefs", {"browser": "ALL"})
 
     drv = webdriver.Chrome(options=opts)
-    # Generous page-load timeout: against a dev server (`npm run dev`),
-    # the first hit to each route triggers an on-demand Turbopack compile
-    # that can take tens of seconds. A production `next start` (CI) is
-    # pre-compiled and fast, so this only bites local dev runs.
-    drv.set_page_load_timeout(90)
-    drv.implicitly_wait(0)  # we use explicit waits everywhere
+    # Against a pre-compiled prod build pages are fast; keep timeouts tight
+    # so a genuinely hung route fails quickly rather than stalling the run.
+    drv.set_page_load_timeout(60)
+    drv.set_script_timeout(10)  # execute_async_script (paint-settle on screenshots)
+    drv.implicitly_wait(0)  # explicit waits everywhere
     yield drv
     drv.quit()
 
 
-@pytest.fixture(scope="session")
-def authed(driver, base_url):
-    """Log the test user in once for the whole session and return the driver.
+def _login(driver, base_url: str, email: str, password: str) -> None:
+    driver.get(f"{base_url}/login")
+    w = WebDriverWait(driver, DEFAULT_TIMEOUT)
+    email_in = w.until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, "input[type=email]"))
+    )
+    email_in.clear()
+    email_in.send_keys(email)
+    pw_in = driver.find_element(By.CSS_SELECTOR, "input[type=password]")
+    pw_in.clear()
+    pw_in.send_keys(password)
+    driver.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
+    # Login redirects to /app, which dispatches to /app/home or /app/dashboard
+    # by tier. Wait until we've left /login and reached /app.
+    w.until(lambda d: "/login" not in d.current_url and "/app" in d.current_url)
 
-    Skips (rather than fails) the dependent tests when no credentials are
-    configured, so the public-page smoke tests can still run standalone.
-    """
-    if not E2E_EMAIL or not E2E_PASSWORD:
-        pytest.skip("E2E_EMAIL / E2E_PASSWORD not set — skipping authed tests")
 
-    with allure.step(f"Log in as {E2E_EMAIL}"):
-        driver.get(f"{base_url}/login")
-        wait = WebDriverWait(driver, 60)
-        email_in = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "input[type=email]"))
-        )
-        email_in.clear()
-        email_in.send_keys(E2E_EMAIL)
-        pw_in = driver.find_element(By.CSS_SELECTOR, "input[type=password]")
-        pw_in.clear()
-        pw_in.send_keys(E2E_PASSWORD)
-        driver.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
-        # Login redirects to /app, which dispatches to /app/home or
-        # /app/dashboard depending on tier. Wait until we've left /login.
-        wait.until(lambda d: "/login" not in d.current_url and "/app" in d.current_url)
-
+def ensure_tier(driver, base_url: str, tier: str):
+    """Log the session driver in as `tier`, switching users only when it
+    differs from the current one (keeps the suite fast). Skips cleanly when
+    that tier has no seeded credentials."""
+    email, password = creds_for(tier)
+    if not email or not password:
+        pytest.skip(f"no credentials for '{tier}' — seed via `npm run seed:e2e-users`")
+    if getattr(driver, "_tier", None) == tier:
+        return driver
+    driver.delete_all_cookies()
+    with allure.step(f"Log in as {tier} ({email})"):
+        _login(driver, base_url, email, password)
+    driver._tier = tier
     return driver
 
 
+@pytest.fixture
+def authed(driver, base_url):
+    """Driver logged in as the default tier (elite locally / E2E_TIER in CI)."""
+    return ensure_tier(driver, base_url, DEFAULT_TIER)
+
+
+@pytest.fixture
+def as_free(driver, base_url):
+    return ensure_tier(driver, base_url, "free")
+
+
+@pytest.fixture
+def as_premium(driver, base_url):
+    return ensure_tier(driver, base_url, "premium")
+
+
+@pytest.fixture
+def as_elite(driver, base_url):
+    return ensure_tier(driver, base_url, "elite")
+
+
+@pytest.fixture
+def creds():
+    """Expose the creds_for(tier) lookup so tests can fetch a tier's login
+    (e.g. to drive a wrong-password attempt)."""
+    return creds_for
+
+
 def attach_screenshot(driver, name: str) -> None:
-    """Embed a PNG screenshot in the Allure report."""
-    allure.attach(
-        driver.get_screenshot_as_png(),
-        name=name,
-        attachment_type=allure.attachment_type.PNG,
-    )
+    """Legacy shim kept for the pre-migration flat tests. New tests use
+    `helpers.screenshot`, which waits for the page to settle first."""
+    from helpers.ui import screenshot
 
-
-# Console-noise allowlist — messages that are not real app errors.
-_CONSOLE_NOISE = (
-    "favicon.ico",
-    "Download the React DevTools",
-    "Failed to load resource: the server responded with a status of 404",  # missing logos etc.
-    "[Fast Refresh]",
-)
-
-
-def drain_console(driver) -> None:
-    """Discard any pending browser-console entries.
-
-    The WebDriver console log is session-cumulative and only cleared when
-    read. Call this right before navigating so a test's no-errors check
-    can't pick up errors bled from the previous test's page.
-    """
-    try:
-        driver.get_log("browser")
-    except Exception:  # noqa: BLE001 — some drivers don't expose logs
-        pass
-
-
-def severe_console_errors(driver) -> list[str]:
-    """Return SEVERE browser-console messages, minus known benign noise."""
-    out: list[str] = []
-    try:
-        logs = driver.get_log("browser")
-    except Exception:  # noqa: BLE001 — some drivers don't expose logs
-        return out
-    for entry in logs:
-        if entry.get("level") != "SEVERE":
-            continue
-        msg = entry.get("message", "")
-        if any(n in msg for n in _CONSOLE_NOISE):
-            continue
-        out.append(msg)
-    return out
+    screenshot(driver, name)
 
 
 # --------------------------------------------------------------------------
 # Custom self-contained HTML report  ->  tests/e2e/report.html
 #
-# Collect one flat result record per test and render a single, dependency-
-# free report at session end: all CSS inlined, no fetch()/external assets.
-# Each test's end-state screenshot is embedded (base64) behind a per-row
-# "click to reveal" toggle, so the file stays portable (no broken links)
-# and opens by double-click — no HTTP server, no "Failed to fetch". The
-# renderer lives in _report.py.
+# One flat result record per test, rendered into a single dependency-free
+# report at session end (CSS inlined, no fetch/external assets). Each test's
+# end-state screenshot is embedded (base64) behind a per-row "click to
+# reveal" toggle. Renderer lives in _report.py.
 # --------------------------------------------------------------------------
 
 _RESULTS: dict[str, dict] = {}
 _SHOTS: dict[str, str] = {}  # nodeid -> base64 PNG of the test's end state
 _RUN_META: dict = {}
 REPORT_PATH = Path(__file__).resolve().parent / "report.html"
+
+# Fixtures that hand back a live WebDriver, in priority order, so the report
+# hook can grab an end-of-test screenshot whichever one a test used.
+_DRIVER_FIXTURES = ("authed", "as_elite", "as_premium", "as_free", "driver")
 
 
 def pytest_sessionstart(session):  # noqa: ARG001
@@ -216,13 +208,12 @@ def pytest_sessionstart(session):  # noqa: ARG001
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):  # noqa: ARG001
-    """Grab the live driver's screenshot at the end of each test body, so
-    the report can offer a click-to-reveal shot per test."""
+    """Grab the live driver's screenshot at the end of each test body."""
     outcome = yield
     report = outcome.get_result()
     if report.when != "call":
         return
-    drv = item.funcargs.get("authed") or item.funcargs.get("driver")
+    drv = next((item.funcargs[n] for n in _DRIVER_FIXTURES if n in item.funcargs), None)
     if drv is None:
         return
     try:
@@ -232,8 +223,6 @@ def pytest_runtest_makereport(item, call):  # noqa: ARG001
 
 
 def _skip_reason(report) -> str:
-    """Pull a clean reason string out of a skipped report's longrepr
-    (which is a (path, lineno, 'Skipped: <reason>') tuple)."""
     lr = report.longrepr
     if isinstance(lr, tuple) and len(lr) == 3:
         reason = str(lr[2])
@@ -242,13 +231,12 @@ def _skip_reason(report) -> str:
 
 
 def pytest_runtest_logreport(report):
-    """Accumulate per-test status across setup/call/teardown phases."""
     rec = _RESULTS.setdefault(
         report.nodeid,
         {"nodeid": report.nodeid, "status": None, "dur": 0.0, "error": None},
     )
     rec["dur"] += report.duration or 0.0
-    if report.failed:  # any phase failing wins
+    if report.failed:
         rec["status"] = "failed"
         rec["error"] = str(report.longrepr)
     elif report.skipped and rec["status"] != "failed":
@@ -267,16 +255,12 @@ def pytest_sessionfinish(session, exitstatus):  # noqa: ARG001
             "browser": "Chrome (headless)"
             if os.environ.get("E2E_HEADLESS", "1") != "0"
             else "Chrome",
-            "account": f"{os.environ.get('E2E_TIER', 'elite')} tier"
-            if E2E_EMAIL
-            else "anonymous",
+            "account": f"{DEFAULT_TIER} tier",
         }
         records = [r for r in _RESULTS.values() if r["status"]]
         for r in records:
             r["shot"] = _SHOTS.get(r["nodeid"])
         REPORT_PATH.write_text(render_report(records, meta), encoding="utf-8")
-        # In CI, also render the report inline on the run's Summary page
-        # (no artifact download / unzip needed). No-op locally.
         summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
         if summary_path:
             with open(summary_path, "a", encoding="utf-8") as fh:

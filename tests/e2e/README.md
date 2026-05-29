@@ -4,22 +4,34 @@ A single browser-driven suite that walks every page, checks the data and
 charts rendered, and produces an Allure HTML report. Runs locally and as a
 required check on pull requests.
 
-## Layers
+## Structure
 
-| File | Marker | What it does |
-|------|--------|--------------|
-| `test_smoke.py`  | `smoke`  | Crawls every public + app route — asserts it mounts and the console has no errors. |
-| `test_data.py`   | `data`   | Clock-independent data integrity — holdings table renders real rows, "N of N" count matches, totals are numeric, dashboard value parses positive. |
-| `test_charts.py` | `charts` | Chart structure (rhythm bar count + Now marker + ticks, forecast bars + cumulative dots, donut segments) + embedded chart screenshots. |
-| `test_flows.py`  | `flows`  | (next phase) Drives create / delete / switch-portfolio mutations. |
+Organised by **category folder**, with a **file per sub-category**, tracing
+the risk-based design in [`TEST_PLAN.md`](./TEST_PLAN.md). Shared,
+dependency-light helpers live in `helpers/` — every helper **waits for the
+page to settle before asserting or screenshotting** (explicit waits only, no
+`time.sleep`, no fast screenshots).
 
-The `data` and `charts` layers require the test account to have a
-portfolio with holdings — they `skip` cleanly on an empty account. Seed a
-fixture portfolio (next phase) to make them run in CI.
+| Folder | Markers | Covers |
+|--------|---------|--------|
+| `cross_cutting/` | `smoke` `auth` `tier` `caps` `nfr` | Reachability crawl, authentication, tier-gating (tier × screen), capacity caps, perf/secret spot-checks — tested once, parametrised. |
+| `financial/` | `data` `charts` `visual` | Dashboard, holdings, dividends, performance, diversification, tax — data consistency + chart structure + geometry sanity. |
+| `mutations/` | `flows` | Add-holding, portfolios, account — input-validation & guard rejections via the API (non-destructive: rejected paths only). |
+| `public/` | `public` | Landing + pricing marketing pages (logged-out). |
+| `free_tier/` | `free` | Free-tier screens render for a free user. |
+| `acceptance/` | `acceptance` | Cross-page use-case journeys (read-only subset). |
+
+The `data` / `charts` / `visual` cases and the acceptance journey need the
+elite account to hold a portfolio — they `skip` cleanly otherwise (see
+seeding below). Destructive journeys (signup, checkout, delete-account) stay
+manual per the plan.
 
 ## Run it locally
 
-1. Have the app running (`npm run dev` → http://localhost:3000).
+1. Have the app running. For a fast, stable run prefer a **production build**
+   (pre-compiled, matches CI): `npm run build && npm run start`
+   (→ http://localhost:3000). `npm run dev` works too, but first-hit route
+   compiles are slow.
 2. Install deps (once):
    ```
    python -m pip install -r tests/e2e/requirements.txt
@@ -36,6 +48,11 @@ fixture portfolio (next phase) to make them run in CI.
    ```
    E2E_EMAIL=you@example.com
    E2E_PASSWORD=••••••••
+   ```
+   Finally, give the **elite** user a portfolio so the data / chart / tax
+   tests assert instead of skipping (idempotent — safe to re-run):
+   ```
+   E2E_BASE_URL=http://localhost:3000 python tests/e2e/_seed_portfolio.py
    ```
 4. Run:
    ```
@@ -57,10 +74,11 @@ fixture portfolio (next phase) to make them run in CI.
 
 Set `E2E_HEADLESS=0` to run headed locally.
 
-### Run a single layer
+### Run a single category or marker
 
 ```
-pytest -c tests/e2e/pytest.ini tests/e2e -m smoke
+pytest -c tests/e2e/pytest.ini tests/e2e/financial   # one category folder
+pytest -c tests/e2e/pytest.ini tests/e2e -m tier      # one marker
 ```
 
 ## Configuration
@@ -71,6 +89,7 @@ pytest -c tests/e2e/pytest.ini tests/e2e -m smoke
 | `E2E_EMAIL`    | —                        | Test-user login. Authed tests skip if unset. |
 | `E2E_PASSWORD` | —                        | Test-user password. |
 | `E2E_HEADLESS` | `1`                      | `0` to watch the browser. |
+| `E2E_TIER`     | `elite`                  | Which seeded tier `authed` logs in as (`free`/`premium`/`elite`). |
 
 Credentials come from CI secrets in GitHub Actions; never commit them.
 Selenium 4.6+ auto-provisions chromedriver, so no driver install is needed.
