@@ -11,9 +11,10 @@ interface Props {
   email: string;
   initials: string;
   tier: Tier;
+  isSupport?: boolean;
 }
 
-export function UserMenu({ email, initials, tier }: Props) {
+export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -150,6 +151,13 @@ export function UserMenu({ email, initials, tier }: Props) {
           <MenuLink href="mailto:feedback@cadence.app?subject=Cadence%20feedback" onSelect={() => setOpen(false)}>
             Send feedback
           </MenuLink>
+
+          {isSupport && (
+            <>
+              <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+              <MenuLink href="/support/messages" onSelect={() => setOpen(false)}>Support board</MenuLink>
+            </>
+          )}
 
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 

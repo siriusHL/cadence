@@ -8,6 +8,7 @@ import { UserMenu } from '@/components/UserMenu';
 import { MailNavIcon } from '@/components/MailNavIcon';
 import { MessagesRealtime } from '@/components/MessagesRealtime';
 import { PortfolioSwitcher } from '@/components/PortfolioSwitcher';
+import { isSupportRole, type Role } from '@/lib/roles';
 import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 
 interface NavTab { label: string; href: string; screen: Screen; }
@@ -37,12 +38,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('tier')
-    .eq('user_id', user.id)
-    .single();
+  const [{ data: sub }, { data: profile }] = await Promise.all([
+    supabase.from('subscriptions').select('tier').eq('user_id', user.id).single(),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+  ]);
   const tier = (sub?.tier ?? 'free') as Tier;
+  const isSupport = isSupportRole((profile?.role ?? 'user') as Role);
 
   const tabs = [...FREE_TABS, ...PRO_TABS, ...ELITE_TABS].filter((t) =>
     canAccessScreen(tier, t.screen),
@@ -82,7 +83,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {planLabel}
             </span>
             <MailNavIcon />
-            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} />
+            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} isSupport={isSupport} />
           </div>
         </div>
         <div className="scroll">{children}</div>

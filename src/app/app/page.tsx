@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
+import { isSupportRole, type Role } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,9 +11,12 @@ export default async function AppRoot() {
   if (!user) redirect('/login');
 
   const [{ data: profile }, { data: sub }] = await Promise.all([
-    supabase.from('profiles').select('default_screen').eq('id', user.id).maybeSingle(),
+    supabase.from('profiles').select('default_screen, role').eq('id', user.id).maybeSingle(),
     supabase.from('subscriptions').select('tier').eq('user_id', user.id).maybeSingle(),
   ]);
+
+  // Support/admin staff land on the support board, not the customer dashboard.
+  if (isSupportRole((profile?.role ?? 'user') as Role)) redirect('/support/messages');
 
   const tier = (sub?.tier ?? 'free') as Tier;
   const pref = (profile?.default_screen ?? null) as Screen | null;
