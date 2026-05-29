@@ -67,7 +67,7 @@ export function SectorDetailTable({
                 Yield
                 <InfoTooltip label="The forward dividend yield within this sector — how much income each €100 invested in this sector is producing." />
               </th>
-              <th style={{ width: 200 }}>
+              <th className="r" style={{ width: 200 }}>
                 vs STOXX 600
                 <InfoTooltip label="STOXX 600 is a broad index of 600 large European stocks. Comparing your sector weights against it shows where you're betting differently from the European market average." />
               </th>
