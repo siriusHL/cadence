@@ -95,13 +95,17 @@ def test_dashboard_value_is_numeric(authed, base_url):
     driver = authed
     _goto(driver, f"{base_url}/app/dashboard")
 
-    h1s = driver.find_elements(By.CSS_SELECTOR, "h1")
-    if not h1s:
-        pytest.skip("Dashboard not present for this tier")
+    # The portfolio value is the .pro-hero <h1> (e.g. "€1,234.56"). Target it
+    # specifically rather than scanning every <h1> on the page.
+    heroes = driver.find_elements(By.CSS_SELECTOR, ".pro-hero h1")
+    if not heroes:
+        pytest.skip("Dashboard hero not present (empty portfolio / tier without dashboard)")
 
     with allure.step("portfolio value parses to a positive number"):
-        # The hero h1 carries the portfolio value, e.g. "€1,020k".
-        hero_text = " ".join(h.text for h in h1s)
+        # Use textContent, not .text: the hero animates in (entrance transition),
+        # so Selenium's visible-text `.text` can return '' even though the value
+        # is in the DOM — same reason the chart's "Now" label uses textContent.
+        hero_text = (heroes[0].get_attribute("textContent") or "").strip()
         val = _parse_money(hero_text)
         assert val is not None and val > 0, f"dashboard hero not a positive €: {hero_text!r}"
 
