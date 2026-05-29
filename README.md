@@ -98,6 +98,31 @@ TODO: write the refresh jobs:
 - `fire-alerts` hourly (Elite)
 - `cadence-rescore` monthly
 
+## Daily repo digest
+
+`.github/workflows/daily-digest.yml` emails a summary of the previous day's
+work to the team every morning at **08:00 Paris time**. `scripts/daily-digest.mjs`
+pulls the day's merged PRs and direct commits to the default branch, then groups
+them by the `feature/` · `bugfix/` · `migration/` · `refacto/` branch convention
+(falling back to title keywords) into **New features / Bug fixes / Migrations /
+Refactors / Other**. Quiet days send nothing.
+
+GitHub cron is UTC-only, so the workflow fires at 06:00 and 07:00 UTC (which
+bracket 08:00 Paris across CET/CEST) and a guard step keeps only the run that
+lands on the local 8 o'clock hour. `workflow_dispatch` runs on demand and can
+target a specific `YYYY-MM-DD`.
+
+Add these repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Required | Notes |
+|---|---|---|
+| `DIGEST_RECIPIENTS` | yes | Comma-separated recipient emails |
+| `SMTP_HOST` | yes | e.g. `smtp.gmail.com` |
+| `SMTP_USERNAME` | yes | SMTP login / sending account |
+| `SMTP_PASSWORD` | yes | SMTP password (a Gmail **app password**, not your login password) |
+| `SMTP_PORT` | no | Defaults to `465` (implicit TLS) |
+| `SMTP_FROM` | no | Defaults to `SMTP_USERNAME` |
+
 ## Deploying
 
 Vercel Hobby is free and Next.js-native:

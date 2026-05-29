@@ -1,0 +1,87 @@
+name: Daily repo digest
+
+# Sends a categorized summary of the previous day's merged PRs and commits
+# to everyone on the recipient list, at 08:00 Paris time.
+#
+# GitHub cron is UTC-only, so we trigger at both 06:00 and 07:00 UTC (which
+# bracket 08:00 Paris across CET/CEST) and let a guard step keep only the run
+# that lands on the local 8 o'clock hour. A manual run always proceeds.
+#
+# Required repository secrets:
+#   SMTP_HOST          e.g. smtp.gmail.com
+#   SMTP_USERNAME      SMTP login (the sending account)
+#   SMTP_PASSWORD      SMTP password / app password
+#   DIGEST_RECIPIENTS  comma-separated recipient emails
+# Optional:
+#   SMTP_PORT          defaults to 465 (implicit TLS)
+#   SMTP_FROM          defaults to SMTP_USERNAME
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 08:00 Paris during CEST (summer, UTC+2)
+    - cron: "0 7 * * *" # 08:00 Paris during CET  (winter, UTC+1)
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: "Day to summarize (YYYY-MM-DD, Paris time). Defaults to yesterday."
+        required: false
+      send_if_empty:
+        description: "Send even if there was no activity"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keep only the run that is 08:00 in Paris
+        id: gate
+        run: |
+          hour=$(TZ=Europe/Paris date +%H)
+          echo "Paris hour is $hour"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$hour" = "08" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "Not 08:00 in Paris; skipping this trigger."
+          fi
+
+      - name: Checkout
+        if: steps.gate.outputs.proceed == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.gate.outputs.proceed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build digest
+        id: build
+        if: steps.gate.outputs.proceed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          DIGEST_TZ: Europe/Paris
+          TARGET_DATE: ${{ github.event.inputs.target_date }}
+          SEND_IF_EMPTY: ${{ github.event.inputs.send_if_empty }}
+        run: node scripts/daily-digest.mjs
+
+      - name: Send digest email
+        if: steps.gate.outputs.proceed == 'true' && steps.build.outputs.has_content == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_HOST }}
+          server_port: ${{ secrets.SMTP_PORT || '465' }}
+          secure: ${{ (secrets.SMTP_PORT || '465') == '465' }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          from: Cadence Digest <${{ secrets.SMTP_FROM || secrets.SMTP_USERNAME }}>
+          to: ${{ secrets.DIGEST_RECIPIENTS }}
+          subject: file://digest-subject.txt
+          html_body: file://digest.html
+          body: file://digest.txt
