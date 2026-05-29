@@ -102,6 +102,164 @@ body {
   width: 8px; height: 8px; border-radius: 50%;
   background: oklch(0.55 0.10 175);
 }
+/* Site-wide announcement banner — a light sheen sweeps across periodically so
+   it reads as a live promo rather than a static bar. Per-theme palettes are set
+   via the --ann-* custom properties (see announcementThemes.ts). */
+.cdn-announce {
+  --ann-bg: linear-gradient(90deg, var(--accent), oklch(0.55 0.12 175), var(--accent));
+  --ann-text: #fff;
+  --ann-sheen: rgba(255, 255, 255, 0.45);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 9px 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ann-text);
+  background: var(--ann-bg);
+  background-size: 200% 100%;
+  border-bottom: 1px solid var(--border);
+  animation: cdn-announce-bg 6s linear infinite;
+}
+.cdn-announce::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 35%, var(--ann-sheen) 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: cdn-announce-sheen 3.6s ease-in-out infinite;
+}
+.cdn-announce > span { position: relative; z-index: 1; }
+@keyframes cdn-announce-bg {
+  from { background-position: 0% 50%; }
+  to   { background-position: 200% 50%; }
+}
+@keyframes cdn-announce-sheen {
+  0%       { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
+
+/* Per-theme palettes */
+.cdn-announce--christmas    { --ann-bg: linear-gradient(90deg, #9b1c1c, #d62f2f, #9b1c1c); --ann-sheen: rgba(255,255,255,0.6); }
+.cdn-announce--black_friday { --ann-bg: linear-gradient(90deg, #0a0a0a, #1d1d1f, #0a0a0a); --ann-text: #f5c451; --ann-sheen: rgba(245,196,81,0.55); font-weight: 700; letter-spacing: 0.04em; }
+.cdn-announce--new_year     { --ann-bg: linear-gradient(90deg, #0b1437, #1b2a6b, #0b1437); --ann-text: #ffd86b; --ann-sheen: rgba(255,216,107,0.5); }
+.cdn-announce--valentines   { --ann-bg: linear-gradient(90deg, #c2185b, #e91e63, #c2185b); --ann-sheen: rgba(255,255,255,0.6); }
+.cdn-announce--halloween    { --ann-bg: linear-gradient(90deg, #1a1020, #3a1d4d, #1a1020); --ann-text: #ff8c1a; --ann-sheen: rgba(255,140,26,0.5); }
+.cdn-announce--summer       { --ann-bg: linear-gradient(90deg, #ff7043, #ffb74d, #ff7043); --ann-sheen: rgba(255,255,255,0.55); }
+
+/* ── Ambient effect overlay ───────────────────────────────────────────────
+   Full-screen, non-interactive layer of falling/floating particles rendered by
+   <AnnouncementFX/>. Particles read per-instance values from inline --* vars. */
+.cdn-fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 40;
+}
+.cdn-fx i {
+  position: absolute;
+  top: -8vh;
+  left: var(--x, 50%);
+  display: block;
+  animation-duration: var(--dur, 8s);
+  animation-delay: var(--delay, 0s);
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  will-change: transform, opacity;
+}
+/* Snow — soft white dots drifting down with a gentle sway */
+.cdn-fx.snow i {
+  width: var(--sz, 8px); height: var(--sz, 8px);
+  border-radius: 50%;
+  background: #fff;
+  opacity: var(--o, 0.9);
+  filter: blur(0.3px);
+  animation-name: cdn-fall-sway;
+}
+/* Confetti — colored rects tumbling down */
+.cdn-fx.confetti i {
+  width: var(--sz, 8px); height: calc(var(--sz, 8px) * 1.6);
+  background: var(--c, #ffd86b);
+  animation-name: cdn-fall-spin;
+}
+/* Sparks (Black Friday) — sparse gold flecks drifting up + twinkle */
+.cdn-fx.sparks i {
+  top: auto; bottom: -6vh;
+  width: var(--sz, 4px); height: var(--sz, 4px);
+  border-radius: 50%;
+  background: #f5c451;
+  box-shadow: 0 0 6px 1px rgba(245,196,81,0.7);
+  animation-name: cdn-rise, cdn-twinkle;
+  animation-duration: var(--dur, 9s), 1.4s;
+  animation-timing-function: linear, ease-in-out;
+}
+/* Hearts (Valentine's) — float up */
+.cdn-fx.hearts i {
+  top: auto; bottom: -8vh;
+  color: #ff7aa8;
+  font-size: var(--sz, 16px);
+  line-height: 1;
+  animation-name: cdn-rise;
+}
+.cdn-fx.hearts i::before { content: '\2665'; }
+/* Embers (Halloween) — glowing orange motes float up + flicker */
+.cdn-fx.embers i {
+  top: auto; bottom: -6vh;
+  width: var(--sz, 5px); height: var(--sz, 5px);
+  border-radius: 50%;
+  background: #ff8c1a;
+  box-shadow: 0 0 7px 1px rgba(255,140,26,0.7);
+  animation-name: cdn-rise, cdn-twinkle;
+  animation-duration: var(--dur, 10s), 1.1s;
+  animation-timing-function: linear, ease-in-out;
+}
+/* Rays (Summer) — soft diagonal light bars sweeping across */
+.cdn-fx.rays i {
+  top: -20vh; left: var(--x, 0);
+  width: 40vw; height: 160vh;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+  transform: rotate(18deg);
+  animation-name: cdn-ray-sweep;
+  animation-timing-function: ease-in-out;
+}
+
+@keyframes cdn-fall-sway {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  8%   { opacity: var(--o, 0.9); }
+  100% { transform: translate(var(--sway, 24px), 118vh); opacity: var(--o, 0.9); }
+}
+@keyframes cdn-fall-spin {
+  0%   { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(118vh) rotate(720deg); opacity: 1; }
+}
+@keyframes cdn-rise {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  12%  { opacity: 0.95; }
+  88%  { opacity: 0.95; }
+  100% { transform: translate(var(--sway, -20px), -120vh); opacity: 0; }
+}
+@keyframes cdn-twinkle {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+@keyframes cdn-ray-sweep {
+  0%   { transform: translateX(-60vw) rotate(18deg); }
+  100% { transform: translateX(160vw) rotate(18deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdn-announce { animation: none; background: var(--accent); }
+  .cdn-announce--christmas    { background: #b51e1e; }
+  .cdn-announce--black_friday { background: #1d1d1f; }
+  .cdn-announce--new_year     { background: #1b2a6b; }
+  .cdn-announce--valentines   { background: #d81b60; }
+  .cdn-announce--halloween    { background: #2a1638; }
+  .cdn-announce--summer       { background: #ff8a50; }
+  .cdn-announce::before { display: none; }
+  .cdn-fx { display: none; }
+}
 /* Pill-style tab nav (NavTabs component) */
 .cdn-free .fnav .cdn-tabs {
   display: flex;

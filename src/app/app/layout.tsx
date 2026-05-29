@@ -12,6 +12,8 @@ import { MessagesRealtime } from '@/components/MessagesRealtime';
 import { PortfolioSwitcher } from '@/components/PortfolioSwitcher';
 import { isSupportRole, type Role } from '@/lib/roles';
 import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
+import { AnnouncementFX } from '@/components/AnnouncementFX';
+import { normalizeTheme, bannerClass, effectFor } from '@/lib/announcementThemes';
 
 interface NavTab { label: string; href: string; screen: Screen; }
 
@@ -39,6 +41,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+  // Admins are an operations role with no customer app — the proxy already
+  // redirects /app/* to /admin; this is the defense-in-depth backstop.
+  if (isAdminEmail(user.email)) redirect('/admin');
 
   const [{ data: sub }, { data: profile }] = await Promise.all([
     supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user.id).single(),
@@ -46,7 +51,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ]);
   const tier = effectiveTier(sub);
   const isSupport = isSupportRole((profile?.role ?? 'user') as Role);
-  const isAdmin = isAdminEmail(user.email);
 
   const tabs = [...FREE_TABS, ...PRO_TABS, ...ELITE_TABS].filter((t) =>
     canAccessScreen(tier, t.screen),
@@ -55,9 +59,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [portfolios, active, { data: site }] = await Promise.all([
     listOwnedPortfolios(supabase, user.id),
     getActivePortfolio(supabase, user.id),
-    supabase.from('site_settings').select('announcement, announcement_active').eq('id', 1).maybeSingle(),
+    supabase.from('site_settings').select('announcement, announcement_active, announcement_theme').eq('id', 1).maybeSingle(),
   ]);
   const banner = site?.announcement_active ? site.announcement : null;
+  const theme = normalizeTheme(site?.announcement_theme);
+  const bannerFx = banner ? effectFor(theme) : 'none';
 
   const initials =
     (user.email ?? '??').slice(0, 2).toUpperCase();
@@ -88,15 +94,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               {planLabel}
             </span>
             <MailNavIcon />
-            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} isSupport={isSupport} isAdmin={isAdmin} />
+            <UserMenu email={user.email ?? ''} initials={initials} tier={tier} isSupport={isSupport} />
           </div>
         </div>
         {banner && (
-          <div role="status" style={{ padding: '8px 16px', background: 'var(--accent-soft)', color: 'var(--text)',
-            fontSize: 13, fontWeight: 500, textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
-            {banner}
+          <div role="status" className={bannerClass(theme)}>
+            <span>{banner}</span>
           </div>
         )}
+        {bannerFx !== 'none' && <AnnouncementFX effect={bannerFx} />}
         <div className="scroll">{children}</div>
       </div>
     </DialogProvider>

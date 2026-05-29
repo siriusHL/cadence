@@ -2,11 +2,13 @@ import { z } from 'zod';
 import { json } from '@/lib/auth';
 import { withAdmin, logAdminAction } from '@/lib/admin';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { ANNOUNCEMENT_THEME_KEYS } from '@/lib/announcementThemes';
 
 const Body = z.object({
   maintenance_mode: z.boolean().optional(),
   announcement: z.string().max(500).nullable().optional(),
   announcement_active: z.boolean().optional(),
+  announcement_theme: z.enum(ANNOUNCEMENT_THEME_KEYS as [string, ...string[]]).optional(),
 });
 
 // Update the single site_settings row (maintenance mode + announcement banner).

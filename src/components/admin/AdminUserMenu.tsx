@@ -1,25 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { type Tier } from '@/lib/tiers';
-import { useToast } from './DialogProvider';
-import { useUnreadMessages } from './useUnreadMessages';
 
 interface Props {
   email: string;
   initials: string;
-  tier: Tier;
-  isSupport?: boolean;
 }
 
-export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
-  const router = useRouter();
-  const toast = useToast();
+// Trimmed avatar menu for the admin shell. Mirrors SupportUserMenu — just the
+// account-level actions an admin needs here: their own profile, account &
+// security, and logout. Admins have no customer /app area to return to.
+export function AdminUserMenu({ email, initials }: Props) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const unreadMessages = useUnreadMessages();
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   // Close on outside click + Escape
@@ -37,32 +30,6 @@ export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
     };
   }, [open]);
 
-  async function onBilling() {
-    setOpen(false);
-    if (tier === 'free') {
-      router.push('/upgrade');
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await fetch('/api/billing/portal', { method: 'POST' });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        if (j.redirect) { router.push(j.redirect); return; }
-        toast(`Couldn't open billing portal: ${j.error ?? res.statusText}`, 'error');
-        return;
-      }
-      const { url } = await res.json();
-      window.location.href = url;       // full nav — Stripe-hosted page
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const planLabel = tier === 'free' ? 'Free plan'
-    : tier === 'premium' ? '✦ Premium'
-    : '✦ Elite';
-
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <button
@@ -70,7 +37,6 @@ export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
         aria-label="Account menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        disabled={busy}
         className="avatar"
         style={{
           width: 28, height: 28, borderRadius: '50%',
@@ -102,7 +68,7 @@ export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
             animation: 'cdn-menu-in 140ms ease-out',
           }}
         >
-          {/* Header — email + plan badge */}
+          {/* Header — email + admin badge */}
           <div style={{ padding: '10px 12px 8px' }}>
             <div style={{
               fontSize: 13, fontWeight: 600, color: 'var(--text)',
@@ -110,54 +76,15 @@ export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
             }}>
               {email}
             </div>
-            <div style={{
-              marginTop: 2,
-              fontSize: 11,
-              color: tier === 'free' ? 'var(--text-muted)' : 'var(--text)',
-              fontWeight: 500,
-            }}>
-              {planLabel}
+            <div style={{ marginTop: 2, fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+              Admin
             </div>
           </div>
 
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 
-          <MenuLink href="/app/profile" onSelect={() => setOpen(false)}>Profile</MenuLink>
-          <MenuLink href="/app/messages" onSelect={() => setOpen(false)}>
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              Messages
-              {unreadMessages > 0 && (
-                <span
-                  aria-hidden
-                  style={{
-                    minWidth: 16, height: 16, padding: '0 4px',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    borderRadius: 999,
-                    background: 'var(--danger, oklch(0.50 0.16 25))', color: '#fff',
-                    fontSize: 10, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
-                </span>
-              )}
-            </span>
-          </MenuLink>
-          <MenuLink href="/app/portfolios" onSelect={() => setOpen(false)}>Portfolios</MenuLink>
-          <MenuButton onClick={onBilling} disabled={busy}>
-            {tier === 'free' ? 'Upgrade plan' : 'Billing'}
-          </MenuButton>
-          <MenuLink href="/app/settings" onSelect={() => setOpen(false)}>Settings</MenuLink>
-          <MenuLink href="/app/account" onSelect={() => setOpen(false)}>Account &amp; security</MenuLink>
-          <MenuLink href="mailto:feedback@cadence.app?subject=Cadence%20feedback" onSelect={() => setOpen(false)}>
-            Send feedback
-          </MenuLink>
-
-          {isSupport && (
-            <>
-              <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-              <MenuLink href="/support/messages" onSelect={() => setOpen(false)}>Support board</MenuLink>
-            </>
-          )}
+          <MenuLink href="/admin/profile" onSelect={() => setOpen(false)}>Profile</MenuLink>
+          <MenuLink href="/admin/account" onSelect={() => setOpen(false)}>Account &amp; security</MenuLink>
 
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
 
@@ -200,22 +127,6 @@ function MenuLink({ href, onSelect, children }: { href: string; onSelect: () => 
     >
       {children}
     </Link>
-  );
-}
-
-function MenuButton({ onClick, children, disabled }: { onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      disabled={disabled}
-      style={menuItemStyle(false)}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-hover)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-    >
-      {children}
-    </button>
   );
 }
 

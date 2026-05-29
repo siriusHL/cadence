@@ -39,6 +39,12 @@ export async function proxy(req: NextRequest) {
     return res;
   }
 
+  // Admins are an operations role, not customers — they have no access to the
+  // customer app. Send any /app/* hit to the dashboard instead.
+  if (admin && pathname.startsWith('/app')) {
+    const url = req.nextUrl.clone(); url.pathname = '/admin'; return NextResponse.redirect(url);
+  }
+
   if (pathname.startsWith('/app')) {
     const { data: site } = await supabase.from('site_settings').select('maintenance_mode').eq('id', 1).maybeSingle();
     if (site?.maintenance_mode && !admin) {

@@ -35,8 +35,8 @@
   letter-spacing: 0.06em;
   padding: 2px 6px;
   border-radius: 5px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 .adm-nav {
@@ -54,15 +54,9 @@
   transition: background 100ms, color 100ms;
 }
 .adm-nav a:hover { background: var(--surface-hover); color: var(--text); }
-.adm-nav a.is-active { background: var(--accent-soft); color: var(--accent); }
+.adm-nav a.is-active { background: var(--accent); color: #fff; }
 
-.adm-exit {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--text-muted);
-  text-decoration: none;
-}
-.adm-exit:hover { color: var(--text); }
+.adm-spacer { margin-left: auto; }
 
 .adm-main {
   width: 100%;
@@ -128,8 +122,8 @@
   color: var(--text-muted);
 }
 .adm-pill.free { background: var(--surface-hover); color: var(--text-muted); }
-.adm-pill.premium { background: var(--accent-soft); color: var(--accent); }
-.adm-pill.elite { background: var(--accent); color: var(--btn-primary-text, #fff); }
+.adm-pill.premium { background: var(--accent); color: #fff; }
+.adm-pill.elite { background: var(--btn-primary-bg, #1d1d1f); color: var(--btn-primary-text, #fff); }
 .adm-pill.override {
   background: transparent;
   color: var(--danger);
@@ -173,9 +167,9 @@
 .adm-btn:hover { opacity: 0.9; }
 .adm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .adm-btn.ghost {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border-strong, var(--border));
+  background: var(--btn-primary-bg, #1d1d1f);
+  color: var(--btn-primary-text, #fff);
+  border-color: transparent;
 }
 .adm-btn.danger { background: var(--danger); color: #fff; }
 
