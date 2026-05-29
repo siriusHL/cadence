@@ -13,6 +13,14 @@
 # testing
 /coverage
 
+# e2e (Selenium + pytest + Allure) — generated artifacts only
+tests/e2e/.allure-results/
+tests/e2e/allure-report/
+tests/e2e/.pytest_cache/
+tests/e2e/report.html
+__pycache__/
+*.pyc
+
 # next.js
 /.next/
 /out/
