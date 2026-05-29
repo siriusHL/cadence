@@ -3,8 +3,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { requireSupportPage } from '@/lib/roles';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { StatusBadge } from '@/components/StatusBadge';
+import { TierBadge } from '@/components/TierBadge';
 import { MessageFilters } from '@/components/MessageFilters';
 import { inDateRange, buildListHref } from '@/lib/threadFilters';
+import { type Tier } from '@/lib/tiers';
+
+// Higher = higher support priority. Elite customers float to the top of the board.
+const TIER_RANK: Record<Tier, number> = { elite: 3, premium: 2, free: 1 };
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +60,14 @@ export default async function SupportMessagesScreen({
   const userIds = [...new Set(all.map((t) => t.user_id))];
   const labels = new Map<string, string>();
   const searchText = new Map<string, string>();
+  const tiers = new Map<string, Tier>();
   if (userIds.length) {
+    const { data: subs } = await admin
+      .from('subscriptions')
+      .select('user_id, tier')
+      .in('user_id', userIds);
+    for (const s of subs ?? []) tiers.set(s.user_id as string, (s.tier ?? 'free') as Tier);
+
     const { data: profiles } = await admin
       .from('profiles')
       .select('id, display_name')
@@ -94,12 +106,20 @@ export default async function SupportMessagesScreen({
     closed:   scoped.filter((t) => t.status === 'closed').length,
   };
 
-  const visible = scoped.filter((t) => {
-    if (active === 'open')     return t.status === 'open';
-    if (active === 'closed')   return t.status === 'closed';
-    if (active === 'awaiting') return awaitingIds.has(t.id);
-    return true;
-  });
+  const tierOf = (id: string): Tier => tiers.get(id) ?? 'free';
+  const visible = scoped
+    .filter((t) => {
+      if (active === 'open')     return t.status === 'open';
+      if (active === 'closed')   return t.status === 'closed';
+      if (active === 'awaiting') return awaitingIds.has(t.id);
+      return true;
+    })
+    // Prioritise by plan (Elite → Premium → Free), then most-recent first.
+    .sort((a, b) => {
+      const rankDiff = TIER_RANK[tierOf(b.user_id)] - TIER_RANK[tierOf(a.user_id)];
+      if (rankDiff !== 0) return rankDiff;
+      return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+    });
 
   return (
     <div className="cdn-pro">
@@ -198,7 +218,10 @@ export default async function SupportMessagesScreen({
                   {formatDistanceToNow(new Date(t.last_message_at), { addSuffix: true })}
                 </div>
               </div>
-              <StatusBadge kind={awaiting ? 'awaiting' : t.status} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <TierBadge tier={tierOf(t.user_id)} />
+                <StatusBadge kind={awaiting ? 'awaiting' : t.status} />
+              </div>
             </Link>
           );
         })}

@@ -22,6 +22,11 @@ interface Props {
   };
   taxResidences: { code: string; name: string }[];
   countries: { code: string; name: string }[];
+  // Support/admin staff land on this same page, but the KYC and investment
+  // fields (birth date, sex, address, base currency, tax residence) only apply
+  // to investing customers — hide them for staff. Their stored values are still
+  // submitted unchanged, so nothing is wiped.
+  isStaff?: boolean;
 }
 
 const CURRENCY_OPTIONS = ['EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK'];
@@ -31,7 +36,7 @@ const SEX_OPTIONS = [
   { value: 'male', label: 'Male' },
 ];
 
-export function ProfileForm({ initial, taxResidences, countries }: Props) {
+export function ProfileForm({ initial, taxResidences, countries, isStaff = false }: Props) {
   const router = useRouter();
   const toast = useToast();
   const [pending, start] = useTransition();
@@ -118,25 +123,27 @@ export function ProfileForm({ initial, taxResidences, countries }: Props) {
         />
       </Field>
 
-      <Row>
-        <Field label="Birth date">
-          <input
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            max={new Date().toISOString().slice(0, 10)}
-            style={inputStyle}
-          />
-        </Field>
-        <Field label="Sex">
-          <select value={sex} onChange={(e) => setSex(e.target.value)} style={inputStyle}>
-            <option value="">— not set —</option>
-            {SEX_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </Field>
-      </Row>
+      {!isStaff && (
+        <Row>
+          <Field label="Birth date">
+            <input
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              style={inputStyle}
+            />
+          </Field>
+          <Field label="Sex">
+            <select value={sex} onChange={(e) => setSex(e.target.value)} style={inputStyle}>
+              <option value="">— not set —</option>
+              {SEX_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </Field>
+        </Row>
+      )}
 
       <Field label="Phone number">
         <input
@@ -149,87 +156,91 @@ export function ProfileForm({ initial, taxResidences, countries }: Props) {
         />
       </Field>
 
-      <Divider label="Address" />
+      {!isStaff && (
+        <>
+          <Divider label="Address" />
 
-      <Field label="Address line 1">
-        <input
-          type="text"
-          value={addressLine1}
-          onChange={(e) => setAddressLine1(e.target.value)}
-          autoComplete="address-line1"
-          style={inputStyle}
-        />
-      </Field>
+          <Field label="Address line 1">
+            <input
+              type="text"
+              value={addressLine1}
+              onChange={(e) => setAddressLine1(e.target.value)}
+              autoComplete="address-line1"
+              style={inputStyle}
+            />
+          </Field>
 
-      <Field label="Address line 2">
-        <input
-          type="text"
-          value={addressLine2}
-          onChange={(e) => setAddressLine2(e.target.value)}
-          placeholder="Optional"
-          autoComplete="address-line2"
-          style={inputStyle}
-        />
-      </Field>
+          <Field label="Address line 2">
+            <input
+              type="text"
+              value={addressLine2}
+              onChange={(e) => setAddressLine2(e.target.value)}
+              placeholder="Optional"
+              autoComplete="address-line2"
+              style={inputStyle}
+            />
+          </Field>
 
-      <Row>
-        <Field label="City">
-          <input
-            type="text"
-            value={addressCity}
-            onChange={(e) => setAddressCity(e.target.value)}
-            autoComplete="address-level2"
-            style={inputStyle}
-          />
-        </Field>
-        <Field label="Postal code">
-          <input
-            type="text"
-            value={addressPostalCode}
-            onChange={(e) => setAddressPostalCode(e.target.value)}
-            autoComplete="postal-code"
-            style={inputStyle}
-          />
-        </Field>
-      </Row>
+          <Row>
+            <Field label="City">
+              <input
+                type="text"
+                value={addressCity}
+                onChange={(e) => setAddressCity(e.target.value)}
+                autoComplete="address-level2"
+                style={inputStyle}
+              />
+            </Field>
+            <Field label="Postal code">
+              <input
+                type="text"
+                value={addressPostalCode}
+                onChange={(e) => setAddressPostalCode(e.target.value)}
+                autoComplete="postal-code"
+                style={inputStyle}
+              />
+            </Field>
+          </Row>
 
-      <Field label="Country">
-        <select value={addressCountry} onChange={(e) => setAddressCountry(e.target.value)} style={inputStyle}>
-          <option value="">— not set —</option>
-          {countries.map((c) => (
-            <option key={c.code} value={c.code}>{c.name}</option>
-          ))}
-        </select>
-      </Field>
+          <Field label="Country">
+            <select value={addressCountry} onChange={(e) => setAddressCountry(e.target.value)} style={inputStyle}>
+              <option value="">— not set —</option>
+              {countries.map((c) => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+          </Field>
 
-      <Divider label="Preferences" />
+          <Divider label="Preferences" />
 
-      <Field label="Base currency"
-        help="Used to format portfolio totals across the app.">
-        <select
-          value={baseCurrency}
-          onChange={(e) => setBaseCurrency(e.target.value)}
-          style={inputStyle}
-        >
-          {CURRENCY_OPTIONS.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </Field>
+          <Field label="Base currency"
+            help="Used to format portfolio totals across the app.">
+            <select
+              value={baseCurrency}
+              onChange={(e) => setBaseCurrency(e.target.value)}
+              style={inputStyle}
+            >
+              {CURRENCY_OPTIONS.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
 
-      <Field label="Tax residence"
-        help="Drives the residence-side tax model on the Tax screen — final dividend tax, foreign credit, annual allowances.">
-        <select
-          value={taxCountry}
-          onChange={(e) => setTaxCountry(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="">— not set —</option>
-          {taxResidences.map((c) => (
-            <option key={c.code} value={c.code}>{c.name}</option>
-          ))}
-        </select>
-      </Field>
+          <Field label="Tax residence"
+            help="Drives the residence-side tax model on the Tax screen — final dividend tax, foreign credit, annual allowances.">
+            <select
+              value={taxCountry}
+              onChange={(e) => setTaxCountry(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">— not set —</option>
+              {taxResidences.map((c) => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+          </Field>
+        </>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
         <button
