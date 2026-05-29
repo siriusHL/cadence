@@ -1,0 +1,221 @@
+name: E2E (Selenium)
+
+# Required check on PRs into develop / main. Boots the app against a seeded
+# test database, runs the Selenium suite headless, and publishes an Allure
+# HTML report as a downloadable artifact. A failing suite blocks merge.
+
+on:
+  # Required gate: PRs into the long-lived branches run the full suite
+  # before merge.
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+# Pages publish (deploy job) needs these; the test job only reads contents.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # ── Public client config ─────────────────────────────────────────
+      # The anon (publishable) key ships in the browser bundle and is gated
+      # by RLS, so it's safe to commit. A repo secret overrides if present.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL || 'https://xlatjjymeuvenkgcbwcp.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY || 'sb_publishable_iaIcPs2pQyt3bM1RNXbyig_CzHD4_OM' }}
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      # ── Server-only secrets — NEVER hardcode (this repo is public) ────
+      # Required for the authed/data/chart tests: the data layer uses the
+      # Supabase admin client (bypasses RLS) and the market-data APIs
+      # server-side, so without these the app 500s and those tests fail.
+      # Add them under Settings → Secrets and variables → Actions:
+      #   E2E_SUPABASE_SERVICE_ROLE_KEY, E2E_TWELVE_DATA_KEY, E2E_FMP_KEY
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      TWELVE_DATA_KEY: ${{ secrets.E2E_TWELVE_DATA_KEY }}
+      FMP_KEY: ${{ secrets.E2E_FMP_KEY }}
+      # ── Test-suite config ─────────────────────────────────────────────
+      # Login creds fall back to the committed tests/e2e/test-users.json
+      # when these secrets are unset, so they're optional.
+      E2E_BASE_URL: http://localhost:3000
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      E2E_HEADLESS: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Fail fast (before the costly build) with a clear message if a
+      # required value didn't reach the environment — usually a repo
+      # secret that's misnamed. Prints only whether each var is set,
+      # never its value. Beats debugging 18 opaque "500" failures later.
+      - name: Check required env is present
+        run: |
+          missing=0
+          for v in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY \
+                   SUPABASE_SERVICE_ROLE_KEY TWELVE_DATA_KEY FMP_KEY; do
+            if [ -n "${!v}" ]; then
+              echo "  set:     $v"
+            else
+              echo "  MISSING: $v"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Required env var(s) empty. Add the matching repo secrets under Settings → Secrets and variables → Actions: E2E_SUPABASE_SERVICE_ROLE_KEY, E2E_TWELVE_DATA_KEY, E2E_FMP_KEY."
+            exit 1
+          fi
+
+      - name: Install Node deps
+        run: npm ci
+
+      - name: Install Python deps
+        run: python -m pip install -r tests/e2e/requirements.txt
+
+      # Chrome is preinstalled on ubuntu-latest runners; Selenium Manager
+      # provisions the matching chromedriver at runtime.
+
+      - name: Build app
+        run: npm run build
+
+      # TODO (next phase): seed the deterministic fixture DB here, e.g.
+      #   node scripts/seed-e2e-fixtures.mjs
+
+      - name: Start app
+        run: |
+          # Capture server output so runtime errors (the real cause behind
+          # any "Server Components render" 500s) are inspectable afterwards.
+          npm run start > server.log 2>&1 &
+          # Wait for the server to accept connections (max ~60s).
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/login >/dev/null; then
+              echo "App is up"; break
+            fi
+            sleep 1
+          done
+
+      - name: Run E2E suite
+        # report.html is written by our own renderer (conftest hooks +
+        # _report.py); the Allure results feed the optional Allure report.
+        run: >
+          pytest -c tests/e2e/pytest.ini tests/e2e
+          --alluredir=tests/e2e/.allure-results
+
+      # The Next.js server logs the real stack trace to stderr when a route
+      # 500s (production hides it from the browser). Surface it here so a
+      # failing run explains itself without needing a local repro.
+      - name: Dump server log
+        if: always()
+        run: |
+          echo "===== server.log (tail) ====="
+          tail -n 120 server.log || echo "(no server.log)"
+
+      # Generate the Allure HTML via the JS allure-commandline (no Docker
+      # action — the previous Docker-based action failed to build its
+      # image and aborted the whole job in ~10s). `continue-on-error`
+      # keeps report-generation hiccups from masking the test result.
+      #
+      # allure-combine then inlines the whole SPA into a single
+      # `complete.html`. The normal `index.html` loads its data via
+      # fetch(), which browsers block over file:// — so a downloaded
+      # report shows "Failed to fetch" unless served over HTTP.
+      # `complete.html` is self-contained and opens by double-click.
+      - name: Build Allure report
+        if: always()
+        continue-on-error: true
+        run: |
+          npx --yes allure-commandline generate tests/e2e/.allure-results --clean -o tests/e2e/allure-report
+          python -m pip install --quiet allure-combine
+          allure-combine tests/e2e/allure-report --dest tests/e2e/allure-report \
+            || echo "allure-combine failed — index.html still works when served over HTTP"
+
+      # Single self-contained HTML — download and double-click, no server.
+      - name: Upload self-contained HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-html
+          path: tests/e2e/report.html
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log
+          path: server.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Allure report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: tests/e2e/allure-report
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload raw results + screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: tests/e2e/.allure-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Publish report.html to GitHub Pages as a live, no-download URL — runs
+  # even when the suite fails (if: always()), so the report (screenshots
+  # included) is always viewable at the Pages URL.
+  publish-report:
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Download report
+        uses: actions/download-artifact@v4
+        with:
+          name: report-html
+          path: _site
+
+      - name: Make report the landing page
+        run: |
+          if [ -f _site/report.html ]; then cp _site/report.html _site/index.html; fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
