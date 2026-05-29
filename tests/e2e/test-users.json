@@ -1,7 +1,17 @@
 {
+  "free": {
+    "email": "e2e-free@example.com",
+    "password": "e2e-free-pass",
+    "tier": "free"
+  },
+  "premium": {
+    "email": "e2e-premium@example.com",
+    "password": "e2e-premium-pass",
+    "tier": "premium"
+  },
   "elite": {
-    "email": "ricoh72289@bittnex.com",
-    "password": "Hleg2026",
+    "email": "e2e-elite@example.com",
+    "password": "e2e-elite-pass",
     "tier": "elite"
   }
 }
