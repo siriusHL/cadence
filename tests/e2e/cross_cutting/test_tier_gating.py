@@ -71,3 +71,28 @@ def test_elite_reaches_all_screens(as_elite, base_url, screen):
 def test_export_requires_elite(as_premium, base_url):
     res = api(as_premium, "GET", "/api/export/capital-gains-all")
     assert res["status"] == 402, f"expected 402 upgrade_required for premium export, got {res}"
+
+
+@allure.feature("Tier-gating")
+@allure.story("elite bounced from /upgrade — top tier, nothing to buy (TC-TIER-07)")
+@pytest.mark.tier
+def test_elite_blocked_from_upgrade(as_elite, base_url):
+    # /upgrade has its own server-side tier guard (src/app/upgrade/page.tsx):
+    # elite is redirected to /app so it can never start a redundant checkout.
+    drain_console(as_elite)
+    as_elite.get(f"{base_url}/upgrade")
+    wait_url_contains(as_elite, "/app")
+    assert "/upgrade" not in as_elite.current_url, (
+        f"elite should be redirected off /upgrade, got {as_elite.current_url}"
+    )
+
+
+@allure.feature("Tier-gating")
+@allure.story("premium reaches /upgrade to buy elite (TC-TIER-07)")
+@pytest.mark.tier
+def test_premium_reaches_upgrade(as_premium, base_url):
+    goto(as_premium, f"{base_url}/upgrade")
+    assert "/upgrade" in as_premium.current_url, (
+        f"premium should see /upgrade, got {as_premium.current_url}"
+    )
+    assert "/login" not in as_premium.current_url

@@ -18,5 +18,16 @@ export default async function UpgradePage(
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 
+  // Elite is the top tier — there's nothing to upgrade to, and starting a
+  // checkout would risk a redundant subscription. Send them back to the app
+  // (plan changes/cancellation happen via the billing portal). Free + premium
+  // both have a higher tier to buy, so they see the page.
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('tier')
+    .eq('user_id', user.id)
+    .single();
+  if (sub?.tier === 'elite') redirect('/app');
+
   return <UpgradeContent />;
 }
