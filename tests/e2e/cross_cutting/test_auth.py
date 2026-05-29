@@ -45,6 +45,21 @@ def test_unauthenticated_redirects_to_login(driver, base_url, route):
 
 
 @allure.feature("Auth")
+@allure.story("Unauthenticated /upgrade → /login?next= (TC-AUTH-01b)")
+@pytest.mark.auth
+def test_unauthenticated_upgrade_redirects_to_login(driver, base_url):
+    # /upgrade is not under /app/* — it has its own server-side auth guard
+    # (defense in depth on top of the proxy) so it can never render the
+    # pricing/checkout UI to a signed-out visitor.
+    _logout(driver)
+    drain_console(driver)
+    driver.get(f"{base_url}/upgrade?from=dashboard")
+    wait_url_contains(driver, "/login")
+    assert "/login" in driver.current_url
+    assert "next=" in driver.current_url, f"missing next= param: {driver.current_url}"
+
+
+@allure.feature("Auth")
 @allure.story("Valid email + correct password → /app (TC-AUTH-02)")
 @pytest.mark.auth
 def test_login_valid(authed):
