@@ -1,18 +1,23 @@
 import Link from 'next/link';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { getActivePortfolio } from '@/lib/activePortfolio';
+import { effectiveTier } from '@/lib/effectiveTier';
 import { getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import {
   getTaxSummary, computeDomesticTax,
   getCapitalGainsSummary, computeCapitalGainsTax,
-  DEFAULT_RESIDENCE, COUNTRY_NAMES,
-  type TaxResidence, type DomesticTaxBreakdown, type ResidenceModel,
-  type CapitalGainsSummary, type CGTBreakdown, type CGTModel,
+  DEFAULT_RESIDENCE, COUNTRY_NAMES, IE_BAND_MARGINAL_PCT,
+  type TaxResidence, type TaxSummary, type DomesticTaxBreakdown, type ResidenceModel,
+  type CapitalGainsSummary, type CGTBreakdown, type CGTModel, type DividendTaxBand,
 } from '@/lib/tax';
 import { getActivityYears } from '@/lib/export';
 import { EmptyState } from '@/components/EmptyState';
 import { InfoTooltip } from '@/components/InfoTooltip';
+import { SendToAccountantModal } from '@/components/SendToAccountantModal';
+import { AccountantSendHistory } from '@/components/AccountantSendHistory';
+import { Box3ValueEditor } from '@/components/Box3ValueEditor';
+import { DividendTaxBandEditor } from '@/components/DividendTaxBandEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +30,102 @@ function fmtPct(n: number, digits = 1): string {
   return `${n.toFixed(digits)}%`;
 }
 
+/**
+ * Compose the default (editable) email the user sends to their accountant.
+ * Plain text — the user can tweak it in the preview before it goes out.
+ */
+function buildAccountantEmail(args: {
+  fiscalYear: number;
+  residenceName: string;
+  senderName: string;
+  summary: TaxSummary;
+  domestic: DomesticTaxBreakdown;
+  capitalGains: CapitalGainsSummary;
+  cgt: CGTBreakdown;
+  finalNetEur: number;
+  /** Whether the tax-pack workbook is attached by default (elite tier). */
+  attached: boolean;
+}): { subject: string; body: string } {
+  const { fiscalYear, residenceName, senderName, summary, domestic, capitalGains, cgt, finalNetEur, attached } = args;
+  const m = (n: number) => `€${fmtMoney(n, 2)}`;
+
+  const jurisdictionLines = summary.rows.length
+    ? summary.rows
+        .map((r) => `  - ${r.countryName}: gross ${m(r.grossEur)}, withheld ${m(r.withheldEur)} (${fmtPct(r.effectiveRate)})`)
+        .join('\n')
+    : '  - No foreign dividend withholding recorded.';
+
+  const subject = `Tax summary ${fiscalYear}${senderName ? ` — ${senderName}` : ''}`;
+
+  const body = [
+    'Hi,',
+    '',
+    `Please find below my ${fiscalYear} investment tax summary from Cadence (resident in ${residenceName}).`,
+    '',
+    'Dividends',
+    `  - Gross dividends: ${m(summary.totalGrossEur)}`,
+    `  - Foreign withholding: ${m(summary.totalWithheldEur)}`,
+    `  - ${residenceName} tax due: ${m(domestic.finalEur)}`,
+    `  - Net after all taxes: ${m(finalNetEur)}`,
+    `  - Reclaimable foreign tax: ${m(summary.totalReclaimableEur)}`,
+    '',
+    'Withholding by jurisdiction',
+    jurisdictionLines,
+    '',
+    'Capital gains',
+    `  - Net realised gain/loss: ${m(capitalGains.totalRealizedGainEur)}`,
+    `  - Estimated ${residenceName} CGT: ${m(cgt.taxDueEur)}`,
+    '',
+    attached
+      ? `The full ${fiscalYear} tax pack (dividends + capital gains, .xlsx) is attached.`
+      : 'Full CSV / XLSX exports are available on request.',
+    '',
+    'Thanks,',
+    senderName || '',
+  ].join('\n');
+
+  return { subject, body };
+}
+
+/**
+ * Cover-note email for the "Send all years" handoff. Deliberately light — the
+ * combined multi-year tax-pack workbook (attached) is the source of truth for
+ * the per-year figures, so the body just frames the years covered rather than
+ * re-deriving every year's tax on the request path.
+ */
+function buildAllYearsAccountantEmail(args: {
+  years: number[];
+  residenceName: string;
+  senderName: string;
+  attached: boolean;
+}): { subject: string; body: string } {
+  const { years, residenceName, senderName, attached } = args;
+  const asc = [...years].sort((a, b) => a - b);
+  const min = asc[0];
+  const max = asc[asc.length - 1];
+  const range = min === max ? `${min}` : `${min}–${max}`;
+  const yearsList = [...years].sort((a, b) => b - a).join(', ');
+
+  const subject = `Tax summary ${range}${senderName ? ` — ${senderName}` : ''}`;
+
+  const body = [
+    'Hi,',
+    '',
+    `Please find my full investment tax summary from Cadence covering fiscal years ${range} (resident in ${residenceName}).`,
+    '',
+    `Fiscal years included: ${yearsList}.`,
+    '',
+    attached
+      ? 'The combined multi-year tax pack (.xlsx) is attached — separate Dividends and Capital gains sheets, each carrying a Fiscal year column so the data stays groupable by year.'
+      : 'Full per-year CSV / XLSX exports are available on request.',
+    '',
+    'Thanks,',
+    senderName || '',
+  ].join('\n');
+
+  return { subject, body };
+}
+
 export default async function TaxScreen({
   searchParams,
 }: {
@@ -33,10 +134,16 @@ export default async function TaxScreen({
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: profile }, portfolio] = await Promise.all([
-    supabase.from('profiles').select('tax_country, base_currency').eq('id', user!.id).maybeSingle(),
+  const [{ data: profile }, { data: sub }, { data: recentSends, count: sendsCount }, portfolio] = await Promise.all([
+    supabase.from('profiles').select('tax_country, base_currency, accountant_email, dividend_tax_band, display_name, first_name, last_name').eq('id', user!.id).maybeSingle(),
+    supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user!.id).maybeSingle(),
+    supabase.from('accountant_sends').select('recipient, fiscal_year, attached_pack, all_years, created_at', { count: 'exact' }).eq('user_id', user!.id).order('created_at', { ascending: false }).limit(5),
     getActivePortfolio(supabase, user!.id),
   ]);
+
+  // The tax-pack attachment is the same elite-only artefact as the Export
+  // section, so only offer it to elite users.
+  const canAttachTaxPack = effectiveTier(sub) === 'elite';
 
   if (!portfolio) {
     return (
@@ -91,14 +198,34 @@ export default async function TaxScreen({
   const cgt = computeCapitalGainsTax(capitalGains);
 
   // Domestic tax: residence-side layer (final tax minus foreign credit).
-  // NL Box 3 needs the user's portfolio value at 1 Jan — for v0 we approximate
-  // with the current total holdings value as a rough proxy.
+  // NL Box 3 is charged on the portfolio value at 1 January, which can't be
+  // derived from today's holdings — the user records it per year. We pass the
+  // saved value when present; today's holdings value is only a starting-point
+  // suggestion offered in the editor, never used as the basis silently.
   const approxPortfolioValueEur = held.reduce(
     (s, h) => s + (h.price ?? 0) * h.quantity,
     0,
   );
+  const isBox3 = residence === 'NL';
+  const { data: box3Row } = isBox3
+    ? await supabase
+        .from('box3_values')
+        .select('value_eur')
+        .eq('user_id', user!.id)
+        .eq('fiscal_year', fiscalYear)
+        .maybeSingle()
+    : { data: null };
+  const box3ValueJan1 = box3Row?.value_eur != null ? Number(box3Row.value_eur) : null;
+
+  // IE taxes dividends at the user's income-tax band. Use their saved band when
+  // set; otherwise the model default (higher rate) preserves prior behaviour.
+  const isMarginalIE = residence === 'IE';
+  const dividendTaxBand = (profile?.dividend_tax_band as DividendTaxBand | null | undefined) ?? null;
+  const marginalPct = dividendTaxBand != null ? IE_BAND_MARGINAL_PCT[dividendTaxBand] : undefined;
+
   const domestic = computeDomesticTax(summary, {
-    portfolioValueJan1: approxPortfolioValueEur,
+    portfolioValueJan1: box3ValueJan1 ?? undefined,
+    marginalPct,
   });
 
   const finalNetEur = summary.totalNetEur - domestic.finalEur;
@@ -111,6 +238,24 @@ export default async function TaxScreen({
   // Headline copy variation depending on whether we have any data at all.
   const hasAnyData = summary.totalGrossEur > 0;
   const residenceName = COUNTRY_NAMES[residence] ?? residence;
+
+  // Default "Send to accountant" email — editable in the preview popup.
+  const senderName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim()
+    || (profile?.display_name ?? '');
+  const { subject: emailSubject, body: emailBody } = buildAccountantEmail({
+    fiscalYear, residenceName, senderName, summary, domestic, capitalGains, cgt, finalNetEur,
+    attached: canAttachTaxPack,
+  });
+
+  // "Send all years" bundles the combined multi-year tax-pack workbook, so it's
+  // only offered to elite users (same gate as the attachment) and only when
+  // there's more than one fiscal year of activity to combine — mirrors the
+  // Export section's "All years" row.
+  const activityYearNums = activityYears.map((y) => y.year);
+  const showAllYearsSend = canAttachTaxPack && activityYearNums.length > 1;
+  const allYearsEmail = showAllYearsSend
+    ? buildAllYearsAccountantEmail({ years: activityYearNums, residenceName, senderName, attached: true })
+    : null;
 
   return (
     <div className="cdn-pro">
@@ -327,6 +472,20 @@ export default async function TaxScreen({
             residenceName={residenceName}
             finalNetEur={finalNetEur}
           />
+          {isBox3 && (
+            <div style={{ padding: '4px 4px 14px' }}>
+              <Box3ValueEditor
+                fiscalYear={fiscalYear}
+                initialValue={box3ValueJan1}
+                approxValue={approxPortfolioValueEur}
+              />
+            </div>
+          )}
+          {isMarginalIE && (
+            <div style={{ padding: '4px 4px 14px' }}>
+              <DividendTaxBandEditor initialBand={dividendTaxBand} />
+            </div>
+          )}
         </div>
 
         {/* Reclaim opportunities */}
@@ -401,6 +560,73 @@ export default async function TaxScreen({
         residenceName={residenceName}
         fiscalYear={fiscalYear}
       />
+
+      {/* ─── Send to accountant ──────────────────────────────────────── */}
+      <div className="pcard" style={{ marginTop: 14 }}>
+        <div className="pcard-h">
+          <div className="t">
+            Send to accountant
+            <InfoTooltip label="Emails a plain-text summary of this year's dividend tax, withholding and capital gains to your accountant. The preview is fully editable before it's sent, and the recipient defaults to the accountant email in your settings." />
+          </div>
+          <span className="tag">{fiscalYear} · editable preview</span>
+        </div>
+        <div style={{ padding: '12px 4px 4px' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+            {profile?.accountant_email
+              ? <>Goes to{' '}
+                  <Link
+                    href="/app/settings#accountant-email"
+                    style={{ color: 'var(--text)', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                    title="Change the saved accountant email in Settings"
+                  >
+                    {profile.accountant_email}
+                  </Link>{' '}
+                  by default — you can change the recipient and edit the message before sending.</>
+              : <>No accountant email saved yet. Add one to pre-fill the recipient every time, or just type one into the preview.</>}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {!profile?.accountant_email && (
+              <Link
+                href="/app/settings"
+                className="btn"
+                style={{
+                  height: 36, padding: '0 18px',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                  borderRadius: 999, fontSize: 14, fontWeight: 500,
+                  textDecoration: 'none',
+                }}
+              >
+                + Add accountant email
+              </Link>
+            )}
+            <SendToAccountantModal
+              accountantEmail={profile?.accountant_email ?? ''}
+              defaultSubject={emailSubject}
+              defaultBody={emailBody}
+              year={fiscalYear}
+              canAttach={canAttachTaxPack}
+              primary={Boolean(profile?.accountant_email)}
+            />
+            {allYearsEmail && (
+              <SendToAccountantModal
+                accountantEmail={profile?.accountant_email ?? ''}
+                defaultSubject={allYearsEmail.subject}
+                defaultBody={allYearsEmail.body}
+                year={fiscalYear}
+                canAttach={canAttachTaxPack}
+                allYears
+                primary={false}
+                triggerLabel="Send all years"
+              />
+            )}
+          </div>
+          <AccountantSendHistory
+            initial={recentSends ?? []}
+            total={sendsCount ?? (recentSends?.length ?? 0)}
+          />
+        </div>
+      </div>
 
       {/* ─── Export tax data ─────────────────────────────────────────── */}
       <ExportSection years={activityYears} />

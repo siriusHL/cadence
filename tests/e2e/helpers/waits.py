@@ -75,6 +75,19 @@ def wait_text(driver, css: str, timeout=None):
     return driver.find_element(By.CSS_SELECTOR, css)
 
 
+def wait_text_in(driver, text: str, timeout=None) -> None:
+    """Wait until the page body contains `text` (case-insensitive).
+
+    For asserting that a rendered *phrase* appeared — unlike `wait_text`,
+    which takes a CSS selector and returns an element handle. Use this when
+    what you're waiting on is copy ("Send to accountant"), not an element.
+    """
+    needle = text.lower()
+    wait(driver, timeout).until(
+        lambda d: needle in (d.find_element(By.CSS_SELECTOR, "body").text or "").lower()
+    )
+
+
 def present_or_skip(driver, css: str, reason: str, timeout: int = 8):
     """Wait for `css` to appear; pytest.skip(reason) if it never does.
 

@@ -208,6 +208,12 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-TAX-04 | CGT (FIFO) + `hasUnmatchedSells` warning surfaces | Use-case | P2 | ➕ |
 | TC-TAX-05 | Export `?year=` API: 1899/1900/2999/3000 → 400 vs 200 | **BVA** | P2 | ➕ |
 | TC-TAX-06 | Export endpoints reject non-elite (402) | Decision table | P1 | ➕ |
+| TC-TAX-07 | "Send to accountant" card present; `POST /api/tax/send-to-accountant` rejects bad recipient / empty subject+body (400) — rejected/safe paths only, nothing emailed | EP/BVA (negative) + reachability | P2 | ✅ |
+| TC-TAX-08 | Tax-pack email attachment gated: `attach:true` without a year → 400; below-elite tier with a year → 402 (same gate as the export). Rejected/safe paths only | Decision table (negative) | P1 | ✅ |
+| TC-TAX-09 | Send history: a successful send writes an `accountant_sends` row (RLS self-scoped); Tax page shows a "Send history" list of the latest 5 sends inline (newest first — "Last sent to X on <date> · <year/all years> summary"), with a "Show all N sends" expander that lazy-loads the rest from `GET /api/tax/accountant-sends` only on click. That endpoint returns the caller's own sends as a list (200, RLS-scoped) — asserted read-only. Write needs a real send (Resend) so covered manually | Use-case | P3 | ✋ (write) / ✅ (history API + surface) |
+| TC-TAX-10 | NL Box 3 1-Jan value: `POST /api/tax/box3-value` rejects a missing year and a negative value (400). With a saved value the Box 3 estimate uses it instead of today's holdings; the editor shows on the NL card only | EP/BVA (negative) + decision table | P1 | ✅ (negative) / ➕ (NL calc) |
+| TC-TAX-11 | IE dividend tax band: `PATCH /api/me {dividend_tax_band}` accepts only standard/higher (else 400). Standard rate → 20% (not 40%) drives the IE residence-tax figure; the band picker shows on the IE card only | EP (invalid rep) + decision table | P1 | ✅ (negative) / ➕ (IE calc) |
+| TC-TAX-12 | "Send all years": `POST /api/tax/send-to-accountant {allYears:true, attach:true}` is elite-gated → 402 below elite (gate fires before the per-year "year required" check, since all-years needs none). The "Send all years" button shows on the Tax card only for elite users with ≥2 fiscal years of activity (combined multi-year tax-pack workbook); hidden otherwise. Rejected/safe + read-only paths only — nothing emailed | Decision table (negative) + reachability | P2 | ✅ (negative) / ✅ (surface, skips when hidden) |
 
 ### 7.3 Mutations / account (all tiers)
 
@@ -255,6 +261,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-SET-01 | Income target: ≤0 rejected, 1 ok, 10,000,000 ok, >max rejected | **BVA** | P2 | ➕ |
 | TC-SET-02 | Contrast/bg-tone change applies instantly + persists (optimistic + cookie) | State transition | P3 | ➕ |
 | TC-SET-03 | Default landing screen list filtered to tier-accessible only | Decision table | P2 | ➕ |
+| TC-SET-04 | Accountant email: `PATCH /api/me` rejects a malformed address (400); valid value pre-fills the Tax "Send to accountant" recipient | EP (invalid rep) | P2 | ✅ (negative path) |
 
 **`/app/messages`** — Risk P2. 
 | ID | Title | Technique | Pri | Auto |
@@ -363,11 +370,15 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | Password (new) | 8–72 | 7, 73 | zod min8/max72 |
 | Signup password | ≥ 8 | 7 (**no confirm field — risk**) | `minLength=8` |
 | Income target | 1–10,000,000 | ≤0, >max | zod coerce positive |
+| Box 3 1-Jan value | 0–1,000,000,000 (year required) | negative, missing year | `api/tax/box3-value` zod |
+| IE dividend tax band | 'standard' / 'higher' | any other string | `api/me` zod enum |
 | Message subject / body | 1–140 / 1–5000 | "", 141 / 5001 | zod |
 | Tax `?year=` | 2000 … currentYear+1 | 1999, +2 (→ default) | page guard |
 | Export `?year=` | 1900–2999 | 1899, 3000 (→ 400) | export route |
 | Phone | `^[+\d][\d\s()./-]{3,}$` | "abc", too short | profile zod |
 | Country | ISO-2 `[A-Z]{2}` | lowercase, 3 chars | profile zod |
+| Accountant email | RFC-ish `a@b.c` (≤254) | "not-an-email", >254 | `api/me` zod `.email()` |
+| Send-to-accountant body | to `.email()`, subject 1–200, body 1–20000 | bad email, empty subject/body | `api/tax/send-to-accountant` zod |
 | Withholding by country | US/CA/NL .15, DE .26375, FR .128, CH .35, GB 0, ES .19, default .15 | — (decision table) | dividends logic |
 
 > **Note (already-suspected defects to verify):** signup lacks a confirm-password field (R6); landing/pricing copy disagrees with `tiers.ts` on price & position count (R9); several `/app/*` pages gate via nav only, not an in-page redirect — direct-URL access by an under-tier user must be explicitly tested (R2, TC-TIER-01).
