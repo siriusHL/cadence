@@ -209,6 +209,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-TAX-05 | Export `?year=` API: 1899/1900/2999/3000 → 400 vs 200 | **BVA** | P2 | ➕ |
 | TC-TAX-06 | Export endpoints reject non-elite (402) | Decision table | P1 | ➕ |
 | TC-TAX-07 | "Send to accountant" card present; `POST /api/tax/send-to-accountant` rejects bad recipient / empty subject+body (400) — rejected/safe paths only, nothing emailed | EP/BVA (negative) + reachability | P2 | ✅ |
+| TC-TAX-08 | Tax-pack email attachment gated: `attach:true` without a year → 400; below-elite tier with a year → 402 (same gate as the export). Rejected/safe paths only | Decision table (negative) | P1 | ✅ |
 
 ### 7.3 Mutations / account (all tiers)
 

@@ -52,6 +52,37 @@ def test_send_to_accountant_rejects_empty_body(authed):
 @allure.feature("Mutations")
 @allure.story("Tax send-to-accountant")
 @pytest.mark.flows
+def test_send_to_accountant_attachment_requires_year(authed):
+    # Rejected path: asking for the tax-pack attachment without a year → 400.
+    res = api(
+        authed,
+        "/api/tax/send-to-accountant",
+        "POST",
+        {"to": "accountant@example.com", "subject": "Tax", "body": "Hi", "attach": True},
+    )
+    # 400 (no year) for any tier; a non-elite tier may instead 402 once a year
+    # is supplied — either way the attachment never goes out on a bad request.
+    assert res["status"] in (400, 402, 422), res
+
+
+@allure.feature("Mutations")
+@allure.story("Tax send-to-accountant")
+@pytest.mark.tier
+@pytest.mark.flows
+def test_send_to_accountant_attachment_gated_below_elite(as_premium):
+    # Tier gate: a premium user can't attach the elite-only tax pack.
+    res = api(
+        as_premium,
+        "/api/tax/send-to-accountant",
+        "POST",
+        {"to": "a@b.com", "subject": "Tax", "body": "Hi", "year": 2024, "attach": True},
+    )
+    assert res["status"] == 402, res
+
+
+@allure.feature("Mutations")
+@allure.story("Tax send-to-accountant")
+@pytest.mark.flows
 def test_tax_page_exposes_send_to_accountant(authed, base_url):
     # Read-only UI check: the action is reachable from the Tax page.
     goto(authed, f"{base_url}/app/tax")

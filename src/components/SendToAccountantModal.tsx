@@ -9,6 +9,11 @@ interface Props {
   accountantEmail: string;
   defaultSubject: string;
   defaultBody: string;
+  /** Fiscal year the summary covers — sent alongside the tax-pack attachment. */
+  year: number;
+  /** Whether the user's tier can attach the tax-pack workbook (elite-only,
+   *  same gate as the Export section). When false the option is hidden. */
+  canAttach?: boolean;
   /** Render the trigger as the filled primary button. When false (no saved
    *  accountant email) it reads as a secondary action so the "Add accountant
    *  email" CTA next to it stays the primary one. Defaults to true. */
@@ -60,7 +65,9 @@ const LABEL_STYLE: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export function SendToAccountantModal({ accountantEmail, defaultSubject, defaultBody, primary = true }: Props) {
+export function SendToAccountantModal({
+  accountantEmail, defaultSubject, defaultBody, year, canAttach = false, primary = true,
+}: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -78,6 +85,8 @@ export function SendToAccountantModal({ accountantEmail, defaultSubject, default
           accountantEmail={accountantEmail}
           defaultSubject={defaultSubject}
           defaultBody={defaultBody}
+          year={year}
+          canAttach={canAttach}
           onClose={() => setOpen(false)}
         />
       )}
@@ -89,12 +98,17 @@ function PreviewModal({
   accountantEmail,
   defaultSubject,
   defaultBody,
+  year,
+  canAttach,
   onClose,
 }: Props & { onClose: () => void }) {
   const toast = useToast();
   const [to, setTo] = useState(accountantEmail);
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState(defaultBody);
+  // Default to attaching when the tier allows it — a self-contained email is
+  // the more useful default for an accountant handoff.
+  const [attach, setAttach] = useState<boolean>(Boolean(canAttach));
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -119,11 +133,18 @@ function PreviewModal({
       toast("Subject and message can't be empty.", 'error');
       return;
     }
+    const withAttachment = Boolean(canAttach && attach);
     setPending(true);
     const res = await fetch('/api/tax/send-to-accountant', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ to: recipient, subject: subject.trim(), body }),
+      body: JSON.stringify({
+        to: recipient,
+        subject: subject.trim(),
+        body,
+        year,
+        attach: withAttachment,
+      }),
     });
     setPending(false);
     if (!res.ok) {
@@ -136,7 +157,7 @@ function PreviewModal({
       );
       return;
     }
-    toast('Sent to your accountant.');
+    toast(withAttachment ? 'Sent to your accountant with the tax pack.' : 'Sent to your accountant.');
     onClose();
   }
 
@@ -192,6 +213,25 @@ function PreviewModal({
               style={{ ...FIELD_STYLE, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.5 }}
             />
           </div>
+
+          {canAttach && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={attach}
+                onChange={(e) => setAttach(e.target.checked)}
+                style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+              />
+              <span>
+                <span style={{ fontSize: 14, color: 'var(--text)' }}>
+                  Attach the {year} tax pack (.xlsx)
+                </span>
+                <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--text-muted)' }}>
+                  The same workbook from the Export section — dividends + capital gains in one file.
+                </span>
+              </span>
+            </label>
+          )}
         </div>
 
         <div

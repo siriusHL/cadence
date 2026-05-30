@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { getActivePortfolio } from '@/lib/activePortfolio';
+import { effectiveTier } from '@/lib/effectiveTier';
 import { getHoldingsView } from '@/lib/portfolio';
 import { enrichInstruments } from '@/lib/marketdata/enrich';
 import {
@@ -39,8 +40,10 @@ function buildAccountantEmail(args: {
   capitalGains: CapitalGainsSummary;
   cgt: CGTBreakdown;
   finalNetEur: number;
+  /** Whether the tax-pack workbook is attached by default (elite tier). */
+  attached: boolean;
 }): { subject: string; body: string } {
-  const { fiscalYear, residenceName, senderName, summary, domestic, capitalGains, cgt, finalNetEur } = args;
+  const { fiscalYear, residenceName, senderName, summary, domestic, capitalGains, cgt, finalNetEur, attached } = args;
   const m = (n: number) => `€${fmtMoney(n, 2)}`;
 
   const jurisdictionLines = summary.rows.length
@@ -70,7 +73,9 @@ function buildAccountantEmail(args: {
     `  - Net realised gain/loss: ${m(capitalGains.totalRealizedGainEur)}`,
     `  - Estimated ${residenceName} CGT: ${m(cgt.taxDueEur)}`,
     '',
-    'Full CSV / XLSX exports are available on request.',
+    attached
+      ? `The full ${fiscalYear} tax pack (dividends + capital gains, .xlsx) is attached.`
+      : 'Full CSV / XLSX exports are available on request.',
     '',
     'Thanks,',
     senderName || '',
@@ -87,10 +92,15 @@ export default async function TaxScreen({
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: profile }, portfolio] = await Promise.all([
+  const [{ data: profile }, { data: sub }, portfolio] = await Promise.all([
     supabase.from('profiles').select('tax_country, base_currency, accountant_email, display_name, first_name, last_name').eq('id', user!.id).maybeSingle(),
+    supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user!.id).maybeSingle(),
     getActivePortfolio(supabase, user!.id),
   ]);
+
+  // The tax-pack attachment is the same elite-only artefact as the Export
+  // section, so only offer it to elite users.
+  const canAttachTaxPack = effectiveTier(sub) === 'elite';
 
   if (!portfolio) {
     return (
@@ -171,6 +181,7 @@ export default async function TaxScreen({
     || (profile?.display_name ?? '');
   const { subject: emailSubject, body: emailBody } = buildAccountantEmail({
     fiscalYear, residenceName, senderName, summary, domestic, capitalGains, cgt, finalNetEur,
+    attached: canAttachTaxPack,
   });
 
   return (
@@ -498,6 +509,8 @@ export default async function TaxScreen({
               accountantEmail={profile?.accountant_email ?? ''}
               defaultSubject={emailSubject}
               defaultBody={emailBody}
+              year={fiscalYear}
+              canAttach={canAttachTaxPack}
               primary={Boolean(profile?.accountant_email)}
             />
           </div>

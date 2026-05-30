@@ -15,10 +15,17 @@ function client(): Resend | null {
   return cached;
 }
 
+interface Attachment {
+  filename: string;
+  /** Raw bytes — handed to Resend, which base64-encodes them. */
+  content: Buffer;
+}
+
 interface SendArgs {
   to: string;
   subject: string;
   text: string;
+  attachments?: Attachment[];
 }
 
 /**
@@ -27,7 +34,7 @@ interface SendArgs {
  * need to tell the user whether delivery happened (e.g. the "Send to
  * accountant" action) can branch on the result.
  */
-async function send({ to, subject, text }: SendArgs): Promise<boolean> {
+async function send({ to, subject, text, attachments }: SendArgs): Promise<boolean> {
   const resend = client();
   const from = process.env.EMAIL_FROM;
   if (!resend || !from) {
@@ -35,7 +42,13 @@ async function send({ to, subject, text }: SendArgs): Promise<boolean> {
     return false;
   }
   try {
-    await resend.emails.send({ from, to, subject, text });
+    await resend.emails.send({
+      from,
+      to,
+      subject,
+      text,
+      ...(attachments?.length ? { attachments } : {}),
+    });
     return true;
   } catch (err) {
     console.error('[email] send failed:', err);
@@ -95,10 +108,13 @@ export async function sendTaxSummaryToAccountant(args: {
   to: string;
   subject: string;
   body: string;
+  /** Optional tax-pack workbook attached to the email. */
+  attachment?: { filename: string; content: Buffer };
 }): Promise<boolean> {
   return send({
     to: args.to,
     subject: args.subject,
     text: args.body,
+    attachments: args.attachment ? [args.attachment] : undefined,
   });
 }
