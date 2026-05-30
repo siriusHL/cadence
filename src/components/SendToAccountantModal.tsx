@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import { useToast } from './DialogProvider';
 
 interface Props {
@@ -102,6 +103,7 @@ function PreviewModal({
   canAttach,
   onClose,
 }: Props & { onClose: () => void }) {
+  const router = useRouter();
   const toast = useToast();
   const [to, setTo] = useState(accountantEmail);
   const [subject, setSubject] = useState(defaultSubject);
@@ -159,6 +161,7 @@ function PreviewModal({
     }
     toast(withAttachment ? 'Sent to your accountant with the tax pack.' : 'Sent to your accountant.');
     onClose();
+    router.refresh();  // surface the updated "last sent" line
   }
 
   return createPortal(

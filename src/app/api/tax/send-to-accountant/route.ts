@@ -23,6 +23,7 @@ export const POST = withAuth({}, async ({ userId, tier, req }) => {
   if (!parsed.success) return json({ error: 'invalid_body', detail: parsed.error.format() }, 400);
 
   const { to, subject, body, year, attach } = parsed.data;
+  const supabase = await getSupabaseServer();
 
   // Optionally attach the tax-pack workbook. It's the same elite-only artefact
   // as /api/export/tax-pack, so gate it the same way rather than leaking a
@@ -32,7 +33,6 @@ export const POST = withAuth({}, async ({ userId, tier, req }) => {
     if (year == null) return json({ error: 'year_required_for_attachment' }, 400);
     if (tier !== 'elite') return json({ error: 'upgrade_required', requires: 'elite' }, 402);
 
-    const supabase = await getSupabaseServer();
     const portfolio = await getActivePortfolio(supabase, userId);
     if (!portfolio) return json({ error: 'no_portfolio' }, 404);
 
@@ -47,13 +47,27 @@ export const POST = withAuth({}, async ({ userId, tier, req }) => {
     attachment = { filename: `tax-pack-${year}.xlsx`, content: buf };
   }
 
+  const recipient = to.toLowerCase();
   const sent = await sendTaxSummaryToAccountant({
-    to: to.toLowerCase(),
+    to: recipient,
     subject,
     body,
     attachment,
   });
 
   if (!sent) return json({ error: 'email_unavailable' }, 502);
+
+  // Record the send so the Tax page can show "last sent to X". Best-effort:
+  // the email already went out, so a logging failure must not fail the request.
+  // RLS scopes the insert to the caller via the supabase server client.
+  const { error: logError } = await supabase.from('accountant_sends').insert({
+    user_id: userId,
+    recipient,
+    fiscal_year: year ?? new Date().getFullYear(),
+    subject,
+    attached_pack: Boolean(attachment),
+  });
+  if (logError) console.error('[send-to-accountant] history insert failed:', logError);
+
   return json({ ok: true });
 });

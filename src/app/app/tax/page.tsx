@@ -27,6 +27,12 @@ function fmtPct(n: number, digits = 1): string {
   return `${n.toFixed(digits)}%`;
 }
 
+function fmtSentDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-IE', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 /**
  * Compose the default (editable) email the user sends to their accountant.
  * Plain text — the user can tweak it in the preview before it goes out.
@@ -92,9 +98,10 @@ export default async function TaxScreen({
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const [{ data: profile }, { data: sub }, portfolio] = await Promise.all([
+  const [{ data: profile }, { data: sub }, { data: lastSend }, portfolio] = await Promise.all([
     supabase.from('profiles').select('tax_country, base_currency, accountant_email, display_name, first_name, last_name').eq('id', user!.id).maybeSingle(),
     supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user!.id).maybeSingle(),
+    supabase.from('accountant_sends').select('recipient, fiscal_year, attached_pack, created_at').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     getActivePortfolio(supabase, user!.id),
   ]);
 
@@ -514,6 +521,14 @@ export default async function TaxScreen({
               primary={Boolean(profile?.accountant_email)}
             />
           </div>
+          {lastSend && (
+            <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.5 }}>
+              Last sent to <b style={{ color: 'var(--text)' }}>{lastSend.recipient}</b>
+              {' '}on {fmtSentDate(lastSend.created_at)}
+              {' '}· {lastSend.fiscal_year} summary
+              {lastSend.attached_pack ? ' with tax pack' : ''}.
+            </div>
+          )}
         </div>
       </div>
 
