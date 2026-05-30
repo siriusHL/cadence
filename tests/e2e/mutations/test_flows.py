@@ -59,4 +59,9 @@ def test_tax_page_exposes_send_to_accountant(authed, base_url):
     if "nothing to tax" in body or "no portfolio" in body:
         pytest.skip("no seeded tax data — send-to-accountant card hidden")
     wait_text(authed, "Send to accountant")
+    # Exactly one of the two onboarding states must show: either a saved
+    # recipient (no invite) or the "Add accountant email" CTA when it's unset.
+    has_invite = "add accountant email" in body
+    has_default = "goes to" in body
+    assert has_invite or has_default, body
     screenshot(authed, "tax_send_to_accountant")

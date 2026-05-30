@@ -476,13 +476,31 @@ export default async function TaxScreen({
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
             {profile?.accountant_email
               ? <>Goes to <b style={{ color: 'var(--text)' }}>{profile.accountant_email}</b> by default — you can change the recipient and edit the message before sending.</>
-              : <>Add an accountant email in <Link href="/app/settings" style={{ color: 'var(--text)' }}>Settings</Link> to pre-fill the recipient, or just type one in the preview.</>}
+              : <>No accountant email saved yet. Add one to pre-fill the recipient every time, or just type one into the preview.</>}
           </div>
-          <SendToAccountantModal
-            accountantEmail={profile?.accountant_email ?? ''}
-            defaultSubject={emailSubject}
-            defaultBody={emailBody}
-          />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {!profile?.accountant_email && (
+              <Link
+                href="/app/settings"
+                className="btn"
+                style={{
+                  height: 36, padding: '0 18px',
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-text)',
+                  borderRadius: 999, fontSize: 14, fontWeight: 500,
+                  textDecoration: 'none',
+                }}
+              >
+                + Add accountant email
+              </Link>
+            )}
+            <SendToAccountantModal
+              accountantEmail={profile?.accountant_email ?? ''}
+              defaultSubject={emailSubject}
+              defaultBody={emailBody}
+              primary={Boolean(profile?.accountant_email)}
+            />
+          </div>
         </div>
       </div>
 

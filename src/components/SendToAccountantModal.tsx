@@ -9,6 +9,10 @@ interface Props {
   accountantEmail: string;
   defaultSubject: string;
   defaultBody: string;
+  /** Render the trigger as the filled primary button. When false (no saved
+   *  accountant email) it reads as a secondary action so the "Add accountant
+   *  email" CTA next to it stays the primary one. Defaults to true. */
+  primary?: boolean;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -35,6 +39,18 @@ const PRIMARY_BTN: React.CSSProperties = {
   cursor: 'pointer',
 };
 
+const SECONDARY_BTN: React.CSSProperties = {
+  height: 36,
+  padding: '0 18px',
+  background: 'var(--surface)',
+  color: 'var(--text)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 999,
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: 'pointer',
+};
+
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 600,
@@ -44,12 +60,17 @@ const LABEL_STYLE: React.CSSProperties = {
   marginBottom: 6,
 };
 
-export function SendToAccountantModal({ accountantEmail, defaultSubject, defaultBody }: Props) {
+export function SendToAccountantModal({ accountantEmail, defaultSubject, defaultBody, primary = true }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <button type="button" className="btn" style={PRIMARY_BTN} onClick={() => setOpen(true)}>
+      <button
+        type="button"
+        className="btn"
+        style={primary ? PRIMARY_BTN : SECONDARY_BTN}
+        onClick={() => setOpen(true)}
+      >
         Send to accountant
       </button>
       {open && (
