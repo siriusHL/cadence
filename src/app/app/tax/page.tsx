@@ -7,15 +7,16 @@ import { enrichInstruments } from '@/lib/marketdata/enrich';
 import {
   getTaxSummary, computeDomesticTax,
   getCapitalGainsSummary, computeCapitalGainsTax,
-  DEFAULT_RESIDENCE, COUNTRY_NAMES,
+  DEFAULT_RESIDENCE, COUNTRY_NAMES, IE_BAND_MARGINAL_PCT,
   type TaxResidence, type TaxSummary, type DomesticTaxBreakdown, type ResidenceModel,
-  type CapitalGainsSummary, type CGTBreakdown, type CGTModel,
+  type CapitalGainsSummary, type CGTBreakdown, type CGTModel, type DividendTaxBand,
 } from '@/lib/tax';
 import { getActivityYears } from '@/lib/export';
 import { EmptyState } from '@/components/EmptyState';
 import { InfoTooltip } from '@/components/InfoTooltip';
 import { SendToAccountantModal } from '@/components/SendToAccountantModal';
 import { Box3ValueEditor } from '@/components/Box3ValueEditor';
+import { DividendTaxBandEditor } from '@/components/DividendTaxBandEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -100,7 +101,7 @@ export default async function TaxScreen({
   const { data: { user } } = await supabase.auth.getUser();
 
   const [{ data: profile }, { data: sub }, { data: lastSend }, portfolio] = await Promise.all([
-    supabase.from('profiles').select('tax_country, base_currency, accountant_email, display_name, first_name, last_name').eq('id', user!.id).maybeSingle(),
+    supabase.from('profiles').select('tax_country, base_currency, accountant_email, dividend_tax_band, display_name, first_name, last_name').eq('id', user!.id).maybeSingle(),
     supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user!.id).maybeSingle(),
     supabase.from('accountant_sends').select('recipient, fiscal_year, attached_pack, created_at').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     getActivePortfolio(supabase, user!.id),
@@ -182,8 +183,15 @@ export default async function TaxScreen({
     : { data: null };
   const box3ValueJan1 = box3Row?.value_eur != null ? Number(box3Row.value_eur) : null;
 
+  // IE taxes dividends at the user's income-tax band. Use their saved band when
+  // set; otherwise the model default (higher rate) preserves prior behaviour.
+  const isMarginalIE = residence === 'IE';
+  const dividendTaxBand = (profile?.dividend_tax_band as DividendTaxBand | null | undefined) ?? null;
+  const marginalPct = dividendTaxBand != null ? IE_BAND_MARGINAL_PCT[dividendTaxBand] : undefined;
+
   const domestic = computeDomesticTax(summary, {
     portfolioValueJan1: box3ValueJan1 ?? undefined,
+    marginalPct,
   });
 
   const finalNetEur = summary.totalNetEur - domestic.finalEur;
@@ -427,6 +435,11 @@ export default async function TaxScreen({
                 initialValue={box3ValueJan1}
                 approxValue={approxPortfolioValueEur}
               />
+            </div>
+          )}
+          {isMarginalIE && (
+            <div style={{ padding: '4px 4px 14px' }}>
+              <DividendTaxBandEditor initialBand={dividendTaxBand} />
             </div>
           )}
         </div>

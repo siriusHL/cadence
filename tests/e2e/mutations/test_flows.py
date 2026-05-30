@@ -99,6 +99,15 @@ def test_box3_value_rejects_negative(authed):
 
 
 @allure.feature("Mutations")
+@allure.story("IE dividend tax band")
+@pytest.mark.flows
+def test_dividend_tax_band_rejects_bad_value(authed):
+    # Rejected path: only 'standard' / 'higher' are accepted.
+    res = api(authed, "/api/me", "PATCH", {"dividend_tax_band": "middle"})
+    assert res["status"] in (400, 422), res
+
+
+@allure.feature("Mutations")
 @allure.story("Tax send-to-accountant")
 @pytest.mark.flows
 def test_tax_page_exposes_send_to_accountant(authed, base_url):

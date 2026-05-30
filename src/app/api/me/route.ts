@@ -22,6 +22,9 @@ const PatchBody = z.object({
   // the Tax page. Optional; null clears it.
   accountant_email: z.string().trim().email().max(254).nullable().optional(),
 
+  // IE income-tax band for the dividend tax estimate. null = use model default.
+  dividend_tax_band: z.enum(['standard', 'higher']).nullable().optional(),
+
   // Personal details (Profile page). All nullable — never required.
   first_name:          z.string().trim().max(60).nullable().optional(),
   last_name:           z.string().trim().max(60).nullable().optional(),
@@ -59,6 +62,7 @@ export const PATCH = withAuth({}, async ({ userId, req }) => {
   if ('accountant_email' in parsed.data) patch.accountant_email = parsed.data.accountant_email
     ? parsed.data.accountant_email.toLowerCase()
     : null;
+  if ('dividend_tax_band' in parsed.data) patch.dividend_tax_band = parsed.data.dividend_tax_band ?? null;
 
   for (const f of TEXT_FIELDS) {
     if (f in parsed.data) patch[f] = parsed.data[f]?.trim() || null;
@@ -94,7 +98,7 @@ export const GET = withAuth({}, async ({ userId, tier }) => {
     { count: portfolioCount },
     { data: holdingRows },
   ] = await Promise.all([
-    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen, income_target, accountant_email, first_name, last_name, birth_date, phone, sex, address_line1, address_line2, address_city, address_postal_code, address_country').eq('id', userId).single(),
+    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen, income_target, accountant_email, dividend_tax_band, first_name, last_name, birth_date, phone, sex, address_line1, address_line2, address_city, address_postal_code, address_country').eq('id', userId).single(),
     supabase.from('portfolios').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     // RLS already scopes to caller's portfolios; selecting holdings.id is enough to count.
     supabase.from('holdings').select('id'),
