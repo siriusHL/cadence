@@ -26,6 +26,7 @@ import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -127,8 +128,10 @@ def _login(driver, base_url: str, email: str, password: str) -> None:
     pw_in.send_keys(password)
     driver.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
     # Customers land on /app (dispatched by tier); admins (ADMIN_EMAILS) get
-    # bounced to /admin. Wait until we've left /login and reached either.
-    w.until(
+    # bounced to /admin. Wait until we've left /login and reached either. This
+    # is a server round-trip (auth + redirect) and can be slower than a normal
+    # interaction under full-suite load, so give it a more generous timeout.
+    WebDriverWait(driver, 30).until(
         lambda d: "/login" not in d.current_url
         and ("/app" in d.current_url or "/admin" in d.current_url)
     )
@@ -144,8 +147,19 @@ def ensure_tier(driver, base_url: str, tier: str):
     if getattr(driver, "_tier", None) == tier:
         return driver
     driver.delete_all_cookies()
+    # Clear the marker BEFORE logging in: if _login raises (e.g. a transient
+    # nav timeout), we must not leave a stale tier that makes the next fixture
+    # skip re-login and run against the wrong session — a cross-test cascade
+    # that surfaced as a support test getting 404 instead of 403.
+    driver._tier = None
     with allure.step(f"Log in as {tier} ({email})"):
-        _login(driver, base_url, email, password)
+        try:
+            _login(driver, base_url, email, password)
+        except TimeoutException:
+            # Transient login/redirect hiccup under load — retry once from a
+            # clean slate before giving up.
+            driver.delete_all_cookies()
+            _login(driver, base_url, email, password)
     driver._tier = tier
     return driver
 

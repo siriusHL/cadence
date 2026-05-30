@@ -40,6 +40,7 @@ The deployed Next.js 16 app (`HLRB/cadence`) running against the Supabase backen
 | R7 | Chart renders wrong / tiny / overlapping / empty | Med | Med | **P2** |
 | R8 | Broken empty/error states (dead-ends, missing CTAs) | Low | Med | **P3** |
 | R9 | Copy/marketing inconsistency (pricing vs tiers) | Low | High | **P3** |
+| R12 | Public Insights surface broken (404/500, missing canonical/sitemap/JSON-LD) or content not original (copyright) | Med | Med | **P2** |
 
 **Priority key:** **P1** = must pass to merge (blocker); **P2** = should pass, fix before release; **P3** = nice-to-have / exploratory.
 
@@ -317,6 +318,39 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-ADM-12 | Invalid `announcement_theme` → normalizes to `default`, no crash | Error-guessing | P3 | ➕ |
 | TC-ADM-13 | Tier-override + settings changes write `admin_audit_log` rows (actor, action, meta) | Use-case | P2 | ➕ |
 
+### 7.7 Insights — public SEO content section (R12 / R5 / R2)
+
+> **Access model:** `/insights` and everything under it is public — the proxy
+> lets the prefix through **before** the auth/tier checks (`PUBLIC_PREFIXES` in
+> `src/proxy.ts`), so it renders logged-out and for every tier and is **never**
+> tier-gated. Content is published-only at the DB layer (RLS
+> `status='published' and published_at<=now()`); drafts never leave Supabase.
+> All seeded sample articles are **original, in-house prose** with sources
+> cited and free-licence (or placeholder) hero images — no third-party text.
+
+| ID | Title | Technique | Pri | Auto |
+|----|-------|-----------|-----|------|
+| TC-INS-01 | Hub `/insights` reachable logged-out; H1 + category links + article cards render, no console errors | Use-case / smoke | P2 | ➕ |
+| TC-INS-02 | Free user reaches `/insights/<article>` — not redirected to `/upgrade` or `/login` (not gated) | Decision table (neg) | P1 | ➕ |
+| TC-INS-03 | Article renders exactly one H1, H2 body sections, reading-time, social share | Use-case | P2 | ➕ |
+| TC-INS-04 | Article emits `<link rel=canonical>`, `og:title`, and Article + BreadcrumbList + FAQPage JSON-LD | Checklist (SEO) | P2 | ➕ |
+| TC-INS-05 | Breadcrumb trail present; auto-TOC anchors all resolve to real heading ids | Use-case | P2 | ➕ |
+| TC-INS-06 | Category page `/insights/<cat>` shows its name + breadcrumb + lists its articles | Use-case | P2 | ➕ |
+| TC-INS-07 | Keyword search `?q=` surfaces matching article **and** marks the page `noindex` | EP + checklist | P2 | ➕ |
+| TC-INS-08 | Search with no match shows a clean empty state, no crash | Error-guessing | P3 | ➕ |
+| TC-INS-09 | Unknown slug `/insights/<bad>` renders a `noindex` not-found UI (Next streams → 200+noindex, not a hard 404; no 500, no article chrome) | EP (neg) | P2 | ➕ |
+| TC-INS-10 | `sitemap.xml` lists the hub + published article URLs | Checklist (SEO) | P2 | ➕ |
+| TC-INS-11 | `robots.txt` references the sitemap and disallows `/app` | Checklist (SEO) | P3 | ➕ |
+| TC-INS-12 | Reachability crawl includes `/insights`, a category, and an article (no console errors) | Smoke | P2 | ➕ |
+| TC-INS-13 | Insights is linked from the marketing site (nav + footer) so it is discoverable + internally linked for SEO | Use-case | P2 | ➕ |
+| TC-INS-14 | Insights is a primary app nav tab **and** is reachable from the account menu | Use-case | P2 | ➕ |
+| TC-INS-15 | A `draft` article is never publicly visible (RLS gate) — public route shows the `noindex` not-found, body never leaks | Security / decision table (neg) | P1 | ➕ |
+| TC-INS-16 | Non-admin is redirected off `/admin/insights` **and** `PATCH /api/admin/insights/[id]` → 403 | Security | P1 | ➕ |
+| TC-INS-17 | Admin reviews a draft → Publish makes it public → Unpublish hides it again (set-then-restore on a dedicated draft fixture) | State transition | P1 | ➕ (admin creds → CI) |
+| TC-INS-18 | Hub renders the finance-portal chrome — index strip (market indices) + market sidebar panels; sample/illustrative data carries an "indicative / différées" disclaimer | Use-case (visual) + checklist | P3 | ➕ |
+| TC-INS-19 | Sub-nav links to category pages (Bourse → stock-market, Finance perso → personal-finance) | EP | P2 | ➕ |
+| TC-INS-20 | Insights renders **in-app** at `/app/insights` (app menu + account menu persist, no market index strip, links stay in-app); logged-out public `/insights` offers a "Se connecter" CTA; signed-in public visitor sees their account menu, not signup | Decision table | P2 | ➕ |
+
 ---
 
 ## 8. Traceability & coverage summary
@@ -334,6 +368,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | R9 Copy | TC-LAND-03 | ✋ |
 | R10 Admin authz / staff ops | TC-ADM-01..13 | ❌ → **add** |
 | R11 Support messaging (RLS, cross-user, sender spoofing) | TC-MSG-01..05, TC-SUP-01..05, SC-05 | ❌ → **add** |
+| R12 Insights public SEO surface / original content | TC-INS-01..12 | ❌ → **add** |
 
 **Gap → priority for the next automation increment:** (1) tier-gating decision table (R2), (2) add-holding + portfolio mutation BVA/flows (R4/R6), (3) tax/withholding decision tables (R3), (4) chart geometry sanity (R7).
 

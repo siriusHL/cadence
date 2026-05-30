@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { canAccessScreen, type Screen } from '@/lib/tiers';
+import { navItemsForTier } from '@/lib/appTabs';
 import { effectiveTier } from '@/lib/effectiveTier';
 import { isAdminEmail } from '@/lib/admin';
 import { NavTabs } from '@/components/NavTabs';
@@ -14,28 +14,6 @@ import { isSupportRole, type Role } from '@/lib/roles';
 import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
 import { AnnouncementFX } from '@/components/AnnouncementFX';
 import { normalizeTheme, bannerClass, effectFor } from '@/lib/announcementThemes';
-
-interface NavTab { label: string; href: string; screen: Screen; }
-
-const FREE_TABS: NavTab[] = [
-  { label: 'Home',        href: '/app/home',   screen: 'home' },
-  { label: 'Coming up',   href: '/app/next',   screen: 'next' },
-  { label: 'Your stocks', href: '/app/stocks', screen: 'stocks' },
-  { label: 'Your year',   href: '/app/year',   screen: 'year' },
-];
-
-const PRO_TABS: NavTab[] = [
-  { label: 'Dashboard',     href: '/app/dashboard',       screen: 'dashboard' },
-  { label: 'Holdings',      href: '/app/holdings',        screen: 'holdings' },
-  { label: 'Dividends',     href: '/app/dividends',       screen: 'dividends' },
-  { label: 'Performance',   href: '/app/performance',     screen: 'performance' },
-  { label: 'Diversification', href: '/app/diversification', screen: 'diversification' },
-];
-
-const ELITE_TABS: NavTab[] = [
-  { label: 'Tax',    href: '/app/tax',    screen: 'tax' },
-  { label: 'Alerts', href: '/app/alerts', screen: 'alerts' },
-];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await getSupabaseServer();
@@ -52,9 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const tier = effectiveTier(sub);
   const isSupport = isSupportRole((profile?.role ?? 'user') as Role);
 
-  const tabs = [...FREE_TABS, ...PRO_TABS, ...ELITE_TABS].filter((t) =>
-    canAccessScreen(tier, t.screen),
-  );
+  const navItems = navItemsForTier(tier);
 
   const [portfolios, active, { data: site }] = await Promise.all([
     listOwnedPortfolios(supabase, user.id),
@@ -77,7 +53,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/app" className="brand">
             <span className="dot" /> Cadence
           </Link>
-          <NavTabs tabs={tabs.map((t) => ({ label: t.label, href: t.href }))} />
+          <NavTabs tabs={navItems} />
           <div className="right">
             {portfolios.length > 0 && (
               <PortfolioSwitcher

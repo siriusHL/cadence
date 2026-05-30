@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed:e2e-users": "node scripts/seed-e2e-users.mjs",
+    "seed:e2e-insights": "node scripts/seed-e2e-insights.mjs",
     "setup:stripe-portal": "node scripts/setup-stripe-portal.mjs"
   },
   "dependencies": {

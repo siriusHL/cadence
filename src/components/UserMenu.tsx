@@ -143,6 +143,7 @@ export function UserMenu({ email, initials, tier, isSupport = false }: Props) {
             </span>
           </MenuLink>
           <MenuLink href="/app/portfolios" onSelect={() => setOpen(false)}>Portfolios</MenuLink>
+          <MenuLink href="/app/insights" onSelect={() => setOpen(false)}>Insights</MenuLink>
           <MenuButton onClick={onBilling} disabled={busy}>
             {tier === 'free' ? 'Upgrade plan' : 'Billing'}
           </MenuButton>
