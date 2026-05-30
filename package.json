@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:e2e-users": "node scripts/seed-e2e-users.mjs"
+    "seed:e2e-users": "node scripts/seed-e2e-users.mjs",
+    "setup:stripe-portal": "node scripts/setup-stripe-portal.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
