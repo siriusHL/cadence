@@ -21,17 +21,25 @@ interface SendArgs {
   text: string;
 }
 
-async function send({ to, subject, text }: SendArgs): Promise<void> {
+/**
+ * Best-effort send. Returns true when the email was handed off to Resend,
+ * false when the transport isn't configured or the send threw. Callers that
+ * need to tell the user whether delivery happened (e.g. the "Send to
+ * accountant" action) can branch on the result.
+ */
+async function send({ to, subject, text }: SendArgs): Promise<boolean> {
   const resend = client();
   const from = process.env.EMAIL_FROM;
   if (!resend || !from) {
     console.warn('[email] skipped — RESEND_API_KEY or EMAIL_FROM not set');
-    return;
+    return false;
   }
   try {
     await resend.emails.send({ from, to, subject, text });
+    return true;
   } catch (err) {
     console.error('[email] send failed:', err);
+    return false;
   }
 }
 
@@ -75,5 +83,22 @@ export async function notifyUserOfReply(args: {
       `Support replied to your message:\n\n` +
       `${args.body}\n\n` +
       `View the full conversation: ${appUrl('/app/messages')}`,
+  });
+}
+
+/**
+ * The user pressed "Send to accountant" on the Tax page. The subject/body have
+ * already been previewed and (optionally) edited by the user, so we send them
+ * through verbatim. Replies go back to the user, not our transactional inbox.
+ */
+export async function sendTaxSummaryToAccountant(args: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<boolean> {
+  return send({
+    to: args.to,
+    subject: args.subject,
+    text: args.body,
   });
 }

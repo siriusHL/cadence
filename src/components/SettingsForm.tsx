@@ -16,6 +16,7 @@ interface Props {
     bgTone: BgTone;
     defaultScreen: Screen | null;
     incomeTarget: number;
+    accountantEmail: string;
   };
   screenOptions: ScreenOption[];
 }
@@ -33,6 +34,7 @@ const BG_OPTIONS: { value: BgTone; label: string; hint: string; swatch: string }
 ];
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function SettingsForm({ initial, screenOptions }: Props) {
   const router = useRouter();
@@ -42,6 +44,7 @@ export function SettingsForm({ initial, screenOptions }: Props) {
   const [bgTone,   setBgTone]   = useState<BgTone>(initial.bgTone);
   const [defaultScreen, setDefaultScreen] = useState<Screen | ''>(initial.defaultScreen ?? '');
   const [incomeTarget, setIncomeTarget] = useState<string>(String(initial.incomeTarget));
+  const [accountantEmail, setAccountantEmail] = useState<string>(initial.accountantEmail);
 
   function applyContrast(next: Contrast) {
     document.cookie = `contrast=${next}; path=/; max-age=${COOKIE_MAX_AGE}; samesite=lax`;
@@ -131,6 +134,28 @@ export function SettingsForm({ initial, screenOptions }: Props) {
         return;
       }
       toast('Passive income target updated.');
+      router.refresh();
+    });
+  }
+
+  function saveAccountantEmail() {
+    const trimmed = accountantEmail.trim();
+    if (trimmed === (initial.accountantEmail ?? '')) return;
+    if (trimmed !== '' && !EMAIL_RE.test(trimmed)) {
+      toast('Enter a valid email address.', 'error');
+      return;
+    }
+    start(async () => {
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ accountant_email: trimmed === '' ? null : trimmed }),
+      });
+      if (!res.ok) {
+        toast('Could not save accountant email.', 'error');
+        return;
+      }
+      toast(trimmed === '' ? 'Accountant email cleared.' : 'Accountant email saved.');
       router.refresh();
     });
   }
@@ -254,6 +279,39 @@ export function SettingsForm({ initial, screenOptions }: Props) {
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
             Used as the goal line on the Simulator and the &quot;Passive income progress&quot; card
             on Dashboard. Saved when you tab/click away.
+          </div>
+        </div>
+      </div>
+
+      <div className="pcard">
+        <div className="pcard-h">
+          <div className="t">Accountant email</div>
+        </div>
+        <div style={{ padding: 16 }}>
+          <Label>Where &ldquo;Send to accountant&rdquo; emails go</Label>
+          <input
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="accountant@example.com"
+            value={accountantEmail}
+            onChange={(e) => setAccountantEmail(e.target.value)}
+            onBlur={saveAccountantEmail}
+            disabled={pending}
+            style={{
+              marginTop: 8,
+              width: '100%',
+              padding: '10px 12px',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 8,
+              fontSize: 14,
+              color: 'var(--text)',
+            }}
+          />
+          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+            Pre-fills the recipient when you use &quot;Send to accountant&quot; on the Tax page.
+            You can still edit the recipient before sending. Saved when you tab/click away.
           </div>
         </div>
       </div>

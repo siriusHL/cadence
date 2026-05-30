@@ -18,6 +18,10 @@ const PatchBody = z.object({
   default_screen:  z.enum(ALLOWED_SCREENS).nullable().optional(),
   income_target:   z.coerce.number().positive().max(10_000_000).optional(),
 
+  // Accountant's email — destination for the "Send to accountant" action on
+  // the Tax page. Optional; null clears it.
+  accountant_email: z.string().trim().email().max(254).nullable().optional(),
+
   // Personal details (Profile page). All nullable — never required.
   first_name:          z.string().trim().max(60).nullable().optional(),
   last_name:           z.string().trim().max(60).nullable().optional(),
@@ -52,6 +56,9 @@ export const PATCH = withAuth({}, async ({ userId, req }) => {
   if ('bg_tone'        in parsed.data) patch.bg_tone        = parsed.data.bg_tone;
   if ('default_screen' in parsed.data) patch.default_screen = parsed.data.default_screen;
   if ('income_target'  in parsed.data) patch.income_target  = parsed.data.income_target;
+  if ('accountant_email' in parsed.data) patch.accountant_email = parsed.data.accountant_email
+    ? parsed.data.accountant_email.toLowerCase()
+    : null;
 
   for (const f of TEXT_FIELDS) {
     if (f in parsed.data) patch[f] = parsed.data[f]?.trim() || null;
@@ -87,7 +94,7 @@ export const GET = withAuth({}, async ({ userId, tier }) => {
     { count: portfolioCount },
     { data: holdingRows },
   ] = await Promise.all([
-    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen, income_target, first_name, last_name, birth_date, phone, sex, address_line1, address_line2, address_city, address_postal_code, address_country').eq('id', userId).single(),
+    supabase.from('profiles').select('display_name, base_currency, tax_country, contrast, bg_tone, default_screen, income_target, accountant_email, first_name, last_name, birth_date, phone, sex, address_line1, address_line2, address_city, address_postal_code, address_country').eq('id', userId).single(),
     supabase.from('portfolios').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     // RLS already scopes to caller's portfolios; selecting holdings.id is enough to count.
     supabase.from('holdings').select('id'),
