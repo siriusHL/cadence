@@ -15,44 +15,50 @@ Always create branches with one of these prefixes:
 
 Don't use `claude/`, `chore/`, `wip/`, or anything else.
 
-# E2E tests are part of "done" (do this automatically)
+# E2E tests are part of "done" — write them, run them, keep them green
 
-Whenever you add or change a user-facing feature, page, route, or behavior
-in the app, **add or update the matching Selenium e2e test(s) in
-`tests/e2e/` as part of the same change — without being asked.** A feature
-is not complete until its e2e coverage exists. (Pure refactors with no
-behavior change and internal-only `src/lib` changes with no UI effect are
-exempt — use judgment.)
+Whenever you add or change a user-facing feature, page, route, or behaviour,
+do all of this in the **same change, without being asked**:
 
-Pick the layer that fits (markers are `--strict-markers`, so use one of these):
+1. **Write or extend** the matching Selenium e2e test(s) under `tests/e2e/`.
+2. **Run the suite locally and watch it actually pass** — never assume.
+3. **If anything fails, fix it** (the code or the test, whichever is wrong)
+   and re-run. **Do not commit until the whole suite is green.**
+4. **Update `tests/e2e/TEST_PLAN.md`** with the new/changed case (its risk +
+   test-design technique) so the plan stays in sync with the suite.
 
-- New/changed **route or page** → add it to the parametrized list in
-  `test_smoke.py` (`PUBLIC_ROUTES` or `APP_ROUTES`). Marker `smoke`.
-- New/changed **data rendering** (tables, totals, counts) → `test_data.py`. Marker `data`.
-- New/changed **chart** → `test_charts.py`. Marker `charts`.
-- New **mutation flow** (create / delete / switch portfolio, form submit) →
-  `test_flows.py` (create the file when first needed; marker `flows` is
-  already registered). Marker `flows`.
+(Pure refactors with no behaviour change and internal-only `src/lib` changes
+with no UI/API effect are exempt — use judgment.)
 
-Follow the existing conventions:
+**Structure** — one folder per category, one file per sub-category:
+`cross_cutting/` (markers `smoke`/`auth`/`tier`/`caps`/`nfr`/`visual`),
+`financial/` (`data`/`charts`), `mutations/` (`flows`), `public/`,
+`free_tier/`, `acceptance/`. Markers are `--strict-markers`, so use one
+registered in `pytest.ini`. New route → the list in
+`cross_cutting/test_reachability.py`; new chart → `financial/`; new mutation
+guard → `mutations/` (assert via the API on **rejected/safe paths only** —
+never mutate real data so the suite stays repeatable).
 
-- Start files with `from __future__ import annotations`.
-- Use the `authed` fixture for `/app/*` routes, `driver` for public pages.
-- Use **explicit** `WebDriverWait` waits (never `time.sleep`); the suite sets `implicitly_wait(0)`.
-- Call `drain_console(driver)` before navigating and assert
-  `severe_console_errors(driver)` is empty; embed `attach_screenshot(...)`.
-- Decorate with `@allure.feature/@allure.story` and the right `@pytest.mark.*`.
-- `pytest.skip(...)` cleanly when prerequisites (creds, holdings) are missing.
+**Conventions:** import shared helpers from `helpers` (never
+`from conftest import ...`); **always wait before asserting or screenshotting**
+(`goto`/`screenshot`/`wait_*`, never `time.sleep`, never a fast screenshot);
+use the tier fixtures (`authed`/`as_free`/`as_premium`/`as_elite`) and the
+in-browser `api()` helper for API-contract checks; `present_or_skip(...)` /
+`pytest.skip(...)` when a precondition (seeded data, tier, holdings) is missing
+— skip cleanly, don't fail; decorate with `@allure.feature/@allure.story` +
+the right `@pytest.mark.*`; start files with `from __future__ import annotations`.
 
-Then run the suite and make sure it passes before calling the task done
-(app must be running on `http://localhost:3000`):
+**Run it** (app on `http://localhost:3000`; prefer a prod build —
+`npm run build && npm run start` — it's faster and matches CI):
 
 ```
 pytest -c tests/e2e/pytest.ini tests/e2e            # whole suite
-pytest -c tests/e2e/pytest.ini tests/e2e -m smoke   # one layer
+pytest -c tests/e2e/pytest.ini tests/e2e/financial  # one category
+pytest -c tests/e2e/pytest.ini tests/e2e -m tier    # one marker
 ```
 
-See `tests/e2e/README.md` for setup (seeding test users, headed mode, reports).
+See `tests/e2e/README.md` for setup (seeding users + portfolio, headed mode,
+reports).
 
 # Performance: optimize code, never regress it
 
