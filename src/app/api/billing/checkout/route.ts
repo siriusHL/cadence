@@ -42,7 +42,7 @@ export const POST = withAuth({}, async ({ userId, req }) => {
 
     const portal = await stripe.billingPortal.sessions.create({
       customer: sub.stripe_customer_id,
-      return_url: `${origin}/app`,
+      return_url: `${origin}/app?billing=1`,
       flow_data: {
         type: 'subscription_update_confirm',
         subscription_update_confirm: {
@@ -69,7 +69,7 @@ export const POST = withAuth({}, async ({ userId, req }) => {
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/app?upgraded=1`,
+    success_url: `${origin}/app?billing=1`,
     cancel_url: `${origin}/upgrade`,
     metadata: { user_id: userId, tier: targetTier },
   });
