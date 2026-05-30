@@ -98,8 +98,13 @@ jobs:
       - name: Build app
         run: npm run build
 
-      # TODO (next phase): seed the deterministic fixture DB here, e.g.
-      #   node scripts/seed-e2e-fixtures.mjs
+      # Seed deterministic fixtures so the run is self-sufficient (no reliance
+      # on data already present in the DB): tiered users + staff roles here,
+      # and the elite portfolio once the app is up (below). All idempotent.
+      - name: Seed test users + roles
+        run: |
+          node scripts/seed-e2e-users.mjs
+          node scripts/seed-e2e-roles.mjs
 
       - name: Start app
         run: |
@@ -113,6 +118,12 @@ jobs:
             fi
             sleep 1
           done
+
+      # Elite needs holdings for the data / chart / tax tests to assert
+      # rather than skip. Browser-driven, so it runs against the started app.
+      # Idempotent: skips if the account already has holdings.
+      - name: Seed elite portfolio
+        run: python tests/e2e/_seed_portfolio.py
 
       - name: Run E2E suite
         # report.html is written by our own renderer (conftest hooks +
