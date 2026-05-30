@@ -15,6 +15,16 @@ Always create branches with one of these prefixes:
 
 Don't use `claude/`, `chore/`, `wip/`, or anything else.
 
+# Committing — only on request, only when e2e is green
+
+1. **Never commit until the operator explicitly asks.** Keep all changes
+   local in the working tree until then — no commits, no pushes on your own
+   initiative.
+2. **When asked to commit, run the full e2e suite locally first**
+   (`pytest -c tests/e2e/pytest.ini tests/e2e`). If anything fails, fix the
+   code or the test (whichever is wrong) and re-run until the **whole suite
+   is green** — then commit. Never commit on a red or unrun suite.
+
 # E2E tests are part of "done" — write them, run them, keep them green
 
 Whenever you add or change a user-facing feature, page, route, or behaviour,
