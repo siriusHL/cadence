@@ -1,0 +1,273 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
+import { useToast } from './DialogProvider';
+
+interface Props {
+  /** Pre-filled recipient from the user's settings ('' when unset). */
+  accountantEmail: string;
+  defaultSubject: string;
+  defaultBody: string;
+  /** Fiscal year the summary covers — sent alongside the tax-pack attachment. */
+  year: number;
+  /** Whether the user's tier can attach the tax-pack workbook (elite-only,
+   *  same gate as the Export section). When false the option is hidden. */
+  canAttach?: boolean;
+  /** Render the trigger as the filled primary button. When false (no saved
+   *  accountant email) it reads as a secondary action so the "Add accountant
+   *  email" CTA next to it stays the primary one. Defaults to true. */
+  primary?: boolean;
+  /** Send the combined multi-year tax pack (every fiscal year with activity)
+   *  instead of just `year`. Swaps the attachment for the all-years workbook
+   *  and tells the API to build it. Defaults to false. */
+  allYears?: boolean;
+  /** Label for the trigger button. Defaults to "Send to accountant"; the
+   *  all-years variant passes "Send all years". */
+  triggerLabel?: string;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const FIELD_STYLE: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  background: 'var(--input-bg)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 8,
+  fontSize: 14,
+  color: 'var(--text)',
+};
+
+const PRIMARY_BTN: React.CSSProperties = {
+  height: 36,
+  padding: '0 18px',
+  background: 'var(--btn-primary-bg)',
+  color: 'var(--btn-primary-text)',
+  borderRadius: 999,
+  fontSize: 14,
+  fontWeight: 500,
+  border: 0,
+  cursor: 'pointer',
+};
+
+const SECONDARY_BTN: React.CSSProperties = {
+  height: 36,
+  padding: '0 18px',
+  background: 'var(--surface)',
+  color: 'var(--text)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 999,
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: 'pointer',
+};
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: 'var(--text-muted)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  marginBottom: 6,
+};
+
+export function SendToAccountantModal({
+  accountantEmail, defaultSubject, defaultBody, year, canAttach = false, primary = true,
+  allYears = false, triggerLabel = 'Send to accountant',
+}: Props) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="btn"
+        style={primary ? PRIMARY_BTN : SECONDARY_BTN}
+        onClick={() => setOpen(true)}
+      >
+        {triggerLabel}
+      </button>
+      {open && (
+        <PreviewModal
+          accountantEmail={accountantEmail}
+          defaultSubject={defaultSubject}
+          defaultBody={defaultBody}
+          year={year}
+          canAttach={canAttach}
+          allYears={allYears}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+function PreviewModal({
+  accountantEmail,
+  defaultSubject,
+  defaultBody,
+  year,
+  canAttach,
+  allYears,
+  onClose,
+}: Props & { onClose: () => void }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [to, setTo] = useState(accountantEmail);
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
+  // Default to attaching when the tier allows it — a self-contained email is
+  // the more useful default for an accountant handoff.
+  const [attach, setAttach] = useState<boolean>(Boolean(canAttach));
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  async function send() {
+    const recipient = to.trim();
+    if (!EMAIL_RE.test(recipient)) {
+      toast('Enter a valid recipient email.', 'error');
+      return;
+    }
+    if (subject.trim() === '' || body.trim() === '') {
+      toast("Subject and message can't be empty.", 'error');
+      return;
+    }
+    const withAttachment = Boolean(canAttach && attach);
+    setPending(true);
+    const res = await fetch('/api/tax/send-to-accountant', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        to: recipient,
+        subject: subject.trim(),
+        body,
+        year,
+        attach: withAttachment,
+        allYears: allYears || undefined,
+      }),
+    });
+    setPending(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast(
+        data?.error === 'email_unavailable'
+          ? "Email isn't configured yet. Try again later."
+          : 'Could not send the email.',
+        'error',
+      );
+      return;
+    }
+    toast(withAttachment ? 'Sent to your accountant with the tax pack.' : 'Sent to your accountant.');
+    onClose();
+    router.refresh();  // surface the updated "last sent" line
+  }
+
+  return createPortal(
+    <div
+      className="cdn-modal-backdrop"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="cdn-modal" role="dialog" aria-modal="true" aria-label="Send tax summary to accountant">
+        <button className="cdn-modal-close" onClick={onClose} aria-label="Close">×</button>
+        <div style={{ flexShrink: 0, padding: '20px 22px', borderBottom: '1px solid var(--border)' }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: 18 }}>Send to accountant</h2>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            Review and edit the email before it goes out.
+          </div>
+        </div>
+
+        <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <div style={LABEL_STYLE}>To</div>
+            <input
+              type="email"
+              inputMode="email"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              placeholder="accountant@example.com"
+              autoFocus={accountantEmail === ''}
+              style={FIELD_STYLE}
+            />
+            {accountantEmail === '' && (
+              <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+                Tip: set a default accountant email in Settings so this is pre-filled next time.
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div style={LABEL_STYLE}>Subject</div>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              style={FIELD_STYLE}
+            />
+          </div>
+
+          <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <div style={LABEL_STYLE}>Message</div>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              style={{ ...FIELD_STYLE, flex: '1 1 auto', minHeight: 140, resize: 'none', fontFamily: 'inherit', lineHeight: 1.5 }}
+            />
+          </div>
+
+          {canAttach && (
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={attach}
+                onChange={(e) => setAttach(e.target.checked)}
+                style={{ marginTop: 2, width: 16, height: 16, flexShrink: 0, cursor: 'pointer' }}
+              />
+              <span>
+                <span style={{ fontSize: 14, color: 'var(--text)' }}>
+                  {allYears
+                    ? 'Attach the combined tax pack (all years, .xlsx)'
+                    : `Attach the ${year} tax pack (.xlsx)`}
+                </span>
+                <span style={{ display: 'block', marginTop: 2, fontSize: 12, color: 'var(--text-muted)' }}>
+                  {allYears
+                    ? 'The Export section’s All-years workbook — every fiscal year’s dividends + capital gains, one sheet each with a Fiscal year column.'
+                    : 'The same workbook from the Export section — dividends + capital gains in one file.'}
+                </span>
+              </span>
+            </label>
+          )}
+        </div>
+
+        <div
+          style={{
+            flexShrink: 0,
+            borderTop: '1px solid var(--border)',
+            padding: '12px 22px',
+            display: 'flex',
+            gap: 8,
+            justifyContent: 'flex-end',
+          }}
+        >
+          <button type="button" className="btn ghost" onClick={onClose} disabled={pending}>Cancel</button>
+          <button type="button" className="btn" style={{ ...PRIMARY_BTN, opacity: pending ? 0.6 : 1 }} onClick={send} disabled={pending}>
+            {pending ? 'Sending…' : 'Send email'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}

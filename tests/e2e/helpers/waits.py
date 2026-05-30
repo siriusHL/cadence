@@ -75,6 +75,24 @@ def wait_text(driver, css: str, timeout=None):
     return driver.find_element(By.CSS_SELECTOR, css)
 
 
+def wait_text_any(driver, texts, timeout=None) -> None:
+    """Wait until the page body contains ANY of `texts` (case-insensitive).
+
+    For a page that streams in after the app-shell landmark and settles into
+    one of several terminal states — real content vs a couple of empty-state
+    messages. Wait for whichever lands, *then* read the body, so you never
+    assert against a half-streamed page (just the nav). Unlike `wait_text`,
+    these are rendered phrases, not CSS selectors.
+    """
+    needles = [t.lower() for t in texts]
+    wait(driver, timeout).until(
+        lambda d: any(
+            n in (d.find_element(By.CSS_SELECTOR, "body").text or "").lower()
+            for n in needles
+        )
+    )
+
+
 def present_or_skip(driver, css: str, reason: str, timeout: int = 8):
     """Wait for `css` to appear; pytest.skip(reason) if it never does.
 

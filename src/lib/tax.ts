@@ -190,6 +190,18 @@ export const RESIDENCE_MODELS: Record<TaxResidence, ResidenceModel> = {
   GB: { kind: 'flat', rate: 8.75, allowance: 500, allowanceLabel: 'Dividend allowance' },
 };
 
+/**
+ * Ireland income-tax band for dividends (taxed as ordinary income). Maps to the
+ * `marginalPct` the IE residence model already accepts — the USC/PRSI surcharge
+ * is added on top by `computeDomesticTax`, identically for both bands.
+ */
+export type DividendTaxBand = 'standard' | 'higher';
+
+export const IE_BAND_MARGINAL_PCT: Record<DividendTaxBand, number> = {
+  standard: 20,
+  higher:   40,
+};
+
 export interface DomesticTaxInputs {
   /** IE override (marginal-passthrough): user's top income-tax band, % */
   marginalPct?: number;
