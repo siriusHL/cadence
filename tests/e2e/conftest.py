@@ -126,9 +126,12 @@ def _login(driver, base_url: str, email: str, password: str) -> None:
     pw_in.clear()
     pw_in.send_keys(password)
     driver.find_element(By.CSS_SELECTOR, "button[type=submit]").click()
-    # Login redirects to /app, which dispatches to /app/home or /app/dashboard
-    # by tier. Wait until we've left /login and reached /app.
-    w.until(lambda d: "/login" not in d.current_url and "/app" in d.current_url)
+    # Customers land on /app (dispatched by tier); admins (ADMIN_EMAILS) get
+    # bounced to /admin. Wait until we've left /login and reached either.
+    w.until(
+        lambda d: "/login" not in d.current_url
+        and ("/app" in d.current_url or "/admin" in d.current_url)
+    )
 
 
 def ensure_tier(driver, base_url: str, tier: str):
@@ -169,10 +172,35 @@ def as_elite(driver, base_url):
 
 
 @pytest.fixture
+def as_support(driver, base_url):
+    """Driver logged in as the support-role user (profiles.role='support')."""
+    return ensure_tier(driver, base_url, "support")
+
+
+@pytest.fixture
+def as_admin(driver, base_url):
+    """Driver logged in as the admin user. /admin access is the ADMIN_EMAILS
+    allowlist (not a role), so this is only a real admin when its email is in
+    ADMIN_EMAILS on the app under test — positive admin tests skip otherwise."""
+    return ensure_tier(driver, base_url, "admin")
+
+
+@pytest.fixture
 def creds():
     """Expose the creds_for(tier) lookup so tests can fetch a tier's login
     (e.g. to drive a wrong-password attempt)."""
     return creds_for
+
+
+@pytest.fixture
+def login_as(driver, base_url):
+    """Return a function that (re)logs the session driver in as a given tier
+    mid-test — for cross-account flows like the support conversation (SC-05)."""
+
+    def _switch(tier: str):
+        return ensure_tier(driver, base_url, tier)
+
+    return _switch
 
 
 def attach_screenshot(driver, name: str) -> None:

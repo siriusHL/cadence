@@ -265,6 +265,15 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-MSG-04 | User cannot post as `sender=support` | Security | P1 | ✋ |
 | TC-MSG-05 | Filters all/open/closed + date range | EP | P3 | ➕ |
 
+**Support board `/support/messages` (role `support`/`admin`)** — Risk P1. Gated by `requireSupportPage()` → non-support redirected to `/app`. Support reads **every** customer thread (RLS `is_support`); replies are `sender='support'`.
+| ID | Title | Technique | Pri | Auto |
+|----|-------|-----------|-----|------|
+| TC-SUP-01 | Customer (role `user`) GET `/support/messages` → redirected to `/app` | Decision table (neg) | P1 | ➕ |
+| TC-SUP-02 | Support sees a thread created by **another** user (cross-user read) | Use-case / security | P1 | ➕ |
+| TC-SUP-03 | Support reply `POST /api/support/messages/{id}/reply {body}` inserts `sender='support'`; shows in the thread | State transition | P1 | ➕ |
+| TC-SUP-04 | Customer cannot call the support reply API (`/api/support/...`) → 403/blocked | Security | P1 | ➕ |
+| TC-SUP-05 | Support closes a thread (`PATCH {status:'closed'}`); customer then can't reply | State transition | P2 | ➕ |
+
 ### 7.4 Free-tier & utility
 
 | ID | Title | Technique | Pri | Auto |
@@ -280,6 +289,33 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 - **SC-02 Upgrade:** free hits gated screen → `/upgrade` → checkout redirect (test mode) → returns elite → gated screens now render.
 - **SC-03 Portfolio lifecycle:** create → add holdings → switch → rename → delete (blocked when last).
 - **SC-04 Tax run (elite):** populated portfolio → `/app/tax` shows residence + withholding + CGT → export downloads.
+- **SC-05 Support conversation (cross-account, end-to-end):** a customer opens `/app/messages` → "New message" → subject + body → submit (thread created, `sender='user'`, 201); **then** a `support`-role user opens `/support/messages`, finds that customer's thread (cross-user, "awaiting reply"), opens it, sees the customer's message, and replies (`sender='support'`); **then** the customer reloads the thread and the support reply is present. Asserts the full round-trip. Primary assertion is **after a reload** (server re-fetch); realtime instant-delivery is a softer secondary check. Security guards covered by TC-MSG-04 + TC-SUP-04. *Note: each run creates a thread — add cleanup or accept test-data accumulation.*
+
+### 7.6 Admin dashboard (staff — email-allowlisted)
+
+> **Access model (note for implementers):** `/admin/*` is gated by the
+> `ADMIN_EMAILS` allowlist (`isAdminEmail`, `src/lib/admin.ts`) — **not**
+> `profiles.role`. The positive cases need the test admin's email (e.g.
+> `e2e-admin@example.com`) added to `ADMIN_EMAILS` in the test env; negative
+> cases use any non-admin (e.g. `e2e-elite`). Admins are blocked from `/app/*`
+> (redirected to `/admin`). This is independent of the support board (§7.3),
+> which is gated by `profiles.role`.
+
+| ID | Title | Technique | Pri | Auto |
+|----|-------|-----------|-----|------|
+| TC-ADM-01 | Non-admin customer GET `/admin/*` → redirect `/app` | Decision table (neg) | P1 | ➕ |
+| TC-ADM-02 | Unauthenticated GET `/admin` → 302 `/login?next=/admin` | EP | P1 | ➕ |
+| TC-ADM-03 | Admin GET `/app/*` → redirected to `/admin` | State transition | P2 | ➕ |
+| TC-ADM-04 | Non-admin calls `/api/admin/*` (e.g. PATCH tier) → 403 | Security | P1 | ➕ |
+| TC-ADM-05 | Admin overview `/admin` renders KPI tiles (users, paying, portfolios) | Use-case | P2 | ➕ |
+| TC-ADM-06 | `/admin/users` search by email narrows the list | EP | P2 | ➕ |
+| TC-ADM-07 | Tier override: PATCH `{override}` → effectiveTier follows override; clear → reverts to Stripe tier | State transition + decision table | P1 | ➕ (on a **dedicated/throwaway** user or set-then-clear — never the shared tier users) |
+| TC-ADM-08 | Tier override invalid value → 400; unknown user UUID → 404 | EP/BVA (neg) | P2 | ➕ |
+| TC-ADM-09 | Maintenance mode ON → non-admin redirected to `/maintenance`; OFF → restored | State transition | P1 | ✋ (global effect — isolate/manual; toggling mid-suite breaks other tests) |
+| TC-ADM-10 | Announcement active → site-wide banner shows for users; inactive → hidden | Use-case | P2 | ➕ (set-then-clear) |
+| TC-ADM-11 | Announcement XSS (`<img onerror=…>`) renders as text, not executed | Security | P2 | ➕ |
+| TC-ADM-12 | Invalid `announcement_theme` → normalizes to `default`, no crash | Error-guessing | P3 | ➕ |
+| TC-ADM-13 | Tier-override + settings changes write `admin_audit_log` rows (actor, action, meta) | Use-case | P2 | ➕ |
 
 ---
 
@@ -296,6 +332,8 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | R7 Charts | TC-VIS-01..03 + structural | structural ✅ / visual ➕ |
 | R8 States | empty-state rows | partial |
 | R9 Copy | TC-LAND-03 | ✋ |
+| R10 Admin authz / staff ops | TC-ADM-01..13 | ❌ → **add** |
+| R11 Support messaging (RLS, cross-user, sender spoofing) | TC-MSG-01..05, TC-SUP-01..05, SC-05 | ❌ → **add** |
 
 **Gap → priority for the next automation increment:** (1) tier-gating decision table (R2), (2) add-holding + portfolio mutation BVA/flows (R4/R6), (3) tax/withholding decision tables (R3), (4) chart geometry sanity (R7).
 
