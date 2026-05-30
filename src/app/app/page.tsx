@@ -2,13 +2,28 @@ import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
 import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
 import { isSupportRole, type Role } from '@/lib/roles';
+import { reconcileSubscriptionFromStripe } from '@/lib/billing/reconcile';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AppRoot() {
+export default async function AppRoot(
+  { searchParams }: { searchParams: Promise<{ billing?: string }> },
+) {
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  // Returning from Stripe-hosted billing (checkout/portal): pull the live
+  // subscription and sync the tier before we read it below, so a plan change is
+  // reflected immediately without waiting on the webhook. Never blocks the page.
+  const { billing } = await searchParams;
+  if (billing) {
+    try {
+      await reconcileSubscriptionFromStripe(user.id);
+    } catch (err) {
+      console.error('billing reconcile failed', err);
+    }
+  }
 
   const [{ data: profile }, { data: sub }] = await Promise.all([
     supabase.from('profiles').select('default_screen, role').eq('id', user.id).maybeSingle(),
