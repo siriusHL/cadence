@@ -12,7 +12,16 @@ import pytest
 
 from helpers import goto, screenshot, severe_console_errors
 
-PUBLIC_ROUTES = ["/", "/login", "/signup", "/pricing"]
+PUBLIC_ROUTES = [
+    "/",
+    "/login",
+    "/signup",
+    "/pricing",
+    # Public Insights SEO section (seeded by migration 0017).
+    "/insights",
+    "/insights/dividend-investing",
+    "/insights/understanding-dividend-yield",
+]
 
 # Crawled as the default (elite) user. Screens a tier can't reach redirect
 # to /upgrade, which still renders a landmark, so the check holds either way.

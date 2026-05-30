@@ -1,14 +1,36 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
+import { SITE_NAME, SITE_URL } from '@/lib/site';
 import './globals.css';
 import './pro.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains', display: 'swap' });
 
+const DEFAULT_TITLE = 'Cadence — Dividend portfolio tracker';
+const DEFAULT_DESCRIPTION = 'Track dividends, forecast income, see your money working.';
+
 export const metadata: Metadata = {
-  title: 'Cadence — Dividend portfolio tracker',
-  description: 'Track dividends, forecast income, see your money working.',
+  // metadataBase lets every page emit absolute canonical / OG URLs from
+  // relative paths, so generateMetadata in /insights stays terse.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: DEFAULT_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    url: '/',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+  },
 };
 
 // Applies the user's contrast + background-tone preferences before first paint

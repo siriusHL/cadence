@@ -288,6 +288,7 @@ export default function LandingPage() {
           <a href="#income" className="hover-underline">Income</a>
           <a href="#tax" className="hover-underline">Tax</a>
           <a href="#plans" className="hover-underline">Plans</a>
+          <Link href="/insights" className="hover-underline">Insights</Link>
           <a href="#faq" className="hover-underline">FAQ</a>
         </div>
         <div className="flex items-center gap-5">
@@ -850,7 +851,7 @@ export default function LandingPage() {
           {[
             { h: 'Product',   links: ['Features', 'Pricing', 'Roadmap', 'Changelog'] },
             { h: 'Company',   links: ['About', 'Press', 'Careers', 'Contact'] },
-            { h: 'Resources', links: ['Help center', 'Tax guides', 'Glossary', 'Status'] },
+            { h: 'Resources', links: ['Insights', 'Help center', 'Tax guides', 'Glossary'] },
             { h: 'Legal',     links: ['Privacy', 'Terms', 'DPA · GDPR', 'Security'] },
           ].map((col) => (
             <div key={col.h}>
@@ -858,7 +859,7 @@ export default function LandingPage() {
               <ul className="flex flex-col gap-2.5 text-[13px] text-ink-soft">
                 {col.links.map((l) => (
                   <li key={l}>
-                    <a href="#" className="hover-underline">{l}</a>
+                    <a href={l === 'Insights' ? '/insights' : '#'} className="hover-underline">{l}</a>
                   </li>
                 ))}
               </ul>

@@ -5,10 +5,18 @@ import { effectiveTier } from '@/lib/effectiveTier';
 import { isAdminEmail } from '@/lib/admin';
 
 const PUBLIC_PATHS = ['/', '/pricing', '/login', '/signup', '/maintenance'];
+// Prefix-matched public areas (the path and everything under it). /insights is
+// the public SEO content section — readable by anyone, no auth or tier gating.
+const PUBLIC_PREFIXES = ['/insights', '/sitemap.xml', '/robots.txt'];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/_next') || pathname.startsWith('/api')) {
+  if (
+    PUBLIC_PATHS.includes(pathname) ||
+    PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api')
+  ) {
     return NextResponse.next();
   }
 
