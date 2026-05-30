@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import allure
 import pytest
+from selenium.webdriver.common.by import By
 
-from helpers import api, drain_console, goto, wait_url_contains
+from helpers import api, drain_console, goto, wait, wait_url_contains
 
 PAID_SCREENS = ["dashboard", "holdings", "dividends", "performance", "diversification"]
 ELITE_SCREENS = ["tax", "alerts"]
@@ -71,3 +72,36 @@ def test_elite_reaches_all_screens(as_elite, base_url, screen):
 def test_export_requires_elite(as_premium, base_url):
     res = api(as_premium, "GET", "/api/export/capital-gains-all")
     assert res["status"] == 402, f"expected 402 upgrade_required for premium export, got {res}"
+
+
+@allure.feature("Tier-gating")
+@allure.story("elite bounced from /upgrade — top tier, nothing to buy (TC-TIER-07)")
+@pytest.mark.tier
+def test_elite_blocked_from_upgrade(as_elite, base_url):
+    # /upgrade has its own server-side tier guard (src/app/upgrade/page.tsx):
+    # elite is redirected to /app so it can never start a redundant checkout.
+    drain_console(as_elite)
+    as_elite.get(f"{base_url}/upgrade")
+    wait_url_contains(as_elite, "/app")
+    assert "/upgrade" not in as_elite.current_url, (
+        f"elite should be redirected off /upgrade, got {as_elite.current_url}"
+    )
+
+
+@allure.feature("Tier-gating")
+@allure.story("premium reaches /upgrade and sees only the Elite plan (TC-TIER-07)")
+@pytest.mark.tier
+def test_premium_reaches_upgrade(as_premium, base_url):
+    goto(as_premium, f"{base_url}/upgrade")
+    assert "/upgrade" in as_premium.current_url, (
+        f"premium should see /upgrade, got {as_premium.current_url}"
+    )
+    assert "/login" not in as_premium.current_url
+    # Plan cards render client-side (Suspense around useSearchParams); each
+    # card's title is an <h2>. Wait for the Elite card, then assert the
+    # redundant Premium card is hidden (premium only has Elite left to buy).
+    wait(as_premium).until(
+        lambda d: any(h.text == "Elite" for h in d.find_elements(By.TAG_NAME, "h2"))
+    )
+    titles = [h.text for h in as_premium.find_elements(By.TAG_NAME, "h2")]
+    assert "Premium" not in titles, f"premium should not see a redundant Premium plan, got {titles}"

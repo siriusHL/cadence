@@ -5,6 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Tier = 'premium' | 'elite';
+export type CurrentTier = 'free' | 'premium' | 'elite';
+
+// Only show plans strictly above the user's current tier — a premium user has
+// nothing to gain from "Upgrade to Premium", so they see Elite only.
+const TIER_RANK: Record<CurrentTier, number> = { free: 0, premium: 1, elite: 2 };
+const PLAN_RANK: Record<Tier, number> = { premium: 1, elite: 2 };
 
 interface Plan {
   key: Tier;
@@ -38,9 +44,10 @@ const PLANS: Plan[] = [
   },
 ];
 
-function UpgradeBody() {
+function UpgradeBody({ currentTier }: { currentTier: CurrentTier }) {
   const params = useSearchParams();
   const from = params.get('from');
+  const visiblePlans = PLANS.filter((p) => PLAN_RANK[p.key] > TIER_RANK[currentTier]);
   const [busy, setBusy] = useState<Tier | null>(null);
   const [hovered, setHovered] = useState<Tier | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,8 +78,12 @@ function UpgradeBody() {
         </p>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-4 w-full max-w-2xl">
-        {PLANS.map((p) => {
+      <div className={
+        visiblePlans.length > 1
+          ? 'grid sm:grid-cols-2 gap-4 w-full max-w-2xl'
+          : 'grid gap-4 w-full max-w-sm'
+      }>
+        {visiblePlans.map((p) => {
           const isHovered = hovered === p.key;
           const isBusy = busy === p.key;
           const anyBusy = busy !== null;
@@ -150,7 +161,7 @@ function Spinner() {
   );
 }
 
-export function UpgradeContent() {
+export function UpgradeContent({ currentTier }: { currentTier: CurrentTier }) {
   return (
     <main className="min-h-screen flex flex-col items-center px-6 py-16">
       <Link href="/app" className="flex items-center gap-2.5 text-sm font-semibold tracking-[0.06em] uppercase mb-10 hover:opacity-70 transition-opacity">
@@ -158,7 +169,7 @@ export function UpgradeContent() {
       </Link>
       <h1 className="text-4xl font-semibold tracking-[-0.025em] mb-2">Upgrade</h1>
       <Suspense fallback={null}>
-        <UpgradeBody />
+        <UpgradeBody currentTier={currentTier} />
       </Suspense>
     </main>
   );
