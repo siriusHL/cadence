@@ -11,7 +11,13 @@ from __future__ import annotations
 import allure
 import pytest
 
-from helpers import api, goto, screenshot, wait_text_in
+from helpers import api, goto, screenshot, wait_text_any
+
+# The Tax page streams its content in after the app-shell landmark, so the
+# UI checks below must wait until the page settles into one of these terminal
+# states before reading the body — otherwise they race the render and assert
+# against just the nav (green locally on a slow dev server, flaky in CI).
+_TAX_SETTLED = ["Send to accountant", "Nothing to tax", "No portfolio"]
 
 
 @allure.feature("Mutations")
@@ -119,12 +125,12 @@ def test_tax_page_exposes_send_all_years_for_elite(as_elite, base_url):
     # have more than one fiscal year of activity. Skip cleanly otherwise — the
     # button is intentionally hidden below elite or with a single year.
     goto(as_elite, f"{base_url}/app/tax")
+    wait_text_any(as_elite, _TAX_SETTLED)
     body = as_elite.find_element("css selector", "body").text.lower()
     if "nothing to tax" in body or "no portfolio" in body:
         pytest.skip("no seeded tax data — send-to-accountant card hidden")
     if "send all years" not in body:
         pytest.skip("fewer than 2 fiscal years of activity — all-years send hidden")
-    wait_text_in(as_elite, "Send all years")
     screenshot(as_elite, "tax_send_all_years")
 
 
@@ -161,10 +167,10 @@ def test_dividend_tax_band_rejects_bad_value(authed):
 def test_tax_page_exposes_send_to_accountant(authed, base_url):
     # Read-only UI check: the action is reachable from the Tax page.
     goto(authed, f"{base_url}/app/tax")
+    wait_text_any(authed, _TAX_SETTLED)
     body = authed.find_element("css selector", "body").text.lower()
     if "nothing to tax" in body or "no portfolio" in body:
         pytest.skip("no seeded tax data — send-to-accountant card hidden")
-    wait_text_in(authed, "Send to accountant")
     # Exactly one of the two onboarding states must show: either a saved
     # recipient (no invite) or the "Add accountant email" CTA when it's unset.
     has_invite = "add accountant email" in body

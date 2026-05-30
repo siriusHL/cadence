@@ -75,16 +75,21 @@ def wait_text(driver, css: str, timeout=None):
     return driver.find_element(By.CSS_SELECTOR, css)
 
 
-def wait_text_in(driver, text: str, timeout=None) -> None:
-    """Wait until the page body contains `text` (case-insensitive).
+def wait_text_any(driver, texts, timeout=None) -> None:
+    """Wait until the page body contains ANY of `texts` (case-insensitive).
 
-    For asserting that a rendered *phrase* appeared — unlike `wait_text`,
-    which takes a CSS selector and returns an element handle. Use this when
-    what you're waiting on is copy ("Send to accountant"), not an element.
+    For a page that streams in after the app-shell landmark and settles into
+    one of several terminal states — real content vs a couple of empty-state
+    messages. Wait for whichever lands, *then* read the body, so you never
+    assert against a half-streamed page (just the nav). Unlike `wait_text`,
+    these are rendered phrases, not CSS selectors.
     """
-    needle = text.lower()
+    needles = [t.lower() for t in texts]
     wait(driver, timeout).until(
-        lambda d: needle in (d.find_element(By.CSS_SELECTOR, "body").text or "").lower()
+        lambda d: any(
+            n in (d.find_element(By.CSS_SELECTOR, "body").text or "").lower()
+            for n in needles
+        )
     )
 
 
