@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { canAccessScreen, type Tier, type Screen } from '@/lib/tiers';
+import { canAccessScreen, type Screen } from '@/lib/tiers';
+import { effectiveTier } from '@/lib/effectiveTier';
+import { isAdminEmail } from '@/lib/admin';
 import { NavTabs } from '@/components/NavTabs';
 import { DialogProvider } from '@/components/DialogProvider';
 import { UserMenu } from '@/components/UserMenu';
@@ -10,6 +12,8 @@ import { MessagesRealtime } from '@/components/MessagesRealtime';
 import { PortfolioSwitcher } from '@/components/PortfolioSwitcher';
 import { isSupportRole, type Role } from '@/lib/roles';
 import { listOwnedPortfolios, getActivePortfolio } from '@/lib/activePortfolio';
+import { AnnouncementFX } from '@/components/AnnouncementFX';
+import { normalizeTheme, bannerClass, effectFor } from '@/lib/announcementThemes';
 
 interface NavTab { label: string; href: string; screen: Screen; }
 
@@ -37,22 +41,29 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await getSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+  // Admins are an operations role with no customer app — the proxy already
+  // redirects /app/* to /admin; this is the defense-in-depth backstop.
+  if (isAdminEmail(user.email)) redirect('/admin');
 
   const [{ data: sub }, { data: profile }] = await Promise.all([
-    supabase.from('subscriptions').select('tier').eq('user_id', user.id).single(),
+    supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user.id).single(),
     supabase.from('profiles').select('role').eq('id', user.id).single(),
   ]);
-  const tier = (sub?.tier ?? 'free') as Tier;
+  const tier = effectiveTier(sub);
   const isSupport = isSupportRole((profile?.role ?? 'user') as Role);
 
   const tabs = [...FREE_TABS, ...PRO_TABS, ...ELITE_TABS].filter((t) =>
     canAccessScreen(tier, t.screen),
   );
 
-  const [portfolios, active] = await Promise.all([
+  const [portfolios, active, { data: site }] = await Promise.all([
     listOwnedPortfolios(supabase, user.id),
     getActivePortfolio(supabase, user.id),
+    supabase.from('site_settings').select('announcement, announcement_active, announcement_theme').eq('id', 1).maybeSingle(),
   ]);
+  const banner = site?.announcement_active ? site.announcement : null;
+  const theme = normalizeTheme(site?.announcement_theme);
+  const bannerFx = banner ? effectFor(theme) : 'none';
 
   const initials =
     (user.email ?? '??').slice(0, 2).toUpperCase();
@@ -86,6 +97,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <UserMenu email={user.email ?? ''} initials={initials} tier={tier} isSupport={isSupport} />
           </div>
         </div>
+        {banner && (
+          <div role="status" className={bannerClass(theme)}>
+            <span>{banner}</span>
+          </div>
+        )}
+        {bannerFx !== 'none' && <AnnouncementFX effect={bannerFx} />}
         <div className="scroll">{children}</div>
       </div>
     </DialogProvider>

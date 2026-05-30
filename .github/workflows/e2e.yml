@@ -20,6 +20,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write  # delete stale Pages artifacts on re-run (see publish-report)
 
 jobs:
   e2e:
@@ -97,8 +98,13 @@ jobs:
       - name: Build app
         run: npm run build
 
-      # TODO (next phase): seed the deterministic fixture DB here, e.g.
-      #   node scripts/seed-e2e-fixtures.mjs
+      # Seed deterministic fixtures so the run is self-sufficient (no reliance
+      # on data already present in the DB): tiered users + staff roles here,
+      # and the elite portfolio once the app is up (below). All idempotent.
+      - name: Seed test users + roles
+        run: |
+          node scripts/seed-e2e-users.mjs
+          node scripts/seed-e2e-roles.mjs
 
       - name: Start app
         run: |
@@ -112,6 +118,12 @@ jobs:
             fi
             sleep 1
           done
+
+      # Elite needs holdings for the data / chart / tax tests to assert
+      # rather than skip. Browser-driven, so it runs against the started app.
+      # Idempotent: skips if the account already has holdings.
+      - name: Seed elite portfolio
+        run: python tests/e2e/_seed_portfolio.py
 
       - name: Run E2E suite
         # report.html is written by our own renderer (conftest hooks +
@@ -210,6 +222,21 @@ jobs:
       - name: Make report the landing page
         run: |
           if [ -f _site/report.html ]; then cp _site/report.html _site/index.html; fi
+
+      # Re-running this run leaves the previous attempt's "github-pages"
+      # artifact in place; with more than one present, deploy-pages fails
+      # ("Multiple artifacts named github-pages"). Delete any stale ones so
+      # the upload below is the only one that remains.
+      - name: Clear stale github-pages artifacts (re-run safety)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" \
+            --jq '.artifacts[] | select(.name == "github-pages") | .id' \
+          | while read -r id; do
+              echo "deleting stale github-pages artifact $id"
+              gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" || true
+            done
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

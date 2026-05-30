@@ -1,11 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { canAccessScreen, type Screen, type Tier } from '@/lib/tiers';
+import { canAccessScreen, type Screen } from '@/lib/tiers';
+import { effectiveTier } from '@/lib/effectiveTier';
+import { isAdminEmail } from '@/lib/admin';
 
-// Tier-gated screen routes live under /app/<screen>.
-// Auth is required for /app/*. Tier-locked screens redirect to /upgrade.
-
-const PUBLIC_PATHS = ['/', '/pricing', '/login', '/signup'];
+const PUBLIC_PATHS = ['/', '/pricing', '/login', '/signup', '/maintenance'];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -20,11 +19,7 @@ export async function proxy(req: NextRequest) {
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (toSet) => {
-          for (const { name, value, options } of toSet) {
-            res.cookies.set(name, value, options);
-          }
-        },
+        setAll: (toSet) => { for (const { name, value, options } of toSet) res.cookies.set(name, value, options); },
       },
     },
   );
@@ -37,23 +32,36 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Gate /app/<screen> by tier
-  const m = pathname.match(/^\/app\/([^/]+)/);
-  if (m) {
-    const screen = m[1] as Screen;
-    const { data } = await supabase.from('subscriptions').select('tier').eq('user_id', user.id).single();
-    const tier = (data?.tier ?? 'free') as Tier;
-    if (!canAccessScreen(tier, screen)) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/upgrade';
-      url.searchParams.set('from', screen);
-      return NextResponse.redirect(url);
-    }
+  const admin = isAdminEmail(user.email);
+
+  if (pathname.startsWith('/admin')) {
+    if (!admin) { const url = req.nextUrl.clone(); url.pathname = '/app'; return NextResponse.redirect(url); }
+    return res;
   }
 
+  // Admins are an operations role, not customers — they have no access to the
+  // customer app. Send any /app/* hit to the dashboard instead.
+  if (admin && pathname.startsWith('/app')) {
+    const url = req.nextUrl.clone(); url.pathname = '/admin'; return NextResponse.redirect(url);
+  }
+
+  if (pathname.startsWith('/app')) {
+    const { data: site } = await supabase.from('site_settings').select('maintenance_mode').eq('id', 1).maybeSingle();
+    if (site?.maintenance_mode && !admin) {
+      const url = req.nextUrl.clone(); url.pathname = '/maintenance'; return NextResponse.redirect(url);
+    }
+    const m = pathname.match(/^\/app\/([^/]+)/);
+    if (m) {
+      const screen = m[1] as Screen;
+      const { data } = await supabase.from('subscriptions').select('tier, admin_tier_override').eq('user_id', user.id).single();
+      const tier = effectiveTier(data);
+      if (!canAccessScreen(tier, screen)) {
+        const url = req.nextUrl.clone(); url.pathname = '/upgrade'; url.searchParams.set('from', screen);
+        return NextResponse.redirect(url);
+      }
+    }
+  }
   return res;
 }
 
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-};
+export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'] };
