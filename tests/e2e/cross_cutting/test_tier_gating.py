@@ -88,7 +88,7 @@ def test_elite_blocked_from_upgrade(as_elite, base_url):
 
 
 @allure.feature("Tier-gating")
-@allure.story("premium reaches /upgrade to buy elite (TC-TIER-07)")
+@allure.story("premium reaches /upgrade and sees only the Elite plan (TC-TIER-07)")
 @pytest.mark.tier
 def test_premium_reaches_upgrade(as_premium, base_url):
     goto(as_premium, f"{base_url}/upgrade")
@@ -96,3 +96,7 @@ def test_premium_reaches_upgrade(as_premium, base_url):
         f"premium should see /upgrade, got {as_premium.current_url}"
     )
     assert "/login" not in as_premium.current_url
+    # Premium only has Elite left to buy — the redundant Premium card is hidden.
+    src = as_premium.page_source
+    assert "Upgrade to Elite" in src, "premium should see the Elite option"
+    assert "Upgrade to Premium" not in src, "premium should not see a redundant Premium option"

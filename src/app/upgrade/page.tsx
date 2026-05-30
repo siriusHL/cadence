@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSupabaseServer } from '@/lib/supabase/server';
-import { UpgradeContent } from './UpgradeContent';
+import { UpgradeContent, type CurrentTier } from './UpgradeContent';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,5 +29,5 @@ export default async function UpgradePage(
     .single();
   if (sub?.tier === 'elite') redirect('/app');
 
-  return <UpgradeContent />;
+  return <UpgradeContent currentTier={(sub?.tier ?? 'free') as CurrentTier} />;
 }
