@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import allure
 import pytest
+from selenium.webdriver.common.by import By
 
-from helpers import api, drain_console, goto, wait_url_contains
+from helpers import api, drain_console, goto, wait, wait_url_contains
 
 PAID_SCREENS = ["dashboard", "holdings", "dividends", "performance", "diversification"]
 ELITE_SCREENS = ["tax", "alerts"]
@@ -96,7 +97,11 @@ def test_premium_reaches_upgrade(as_premium, base_url):
         f"premium should see /upgrade, got {as_premium.current_url}"
     )
     assert "/login" not in as_premium.current_url
-    # Premium only has Elite left to buy — the redundant Premium card is hidden.
-    src = as_premium.page_source
-    assert "Upgrade to Elite" in src, "premium should see the Elite option"
-    assert "Upgrade to Premium" not in src, "premium should not see a redundant Premium option"
+    # Plan cards render client-side (Suspense around useSearchParams); each
+    # card's title is an <h2>. Wait for the Elite card, then assert the
+    # redundant Premium card is hidden (premium only has Elite left to buy).
+    wait(as_premium).until(
+        lambda d: any(h.text == "Elite" for h in d.find_elements(By.TAG_NAME, "h2"))
+    )
+    titles = [h.text for h in as_premium.find_elements(By.TAG_NAME, "h2")]
+    assert "Premium" not in titles, f"premium should not see a redundant Premium plan, got {titles}"
