@@ -43,6 +43,10 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
       TWELVE_DATA_KEY: ${{ secrets.E2E_TWELVE_DATA_KEY }}
       FMP_KEY: ${{ secrets.E2E_FMP_KEY }}
+      # Treat the seeded e2e-admin user as an admin so the §7.6 admin tests
+      # run (their positive cases skip otherwise). A throwaway test email,
+      # not a secret; a repo secret can override.
+      ADMIN_EMAILS: ${{ secrets.E2E_ADMIN_EMAILS || 'e2e-admin@example.com' }}
       # ── Test-suite config ─────────────────────────────────────────────
       # Login creds fall back to the committed tests/e2e/test-users.json
       # when these secrets are unset, so they're optional.
