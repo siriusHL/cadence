@@ -211,6 +211,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-TAX-07 | "Send to accountant" card present; `POST /api/tax/send-to-accountant` rejects bad recipient / empty subject+body (400) — rejected/safe paths only, nothing emailed | EP/BVA (negative) + reachability | P2 | ✅ |
 | TC-TAX-08 | Tax-pack email attachment gated: `attach:true` without a year → 400; below-elite tier with a year → 402 (same gate as the export). Rejected/safe paths only | Decision table (negative) | P1 | ✅ |
 | TC-TAX-09 | Send history: a successful send writes an `accountant_sends` row (RLS self-scoped); Tax page shows "Last sent to X on <date>". Write needs a real send (Resend) so covered manually; UI surface asserted read-only | Use-case | P3 | ✋ (write) / ✅ (surface) |
+| TC-TAX-10 | NL Box 3 1-Jan value: `POST /api/tax/box3-value` rejects a missing year and a negative value (400). With a saved value the Box 3 estimate uses it instead of today's holdings; the editor shows on the NL card only | EP/BVA (negative) + decision table | P1 | ✅ (negative) / ➕ (NL calc) |
 
 ### 7.3 Mutations / account (all tiers)
 
@@ -367,6 +368,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | Password (new) | 8–72 | 7, 73 | zod min8/max72 |
 | Signup password | ≥ 8 | 7 (**no confirm field — risk**) | `minLength=8` |
 | Income target | 1–10,000,000 | ≤0, >max | zod coerce positive |
+| Box 3 1-Jan value | 0–1,000,000,000 (year required) | negative, missing year | `api/tax/box3-value` zod |
 | Message subject / body | 1–140 / 1–5000 | "", 141 / 5001 | zod |
 | Tax `?year=` | 2000 … currentYear+1 | 1999, +2 (→ default) | page guard |
 | Export `?year=` | 1900–2999 | 1899, 3000 (→ 400) | export route |

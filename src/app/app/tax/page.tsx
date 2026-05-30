@@ -15,6 +15,7 @@ import { getActivityYears } from '@/lib/export';
 import { EmptyState } from '@/components/EmptyState';
 import { InfoTooltip } from '@/components/InfoTooltip';
 import { SendToAccountantModal } from '@/components/SendToAccountantModal';
+import { Box3ValueEditor } from '@/components/Box3ValueEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -162,14 +163,27 @@ export default async function TaxScreen({
   const cgt = computeCapitalGainsTax(capitalGains);
 
   // Domestic tax: residence-side layer (final tax minus foreign credit).
-  // NL Box 3 needs the user's portfolio value at 1 Jan — for v0 we approximate
-  // with the current total holdings value as a rough proxy.
+  // NL Box 3 is charged on the portfolio value at 1 January, which can't be
+  // derived from today's holdings — the user records it per year. We pass the
+  // saved value when present; today's holdings value is only a starting-point
+  // suggestion offered in the editor, never used as the basis silently.
   const approxPortfolioValueEur = held.reduce(
     (s, h) => s + (h.price ?? 0) * h.quantity,
     0,
   );
+  const isBox3 = residence === 'NL';
+  const { data: box3Row } = isBox3
+    ? await supabase
+        .from('box3_values')
+        .select('value_eur')
+        .eq('user_id', user!.id)
+        .eq('fiscal_year', fiscalYear)
+        .maybeSingle()
+    : { data: null };
+  const box3ValueJan1 = box3Row?.value_eur != null ? Number(box3Row.value_eur) : null;
+
   const domestic = computeDomesticTax(summary, {
-    portfolioValueJan1: approxPortfolioValueEur,
+    portfolioValueJan1: box3ValueJan1 ?? undefined,
   });
 
   const finalNetEur = summary.totalNetEur - domestic.finalEur;
@@ -406,6 +420,15 @@ export default async function TaxScreen({
             residenceName={residenceName}
             finalNetEur={finalNetEur}
           />
+          {isBox3 && (
+            <div style={{ padding: '4px 4px 14px' }}>
+              <Box3ValueEditor
+                fiscalYear={fiscalYear}
+                initialValue={box3ValueJan1}
+                approxValue={approxPortfolioValueEur}
+              />
+            </div>
+          )}
         </div>
 
         {/* Reclaim opportunities */}

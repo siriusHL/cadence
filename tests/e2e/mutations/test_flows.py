@@ -81,6 +81,24 @@ def test_send_to_accountant_attachment_gated_below_elite(as_premium):
 
 
 @allure.feature("Mutations")
+@allure.story("NL Box 3 value")
+@pytest.mark.flows
+def test_box3_value_rejects_missing_year(authed):
+    # Rejected path: the year is required to key the per-year value.
+    res = api(authed, "/api/tax/box3-value", "POST", {"value": 100000})
+    assert res["status"] in (400, 422), res
+
+
+@allure.feature("Mutations")
+@allure.story("NL Box 3 value")
+@pytest.mark.flows
+def test_box3_value_rejects_negative(authed):
+    # Rejected path: a negative portfolio value never persists.
+    res = api(authed, "/api/tax/box3-value", "POST", {"year": 2024, "value": -1})
+    assert res["status"] in (400, 422), res
+
+
+@allure.feature("Mutations")
 @allure.story("Tax send-to-accountant")
 @pytest.mark.flows
 def test_tax_page_exposes_send_to_accountant(authed, base_url):
