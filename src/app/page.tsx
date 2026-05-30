@@ -264,7 +264,7 @@ const FAQS = [
   },
   {
     q: 'Can I cancel anytime?',
-    a: 'Yes, from settings in one click. No phone calls, no retention scripts. Your data stays accessible in Free mode (with a 15-position cap) — your history is never deleted unless you explicitly ask.',
+    a: 'Yes, from settings in one click. No phone calls, no retention scripts. Your data stays accessible in Free mode (with a 10-position cap) — your history is never deleted unless you explicitly ask.',
   },
 ];
 

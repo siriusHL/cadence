@@ -147,6 +147,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | ID | Title | Technique | Pri | Auto |
 |----|-------|-----------|-----|------|
 | TC-PRC-01 | `/pricing` shows 3 plans; every CTA → `/signup[?tier=]` (no Stripe here) | Use-case | P2 | ➕ |
+| TC-FAQ-01 | `/faq` renders Q&A (expandable `<details>`) + per-page guide naming the tier screens; CTAs → `/signup` + `/pricing`; no SEVERE console error | Use-case | P3 | ✅ |
 | TC-SUP-01 | `/upgrade` Premium/Elite card → `POST /api/billing/checkout` → Stripe redirect | State transition | P1 | ➕ |
 | TC-SUP-02 | `/upgrade` with price env missing → inline error, no crash | Error-guessing | P3 | ✋ |
 
