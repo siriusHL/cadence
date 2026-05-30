@@ -23,6 +23,18 @@ const FIELD_STYLE: React.CSSProperties = {
   color: 'var(--text)',
 };
 
+const PRIMARY_BTN: React.CSSProperties = {
+  height: 36,
+  padding: '0 18px',
+  background: 'var(--btn-primary-bg)',
+  color: 'var(--btn-primary-text)',
+  borderRadius: 999,
+  fontSize: 14,
+  fontWeight: 500,
+  border: 0,
+  cursor: 'pointer',
+};
+
 const LABEL_STYLE: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 600,
@@ -37,7 +49,7 @@ export function SendToAccountantModal({ accountantEmail, defaultSubject, default
 
   return (
     <>
-      <button type="button" className="pro-btn pro-btn-primary" onClick={() => setOpen(true)}>
+      <button type="button" className="btn" style={PRIMARY_BTN} onClick={() => setOpen(true)}>
         Send to accountant
       </button>
       {open && (
@@ -170,8 +182,8 @@ function PreviewModal({
             justifyContent: 'flex-end',
           }}
         >
-          <button className="pro-btn" onClick={onClose} disabled={pending}>Cancel</button>
-          <button className="pro-btn pro-btn-primary" onClick={send} disabled={pending}>
+          <button type="button" className="btn ghost" onClick={onClose} disabled={pending}>Cancel</button>
+          <button type="button" className="btn" style={{ ...PRIMARY_BTN, opacity: pending ? 0.6 : 1 }} onClick={send} disabled={pending}>
             {pending ? 'Sending…' : 'Send email'}
           </button>
         </div>
