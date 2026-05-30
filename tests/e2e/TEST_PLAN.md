@@ -208,6 +208,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-TAX-04 | CGT (FIFO) + `hasUnmatchedSells` warning surfaces | Use-case | P2 | ➕ |
 | TC-TAX-05 | Export `?year=` API: 1899/1900/2999/3000 → 400 vs 200 | **BVA** | P2 | ➕ |
 | TC-TAX-06 | Export endpoints reject non-elite (402) | Decision table | P1 | ➕ |
+| TC-TAX-07 | "Send to accountant" card present; `POST /api/tax/send-to-accountant` rejects bad recipient / empty subject+body (400) — rejected/safe paths only, nothing emailed | EP/BVA (negative) + reachability | P2 | ✅ |
 
 ### 7.3 Mutations / account (all tiers)
 
@@ -255,6 +256,7 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | TC-SET-01 | Income target: ≤0 rejected, 1 ok, 10,000,000 ok, >max rejected | **BVA** | P2 | ➕ |
 | TC-SET-02 | Contrast/bg-tone change applies instantly + persists (optimistic + cookie) | State transition | P3 | ➕ |
 | TC-SET-03 | Default landing screen list filtered to tier-accessible only | Decision table | P2 | ➕ |
+| TC-SET-04 | Accountant email: `PATCH /api/me` rejects a malformed address (400); valid value pre-fills the Tax "Send to accountant" recipient | EP (invalid rep) | P2 | ✅ (negative path) |
 
 **`/app/messages`** — Risk P2. 
 | ID | Title | Technique | Pri | Auto |
@@ -368,6 +370,8 @@ Reusable `assert_chart_sane(container)` across all charts. *(Layer A — determi
 | Export `?year=` | 1900–2999 | 1899, 3000 (→ 400) | export route |
 | Phone | `^[+\d][\d\s()./-]{3,}$` | "abc", too short | profile zod |
 | Country | ISO-2 `[A-Z]{2}` | lowercase, 3 chars | profile zod |
+| Accountant email | RFC-ish `a@b.c` (≤254) | "not-an-email", >254 | `api/me` zod `.email()` |
+| Send-to-accountant body | to `.email()`, subject 1–200, body 1–20000 | bad email, empty subject/body | `api/tax/send-to-accountant` zod |
 | Withholding by country | US/CA/NL .15, DE .26375, FR .128, CH .35, GB 0, ES .19, default .15 | — (decision table) | dividends logic |
 
 > **Note (already-suspected defects to verify):** signup lacks a confirm-password field (R6); landing/pricing copy disagrees with `tiers.ts` on price & position count (R9); several `/app/*` pages gate via nav only, not an in-page redirect — direct-URL access by an under-tier user must be explicitly tested (R2, TC-TIER-01).
